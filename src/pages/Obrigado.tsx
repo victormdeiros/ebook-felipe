@@ -1,41 +1,81 @@
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { Download } from "lucide-react";
-import logoBranca from "@/assets/logo-branca.png";
+import { CheckCircle, Instagram, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
+import { CONFIG } from "@/config";
+import logoIcon from "@/assets/logo-icon.png";
 
 const Obrigado = () => {
+  const [userEmail, setUserEmail] = useState("");
+
+  useEffect(() => {
+    try {
+      const leads = JSON.parse(localStorage.getItem(CONFIG.LEAD_STORAGE) || "[]");
+      if (leads.length > 0) {
+        setUserEmail(leads[leads.length - 1].email);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
   return (
-    <main className="min-h-screen hero-gradient flex items-center justify-center">
-      <div className="container mx-auto px-6 text-center max-w-xl">
+    <main className="min-h-screen bg-support-dark flex flex-col items-center justify-center relative overflow-hidden">
+      {/* Decorative background elements */}
+      <div className="absolute top-0 right-0 -m-32 w-96 h-96 bg-gold/5 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-0 left-0 -m-32 w-96 h-96 bg-primary/10 rounded-full blur-[100px] pointer-events-none" />
+
+      <div className="container mx-auto px-6 text-center max-w-2xl relative z-10 py-20">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
+          className="bg-support border border-primary p-8 md:p-12 rounded-2xl shadow-2xl flex flex-col items-center"
         >
-          <img src={logoBranca} alt="Felipe Lopes Advogados" className="h-12 mx-auto mb-12" />
+          <img src={logoIcon} alt="Felipe Lopes" className="w-16 h-16 mb-8 opacity-80" />
 
-          <h1 className="font-display text-4xl md:text-5xl font-semibold tracking-tight text-foreground mb-6">
-            Seu acesso está liberado.
-          </h1>
-          <p className="text-muted-foreground leading-relaxed mb-10">
-            Obrigado pelo interesse no nosso material. Clique no botão abaixo para acessar o e-book.
-          </p>
-
-          <a
-            href="#"
-            className="inline-flex items-center gap-3 font-ui text-sm bg-primary hover:bg-primary-deep text-primary-foreground px-8 py-4 rounded-md transition-all duration-300 hover:scale-[1.02] hover:shadow-[0_10px_30px_-5px_rgba(62,21,23,0.5)]"
+          {/* Success icon */}
+          <motion.div
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.2, type: "spring" }}
+            className="flex justify-center mb-6"
           >
-            <Download className="w-4 h-4" />
-            BAIXAR EBOOK
-          </a>
+            <CheckCircle className="w-24 h-24 text-gold" strokeWidth={1.5} />
+          </motion.div>
 
-          <p className="text-muted-foreground/60 text-sm mt-12">
-            Esperamos que o conteúdo seja útil para tornar a gestão da sua empresa mais segura.
+          <h1 className="font-display text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight text-gold mb-6 text-balance">
+            Compra aprovada!<br/>Obrigado pela confiança.
+          </h1>
+          
+          <p className="text-off-white font-body text-lg leading-relaxed mb-10 max-w-lg">
+            As instruções de acesso ao seu Manual do Empregador foram enviadas para o e-mail:<br/>
+            {userEmail ? (
+              <span className="font-semibold text-gold mt-2 block">{userEmail}</span>
+            ) : (
+              <span className="font-semibold text-gold mt-2 block">o e-mail cadastrado.</span>
+            )}
           </p>
 
-          <Link to="/" className="text-accent text-sm mt-8 inline-block hover:underline">
-            ← Voltar à página inicial
-          </Link>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-md">
+            <a
+              href={CONFIG.OFFICE_INSTAGRAM}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-gold hover:text-background text-gold font-ui font-bold text-sm px-6 py-4 rounded-md transition-all duration-300 border border-gold/30"
+            >
+              <Instagram className="w-5 h-5" />
+              Acompanhar no Instagram
+            </a>
+            
+            <Link
+              to="/"
+              className="w-full flex items-center justify-center gap-2 bg-support hover:bg-support-dark text-secondary-light font-ui text-sm px-6 py-4 rounded-md transition-all duration-300 border border-primary/50"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Voltar ao início
+            </Link>
+          </div>
         </motion.div>
       </div>
     </main>

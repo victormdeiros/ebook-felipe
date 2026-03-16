@@ -14,22 +14,24 @@ const learningPoints = [
 
 const LearningSection = () => {
   return (
-    <section className="py-24 lg:py-32 bg-background">
+    <section className="py-24 lg:py-32 bg-support">
       <div className="container mx-auto px-6 lg:px-12">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.6 }}
-          className="max-w-3xl mb-16"
+          className="max-w-3xl mb-12 text-center mx-auto"
         >
-          <span className="font-ui text-xs text-accent tracking-widest mb-4 block">Conteúdo</span>
-          <h2 className="font-display text-3xl md:text-5xl font-semibold tracking-tight text-foreground text-balance">
+          <h2 className="font-display text-3xl md:text-5xl font-semibold tracking-tight text-gold text-balance mb-4">
             O que você vai aprender neste material
           </h2>
+          <p className="text-secondary-light font-body text-lg">
+            Tudo isso explicado de forma clara, prática e direta.
+          </p>
         </motion.div>
 
-        <div className="grid md:grid-cols-2 gap-4 max-w-4xl">
+        <div className="grid md:grid-cols-2 gap-4 lg:gap-6 max-w-5xl mx-auto">
           {learningPoints.map((point, i) => (
             <motion.div
               key={i}
@@ -37,23 +39,30 @@ const LearningSection = () => {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.4, delay: i * 0.08 }}
-              className="flex items-start gap-4 p-4 surface-card rounded-lg"
+              className="flex items-start gap-4 p-6 bg-support-dark rounded-lg border-l-4 border-transparent hover:border-gold hover:-translate-y-1 transition-all duration-300 shadow-md"
             >
-              <Check className="w-5 h-5 text-accent mt-0.5 shrink-0" strokeWidth={2} />
-              <span className="text-foreground text-sm leading-relaxed tabular-nums">{point}</span>
+              <div className="bg-support p-1.5 rounded-full shrink-0">
+                <Check className="w-5 h-5 text-gold" strokeWidth={2.5} />
+              </div>
+              <span className="text-off-white font-body text-[15px] leading-relaxed mt-1">{point}</span>
             </motion.div>
           ))}
         </div>
 
-        <motion.p
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ delay: 0.6 }}
-          className="mt-10 text-accent font-semibold text-lg"
+          transition={{ delay: 0.7 }}
+          className="mt-16 text-center"
         >
-          Tudo isso explicado de forma clara, prática e direta.
-        </motion.p>
+          <a
+            href="#comprar"
+            className="inline-block font-ui font-bold text-sm bg-gold hover:bg-gold-light text-background px-10 py-5 rounded-md transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_10px_30px_-5px_rgba(201,168,76,0.4)]"
+          >
+            QUERO ADQUIRIR O E-BOOK →
+          </a>
+        </motion.div>
       </div>
     </section>
   );
