@@ -14,8 +14,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ['"Playfair Display"', 'serif'],
-        body: ['"Montserrat"', 'sans-serif'],
+        display: ['"Cormorant Garamond"', 'serif'],
+        body: ['"DM Sans"', 'sans-serif'],
       },
       colors: {
         border: "var(--border)",
@@ -39,10 +39,10 @@ export default {
           light: "var(--support-light)",
           dark: "var(--support-dark)",
         },
-        gold: {
-          DEFAULT: "var(--gold)",
-          light: "var(--gold-light)",
-          dim: "var(--gold-dim)",
+        wine: {
+          DEFAULT: "var(--wine)",
+          light: "var(--wine-light)",
+          dim: "var(--wine-dim)",
         },
         white: "var(--white)",
         "off-white": "var(--off-white)",

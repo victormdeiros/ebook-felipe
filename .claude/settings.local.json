@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3 \"C:\\\\Users\\\\Usuário\\\\.claude\\\\plugins\\\\cache\\\\ui-ux-pro-max-skill\\\\ui-ux-pro-max\\\\2.0.1\\\\.claude\\\\skills\\\\ui-ux-pro-max/scripts/search.py\" \"ebook landing page insurance employer professional trust\" --design-system -p \"Manual Empregador Seguro\")"
+    ]
+  }
+}

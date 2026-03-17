@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { trackPageView } from "@/lib/tracking";
 import StickyHeader from "@/components/StickyHeader";
 import HeroSection from "@/components/HeroSection";
 import TrustBarSection from "@/components/TrustBarSection";
@@ -13,10 +15,20 @@ import FooterSection from "@/components/FooterSection";
 import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 
 const Index = () => {
+  useEffect(() => {
+    const cleanup = trackPageView();
+    return cleanup;
+  }, []);
+
   return (
     <>
+      {/* Skip link for keyboard users */}
+      <a href="#main-content" className="skip-link">
+        Pular para o conteúdo principal
+      </a>
+
       <StickyHeader />
-      <main>
+      <main id="main-content">
         <HeroSection />
         <TrustBarSection />
         <PainPointsSection />
