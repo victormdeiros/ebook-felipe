@@ -1,7 +1,8 @@
 import { useState, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Lock, ShieldCheck, CreditCard, Loader2 } from "lucide-react";
+import { ArrowRight, BadgeCheck, Lock, ShieldCheck } from "lucide-react";
 import { CONFIG } from "@/config";
+import { GlassCheckoutCard } from "@/components/ui/glass-checkout-card-shadcnui";
 import { trackFormStart } from "@/lib/tracking";
 import { getContent } from "@/lib/contentStore";
 import { saveLead } from "@/lib/repository";
@@ -78,13 +79,6 @@ const CtaSection = () => {
     window.location.href = url;
   };
 
-  const inputClass = (field: keyof FormErrors) =>
-    `w-full bg-background border rounded-md px-4 py-3.5 text-off-white font-body text-base focus:outline-none transition-colors placeholder:text-white/25 min-h-[48px] ${
-      errors[field] && touched[field]
-        ? "border-red-400/60 focus:border-red-400"
-        : "border-white/8 focus:border-wine"
-    }`;
-
   return (
     <section id="comprar" className="py-24 lg:py-32 section-elevated relative overflow-hidden">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-px bg-gradient-to-r from-transparent via-wine/40 to-transparent" aria-hidden="true" />
@@ -99,143 +93,90 @@ const CtaSection = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="text-center mb-16 max-w-3xl mx-auto"
+          className="text-center mb-14 max-w-3xl mx-auto"
         >
           <h2 className="font-display text-3xl md:text-5xl font-semibold tracking-tight text-wine text-balance mb-6">
-            Adquira o Manual do Empregador e proteja sua empresa hoje
+            Formalize a compra com um checkout coerente com a proposta do material
           </h2>
           <p className="text-muted-foreground font-body text-lg">
-            Um investimento único que pode evitar passivos de milhares de reais.
+            Voce cadastra seus dados aqui e conclui o pagamento em ambiente seguro, sem friccao nem duplicidade na jornada.
           </p>
         </motion.div>
 
-        <div className="max-w-xl mx-auto">
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(420px,520px)] lg:items-center">
           <motion.div
             initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="surface-card p-8 md:p-10 rounded-2xl relative"
+            className="space-y-8"
           >
-            {/* Pricing header */}
-            <div className="text-center mb-8 border-b border-white/5 pb-8">
-              <span className="inline-block border border-wine/25 text-wine font-body text-xs font-semibold px-4 py-1.5 rounded-full mb-5">
-                OFERTA DE LANÇAMENTO
+            <div className="space-y-5">
+              <span className="inline-flex items-center gap-2 rounded-full border border-wine/20 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-wine/90">
+                <BadgeCheck className="h-3.5 w-3.5" />
+                Jornada padronizada de compra
               </span>
-              <div className="flex flex-col items-center justify-center gap-1">
-                <span className="text-muted-foreground font-body line-through text-sm">De R$ {content.priceOriginal},00</span>
-                <span className="font-display text-5xl md:text-6xl font-bold text-off-white mt-1">
-                  <span className="text-2xl text-wine align-top inline-block mt-2 mr-1">R$</span>{content.price}<span className="text-3xl text-wine/70">,00</span>
-                </span>
-                <span className="text-wine/70 font-body text-sm mt-2">Pagamento único &bull; Acesso imediato</span>
-              </div>
+              <h3 className="max-w-xl font-display text-3xl font-semibold tracking-tight text-off-white md:text-4xl">
+                Garanta seu acesso ao material e avance para a etapa final da compra em poucos segundos.
+              </h3>
+              <p className="max-w-2xl text-base leading-relaxed text-white/68 md:text-lg">
+                Voce informa seus dados uma unica vez, segue para o checkout com mais agilidade e assegura acesso a um conteudo pensado para orientar decisoes trabalhistas com criterio pratico.
+              </p>
             </div>
 
-            {/* Form */}
-            <form onSubmit={handleSubmit} onFocus={handleFormFocus} className="space-y-4 mb-8" noValidate>
-              <div>
-                <label htmlFor="name" className="block text-off-white/90 font-body text-sm mb-1.5">
-                  Nome completo <span className="text-wine" aria-hidden="true">*</span>
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  required
-                  autoComplete="name"
-                  placeholder="Ex: João da Silva"
-                  value={formData.name}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  aria-invalid={!!(errors.name && touched.name)}
-                  aria-describedby={errors.name && touched.name ? "name-error" : undefined}
-                  className={inputClass("name")}
-                />
-                {errors.name && touched.name && (
-                  <p id="name-error" role="alert" className="text-red-400 text-xs mt-1.5 font-body">{errors.name}</p>
-                )}
-              </div>
-
-              <div>
-                <label htmlFor="email" className="block text-off-white/90 font-body text-sm mb-1.5">
-                  E-mail corporativo ou principal <span className="text-wine" aria-hidden="true">*</span>
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  required
-                  autoComplete="email"
-                  placeholder="Ex: joao@suaempresa.com.br"
-                  value={formData.email}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  aria-invalid={!!(errors.email && touched.email)}
-                  aria-describedby={errors.email && touched.email ? "email-error" : undefined}
-                  className={inputClass("email")}
-                />
-                {errors.email && touched.email && (
-                  <p id="email-error" role="alert" className="text-red-400 text-xs mt-1.5 font-body">{errors.email}</p>
-                )}
-              </div>
-
-              <div>
-                <label htmlFor="whatsapp" className="block text-off-white/90 font-body text-sm mb-1.5">
-                  WhatsApp <span className="text-wine" aria-hidden="true">*</span>
-                </label>
-                <input
-                  type="tel"
-                  id="whatsapp"
-                  name="whatsapp"
-                  required
-                  autoComplete="tel"
-                  placeholder="(00) 00000-0000"
-                  value={formData.whatsapp}
-                  onChange={handleChange}
-                  onBlur={handleBlur}
-                  aria-invalid={!!(errors.whatsapp && touched.whatsapp)}
-                  aria-describedby="whatsapp-hint whatsapp-error"
-                  className={inputClass("whatsapp")}
-                />
-                <p id="whatsapp-hint" className="text-white/30 text-xs mt-1 font-body">
-                  Insira o DDD + número com 9 dígitos
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-2xl border border-white/8 bg-black/15 p-5">
+                <div className="mb-3 flex items-center gap-2 text-sm font-medium text-off-white">
+                  <Lock className="h-4 w-4 text-wine" />
+                  Checkout sem exposicao de dados sensiveis
+                </div>
+                <p className="text-sm leading-relaxed text-white/58">
+                  Nenhum dado de cartao e coletado na landing. O pagamento acontece no ambiente oficial, com o seu e-mail ja encaminhado.
                 </p>
-                {errors.whatsapp && touched.whatsapp && (
-                  <p id="whatsapp-error" role="alert" className="text-red-400 text-xs mt-1 font-body">{errors.whatsapp}</p>
-                )}
               </div>
+              <div className="rounded-2xl border border-white/8 bg-black/15 p-5">
+                <div className="mb-3 flex items-center gap-2 text-sm font-medium text-off-white">
+                  <ShieldCheck className="h-4 w-4 text-wine" />
+                  Cadastro unico, fluxo direto
+                </div>
+                <p className="text-sm leading-relaxed text-white/58">
+                  O mesmo formulario abastece seu registro de interesse e acelera a passagem para a etapa final da compra.
+                </p>
+              </div>
+            </div>
 
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full flex items-center justify-center gap-2 bg-wine hover:bg-wine-light text-background font-ui font-bold text-sm px-8 min-h-[52px] rounded-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-4px_rgba(200,121,124,0.3)] mt-6 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:translate-y-0"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    PROCESSANDO...
-                  </>
-                ) : (
-                  <>
-                    <CreditCard className="w-5 h-5" />
-                    COMPRAR AGORA
-                  </>
-                )}
-              </button>
-            </form>
-
-            {/* Trust signals */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-8 text-muted-foreground font-body text-xs sm:text-sm">
-              <span className="flex items-center gap-2">
-                <Lock className="w-4 h-4 text-wine/60" />
-                Pagamento 100% Seguro
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm text-white/56">
+              <span className="inline-flex items-center gap-2">
+                <BadgeCheck className="h-4 w-4 text-wine/80" />
+                Sem exibir valor na landing
               </span>
-              <span className="hidden sm:inline text-white/10">&bull;</span>
-              <span className="flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-wine/60" />
-                Garantia de 7 dias
+              <span className="inline-flex items-center gap-2">
+                <ArrowRight className="h-4 w-4 text-wine/80" />
+                Redirecionamento imediato ao checkout
               </span>
             </div>
+          </motion.div>
+
+          <motion.div
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.18 }}
+          >
+            <GlassCheckoutCard
+              formData={formData}
+              errors={errors}
+              touched={touched}
+              isSubmitting={isSubmitting}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              onSubmit={handleSubmit}
+              onFocus={handleFormFocus}
+              eyebrow="Checkout do Manual"
+              title="Cadastre-se para concluir a compra"
+              description="Preencha os dados abaixo para seguir ao pagamento e receber um material criado para orientar a empresa em contratacoes, rotina trabalhista e prevencao de riscos."
+              buttonLabel={isSubmitting ? "Encaminhando..." : content.heroCta || "Ir para o checkout"}
+            />
           </motion.div>
         </div>
       </div>

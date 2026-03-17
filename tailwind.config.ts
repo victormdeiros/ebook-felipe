@@ -14,19 +14,20 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ['"Cormorant Garamond"', 'serif'],
-        body: ['"DM Sans"', 'sans-serif'],
+        display: ['"Fraunces"', 'serif'],
+        body: ['"IBM Plex Sans"', 'sans-serif'],
       },
       colors: {
         border: "var(--border)",
         input: "var(--input)",
         ring: "var(--ring)",
         background: "var(--background)",
+        "background-secondary": "var(--background-secondary)",
         foreground: "var(--foreground)",
         primary: {
           DEFAULT: "var(--primary)",
           hover: "var(--primary-hover)",
-          light: "var(--primary-light)",
+          dark: "var(--primary-dark)",
           glow: "var(--primary-glow)",
         },
         secondary: {
@@ -46,7 +47,10 @@ export default {
         },
         white: "var(--white)",
         "off-white": "var(--off-white)",
+        "text-secondary": "var(--text-secondary)",
         "text-muted": "var(--text-muted)",
+        "accent-gray": "var(--accent-gray)",
+        "accent-dark": "var(--accent-dark)",
         destructive: {
           DEFAULT: "hsl(var(--destructive))",
           foreground: "hsl(var(--destructive-foreground))",
@@ -69,14 +73,14 @@ export default {
         },
         surface: "var(--surface)",
         sidebar: {
-          DEFAULT: "hsl(var(--sidebar-background))",
-          foreground: "hsl(var(--sidebar-foreground))",
-          primary: "hsl(var(--sidebar-primary))",
-          "primary-foreground": "hsl(var(--sidebar-primary-foreground))",
-          accent: "hsl(var(--sidebar-accent))",
-          "accent-foreground": "hsl(var(--sidebar-accent-foreground))",
-          border: "hsl(var(--sidebar-border))",
-          ring: "hsl(var(--sidebar-ring))",
+          DEFAULT: "var(--sidebar-background)",
+          foreground: "var(--sidebar-foreground)",
+          primary: "var(--sidebar-primary)",
+          "primary-foreground": "var(--sidebar-primary-foreground)",
+          accent: "var(--sidebar-accent)",
+          "accent-foreground": "var(--sidebar-accent-foreground)",
+          border: "var(--sidebar-border)",
+          ring: "var(--sidebar-ring)",
         },
       },
       borderRadius: {

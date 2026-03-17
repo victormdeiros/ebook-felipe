@@ -1,61 +1,83 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=DM+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* ═══════════════════════════════════════
-   DESIGN SYSTEM — Premium Legal Editorial
-   Cormorant Garamond + DM Sans
-   Wine + Black palette
+  DESIGN SYSTEM — Manual do Empregador
+  Burgundy Corporate
    ═══════════════════════════════════════ */
 
 @layer base {
   :root {
-    --primary: #3E1517;
-    --primary-hover: #552023;
-    --primary-light: #6E2B2E;
-    --primary-deep: #21090A;
-    --primary-glow: rgba(62,21,23,0.35);
+    /* BRAND COLORS */
+    --primary: #451117;
+    --primary-hover: #5d171f;
+    --primary-dark: #26070b;
+    --primary-glow: rgba(69, 17, 23, 0.34);
 
-    --secondary: #868283;
-    --secondary-light: #A8A5A6;
-    --secondary-dark: #514F50;
+    /* BACKGROUNDS */
+    --background: #090608;
+    --background-secondary: #120c0f;
+    --support: #171013;
+    --support-light: #5c5257;
+    --support-dark: #0f090b;
 
-    --background: #000000;
-    --foreground: #F5F3F3;
-
-    --support: #121010;
-    --support-light: #514F50;
-    --support-dark: #0A0909;
-
+    /* TEXT COLORS */
+    --foreground: #FFFFFF;
     --white: #FFFFFF;
-    --off-white: #F5F3F3;
-    --text-muted: #868283;
+    --off-white: #f3ece8;
+    --text-secondary: #dbcfc9;
+    --text-muted: #a79797;
 
-    --wine: #C8797C;
-    --wine-light: #D99194;
-    --wine-dim: rgba(62,21,23,0.12);
+    /* NEUTRAL SUPPORT */
+    --accent-gray: #8f7d82;
+    --accent-dark: #5a494f;
 
+    /* WINE ACCENT */
+    --wine: #8a2230;
+    --wine-light: #a93445;
+    --wine-dim: rgba(138, 34, 48, 0.16);
+
+    /* SECONDARY ALIASES (used by Tailwind secondary.* tokens) */
+    --secondary: #121212;
+    --secondary-light: #CFCFCF;
+    --secondary-dark: #0A0909;
+    --secondary-foreground: #FFFFFF;
+
+    /* SIDEBAR */
+    --sidebar-background: #0D0D0D;
+    --sidebar-foreground: #CFCFCF;
+    --sidebar-primary: #3E1517;
+    --sidebar-primary-foreground: #FFFFFF;
+    --sidebar-accent: #121212;
+    --sidebar-accent-foreground: #CFCFCF;
+    --sidebar-border: rgba(255,255,255,0.06);
+    --sidebar-ring: #C8797C;
+
+    /* SEMANTIC COLORS */
     --card: var(--support);
-    --card-foreground: var(--off-white);
+    --card-foreground: var(--foreground);
 
     --popover: var(--background);
-    --popover-foreground: var(--off-white);
+    --popover-foreground: var(--foreground);
 
     --muted: var(--support-dark);
-    --muted-foreground: var(--secondary-light);
+    --muted-foreground: var(--text-secondary);
 
     --accent: var(--wine);
-    --accent-foreground: var(--background);
+    --accent-foreground: var(--foreground);
 
+    /* UI COLORS */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: rgba(255,255,255,0.06);
+    --border: rgba(255, 255, 255, 0.06);
     --input: var(--support);
     --ring: var(--wine);
 
+    /* RADIUS & SPACING */
     --radius: 0.5rem;
     --surface: var(--support);
   }
@@ -68,13 +90,18 @@
 
   body {
     @apply bg-background text-foreground font-body antialiased;
+    font-family: 'IBM Plex Sans', sans-serif;
     font-size: 16px;
-    line-height: 1.6;
+    line-height: 1.65;
+    background-image:
+      radial-gradient(circle at top, rgba(138, 34, 48, 0.18), transparent 34%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.01), transparent 18%);
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Cormorant Garamond', serif;
-    line-height: 1.15;
+    font-family: 'Fraunces', serif;
+    line-height: 1.05;
+    letter-spacing: -0.035em;
   }
 
   /* Accessible focus rings */
@@ -105,31 +132,32 @@
   }
 
   .font-display {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: 'Fraunces', serif;
   }
 
   .font-body {
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'IBM Plex Sans', sans-serif;
   }
 
   .font-ui {
-    font-family: 'DM Sans', sans-serif;
-    @apply font-bold uppercase tracking-[0.15em];
+    font-family: 'IBM Plex Sans', sans-serif;
+    @apply font-semibold uppercase tracking-[0.18em];
   }
 
   /* Hero gradient — wine vignette */
   .hero-gradient {
     background:
-      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(62,21,23,0.7) 0%, transparent 70%),
+        radial-gradient(ellipse 90% 60% at 50% -8%, rgba(138, 34, 48, 0.34) 0%, transparent 68%),
+        radial-gradient(circle at 80% 18%, rgba(255, 255, 255, 0.06), transparent 18%),
       var(--background);
   }
 
-  /* Section backgrounds — only 2 alternating tones */
+  /* Section backgrounds */
   .section-dark {
     background: var(--background);
   }
   .section-elevated {
-    background: var(--support);
+    background: var(--background-secondary);
   }
 
   /* Decorative wine divider */
@@ -139,14 +167,69 @@
     background: linear-gradient(90deg, transparent, var(--wine), transparent);
   }
 
+  /* Premium card styling */
   .surface-card {
     background: var(--support);
-    border: 1px solid rgba(255,255,255,0.04);
-    box-shadow: 0 10px 40px -12px rgba(0,0,0,0.6);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 10px 40px -12px rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(18px);
   }
 
+  .surface-card:hover {
+    border-color: rgba(200, 121, 124, 0.15);
+    transition: border-color 0.3s ease;
+  }
+
+  /* Wine glow effect */
   .wine-glow {
-    box-shadow: 0 0 50px -10px rgba(200,121,124,0.15);
+    box-shadow: 0 0 60px -16px rgba(169, 52, 69, 0.24);
+  }
+
+  .section-grid {
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    background-size: 112px 112px;
+    background-position: center;
+  }
+
+  .grain-overlay::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.08;
+    background-image:
+      radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.12) 0.5px, transparent 0.5px),
+      radial-gradient(circle at 80% 60%, rgba(255, 255, 255, 0.08) 0.5px, transparent 0.5px);
+    background-size: 18px 18px, 22px 22px;
+  }
+
+  /* Button variants styling */
+  .btn-primary {
+    @apply bg-primary text-white hover:bg-primary-hover transition-colors duration-200;
+  }
+
+  .btn-secondary {
+    @apply border border-accent-gray text-off-white hover:border-wine hover:text-wine transition-colors duration-200;
+  }
+
+  /* Input styling */
+  .input-dark {
+    @apply bg-support border border-white/10 text-foreground placeholder:text-text-muted focus:border-wine focus:ring-2 focus:ring-wine/20 transition-colors duration-200;
+  }
+
+  /* Dark table styling */
+  .table-dark {
+    @apply bg-support text-foreground;
+  }
+
+  .table-dark thead {
+    @apply bg-background border-b border-white/10;
+  }
+
+  .table-dark tbody tr {
+    @apply border-b border-white/5 hover:bg-support-dark transition-colors duration-150;
   }
 }
 

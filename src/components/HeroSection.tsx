@@ -1,6 +1,9 @@
 import { motion, useReducedMotion } from "framer-motion";
-import { MessageCircle, ShieldCheck } from "lucide-react";
+import { ArrowRight, BadgeCheck, MessageCircle, ShieldCheck } from "lucide-react";
 import ebookMockup from "@/assets/ebook-mockup.png";
+import { CountUp } from "@/components/ui/count-up";
+import { PerspectiveBook } from "@/components/ui/perspective-book";
+import { SpotlightCard } from "@/components/ui/spotlight-card";
 import { CONFIG } from "@/config";
 import { getContent } from "@/lib/contentStore";
 
@@ -16,65 +19,82 @@ const HeroSection = () => {
       ? { animate: { opacity: 1 } }
       : { initial: { opacity: 0, y: 18 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.55, delay, ease: [0.25, 0, 0, 1] as const } };
 
+  const highlights = [
+    "Consulta rápida para contratação, rotina e desligamento",
+    "Orientação preventiva para reduzir decisões improvisadas",
+  ];
+
   return (
-    <section className="hero-gradient relative min-h-screen flex items-center overflow-hidden pt-20">
-      {/* Subtle vertical accent lines */}
+    <section className="hero-gradient section-grid grain-overlay relative min-h-screen overflow-hidden pt-20">
       <div
         className="absolute inset-0 pointer-events-none opacity-[0.02]"
         style={{
-          backgroundImage: `repeating-linear-gradient(90deg, rgba(200,121,124,0.4) 0px, rgba(200,121,124,0.4) 1px, transparent 1px, transparent 140px)`,
+          backgroundImage: `repeating-linear-gradient(90deg, rgba(169,52,69,0.45) 0px, rgba(169,52,69,0.45) 1px, transparent 1px, transparent 164px)`,
         }}
         aria-hidden="true"
       />
 
-      <div className="container mx-auto px-6 lg:px-12 py-16 lg:py-24 flex flex-col md:flex-row items-center gap-12 lg:gap-20">
-        {/* Left — Text */}
-        <div className="flex-1 z-10">
+      <div className="absolute left-[-8rem] top-24 h-72 w-72 rounded-full bg-wine/10 blur-[110px]" aria-hidden="true" />
+      <div className="absolute right-[-6rem] top-40 h-80 w-80 rounded-full bg-primary/20 blur-[120px]" aria-hidden="true" />
+
+      <div className="container mx-auto flex min-h-[calc(100vh-5rem)] items-center px-6 py-12 lg:px-12 lg:py-16">
+        <div className="grid w-full items-center gap-10 lg:grid-cols-[minmax(0,0.92fr)_minmax(340px,0.9fr)] lg:gap-8">
+          <div className="relative z-10 max-w-xl">
           <motion.span
             {...fade(0.1)}
-            className="inline-flex items-center gap-2 border border-wine/25 text-wine font-ui text-xs tracking-[0.2em] px-5 py-2.5 rounded-full mb-8"
+            className="mb-6 inline-flex items-center gap-2 rounded-full border border-wine/25 bg-white/[0.03] px-4 py-2 font-ui text-[0.68rem] tracking-[0.22em] text-wine"
           >
             {content.heroBadge}
           </motion.span>
 
           <motion.h1
             {...fade(0.2)}
-            className="font-display text-[3.2rem] sm:text-6xl md:text-7xl lg:text-[5.5rem] font-semibold tracking-tight text-foreground text-balance leading-[1.05] mb-6"
+            className="max-w-[12ch] text-balance font-display text-[2.35rem] font-semibold leading-[0.98] text-foreground sm:text-[3rem] lg:text-[3.7rem]"
           >
-            Manual do
-            <br />
-            <span className="text-wine italic">Empregador</span>
+            {content.heroHeadline}
+            <span className="block text-wine">que reduz risco</span>
+            <span className="block text-off-white">antes do problema chegar.</span>
           </motion.h1>
 
           <motion.h2
             {...fade(0.32)}
-            className="text-lg md:text-xl text-off-white/75 leading-relaxed mb-4 max-w-lg font-body"
+            className="mb-4 max-w-[38rem] text-base leading-relaxed text-text-secondary md:text-[1.12rem]"
           >
-            {content.heroSubheadline}
+            Da contratação à rescisão, um guia direto para empresários que precisam decidir com mais segurança trabalhista.
           </motion.h2>
 
           <motion.p
             {...fade(0.38)}
-            className="text-base text-muted-foreground leading-relaxed mb-10 max-w-lg font-body"
+            className="mb-6 max-w-[36rem] text-sm leading-relaxed text-text-muted md:text-base"
           >
-            {content.heroBody}
+            Material objetivo para consulta rápida na rotina de gestão e RH.
           </motion.p>
+
+          <motion.div {...fade(0.42)} className="mb-6 grid gap-3 sm:grid-cols-2">
+            {highlights.map((item) => (
+              <SpotlightCard key={item} className="min-h-[118px] rounded-[1.35rem] border-white/6 bg-white/[0.025] p-4">
+                <BadgeCheck className="mb-3 h-5 w-5 text-wine" />
+                <p className="text-sm leading-relaxed text-text-secondary">{item}</p>
+              </SpotlightCard>
+            ))}
+          </motion.div>
 
           <motion.div
             {...fade(0.48)}
-            className="flex flex-col sm:flex-row gap-4 mb-6"
+            className="mb-6 flex flex-col gap-3 sm:flex-row"
           >
             <a
               href="#comprar"
-              className="font-ui font-bold text-sm bg-wine hover:bg-wine-light text-background px-8 min-h-[48px] rounded-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_30px_-5px_rgba(200,121,124,0.35)] text-center flex items-center justify-center whitespace-nowrap"
+              className="flex min-h-[52px] items-center justify-center gap-2 rounded-md bg-wine px-7 text-center font-ui text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-wine-light hover:shadow-[0_14px_34px_-8px_rgba(138,34,48,0.45)] whitespace-nowrap"
             >
               {content.heroCta}
+              <ArrowRight className="h-4 w-4" />
             </a>
             <a
               href={whatsappUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-ui text-sm border border-white/10 text-off-white hover:border-wine/40 hover:text-wine px-8 min-h-[48px] rounded-md transition-all duration-200 flex items-center justify-center gap-2 whitespace-nowrap"
+              className="flex min-h-[52px] items-center justify-center gap-2 rounded-md border border-white/10 px-7 font-ui text-sm text-off-white transition-all duration-200 hover:border-wine/40 hover:text-wine whitespace-nowrap"
             >
               <MessageCircle className="w-4 h-4" />
               FALAR COM UM ADVOGADO
@@ -83,49 +103,67 @@ const HeroSection = () => {
 
           <motion.div
             {...fade(0.55)}
-            className="flex items-center gap-4 text-secondary-light text-xs font-body"
+            className="mb-6 flex flex-wrap items-center gap-4 text-xs text-text-secondary"
           >
             <span className="flex items-center gap-1.5">
               <ShieldCheck className="w-4 h-4" />
               Seus dados estão seguros. Sem spam.
             </span>
+            <span className="hidden h-1 w-1 rounded-full bg-white/20 sm:block" />
+            <span>Compra única e acesso imediato ao conteúdo.</span>
+          </motion.div>
+
+            <motion.div {...fade(0.6)} className="grid gap-4 border-t border-white/8 pt-5 sm:grid-cols-3">
+              <div>
+                <p className="font-display text-2xl text-off-white sm:text-3xl">
+                  <CountUp to={12} suffix="+" />
+                </p>
+                <p className="mt-2 text-xs leading-relaxed text-text-muted">tópicos críticos da rotina empregadora</p>
+              </div>
+              <div>
+                <p className="font-display text-2xl text-off-white sm:text-3xl">
+                  <CountUp to={5} suffix=" min" />
+                </p>
+                <p className="mt-2 text-xs leading-relaxed text-text-muted">para localizar a orientação certa</p>
+              </div>
+              <div>
+                <p className="font-display text-2xl text-off-white sm:text-3xl">
+                  <CountUp to={100} suffix="%" />
+                </p>
+                <p className="mt-2 text-xs leading-relaxed text-text-muted">foco em prevenção e clareza</p>
+              </div>
+            </motion.div>
+          </div>
+
+          <motion.div
+            initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.96, x: 18 }}
+            animate={{ opacity: 1, scale: 1, x: 0 }}
+            transition={{ duration: 0.7, delay: 0.25, ease: [0.25, 0, 0, 1] }}
+            className="relative order-first flex w-full justify-center lg:order-last lg:justify-end"
+          >
+            <div className="relative w-full max-w-[30rem]">
+              <div className="absolute inset-x-[8%] top-10 h-[70%] rounded-[2.35rem] border border-white/8 bg-gradient-to-br from-white/[0.08] to-white/[0.02] backdrop-blur-md" aria-hidden="true" />
+              <div className="absolute right-2 top-2 rounded-full border border-wine/25 bg-primary/90 px-4 py-2 font-ui text-[0.66rem] tracking-[0.2em] text-white shadow-[0_10px_30px_-8px_rgba(69,17,23,0.55)]">
+                E-BOOK PREMIUM
+              </div>
+
+              <PerspectiveBook
+                coverSrc={content.ebookCoverUrl || ebookMockup}
+                title="Manual do Empregador"
+                eyebrow="Felipe Lopes Advogados"
+                className="mx-auto pt-10"
+              />
+
+              <motion.div
+                {...fade(0.55)}
+                className="relative -mt-2 mx-auto max-w-[25rem] rounded-[1.4rem] border border-white/8 bg-black/35 p-4 backdrop-blur-xl"
+              >
+                <p className="font-ui text-[0.7rem] tracking-[0.22em] text-wine">CONTEÚDO ESTRATÉGICO</p>
+                <p className="mt-2 text-sm font-semibold leading-relaxed text-off-white">Referência prática para consultar antes de contratar, remunerar ou desligar.</p>
+              </motion.div>
+            </div>
           </motion.div>
         </div>
-
-        {/* Right — Ebook Mockup */}
-        <motion.div
-          initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.7, delay: 0.25, ease: [0.25, 0, 0, 1] }}
-          className="flex-1 w-full order-first md:order-last flex justify-center md:justify-end"
-        >
-          <div className="relative">
-            {/* Ambient glow */}
-            <div
-              className="absolute inset-0 -m-16 rounded-full bg-wine-dim blur-[70px] pointer-events-none"
-              aria-hidden="true"
-            />
-
-            {/* Seal badge */}
-            <div className="absolute -top-4 -right-4 z-20 w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-wine flex items-center justify-center shadow-[0_4px_20px_rgba(200,121,124,0.4)] border-4 border-background">
-              <span className="font-ui text-[10px] sm:text-xs text-background font-bold leading-tight text-center">
-                GUIA<br />PRÁTICO
-              </span>
-            </div>
-
-            {/* Ebook render */}
-            <img
-              src={ebookMockup}
-              alt="Manual do Empregador - E-book"
-              width={480}
-              height={640}
-              className="relative z-10 w-[260px] sm:w-[300px] md:w-[380px] lg:w-[440px] drop-shadow-[0_30px_50px_rgba(0,0,0,0.7)]"
-            />
-
-            {/* Floor shadow */}
-            <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 w-[70%] h-6 bg-black/50 blur-xl rounded-[100%] scale-y-[0.3]" aria-hidden="true" />
-          </div>
-        </motion.div>
       </div>
     </section>
   );

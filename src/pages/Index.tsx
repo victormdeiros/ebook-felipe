@@ -2,7 +2,6 @@ import { useEffect } from "react";
 import { trackPageView } from "@/lib/tracking";
 import StickyHeader from "@/components/StickyHeader";
 import HeroSection from "@/components/HeroSection";
-import TrustBarSection from "@/components/TrustBarSection";
 import PainPointsSection from "@/components/PainPointsSection";
 import EbookPresentationSection from "@/components/EbookPresentationSection";
 import LearningSection from "@/components/LearningSection";
@@ -30,7 +29,6 @@ const Index = () => {
       <StickyHeader />
       <main id="main-content">
         <HeroSection />
-        <TrustBarSection />
         <PainPointsSection />
         <EbookPresentationSection />
         <LearningSection />

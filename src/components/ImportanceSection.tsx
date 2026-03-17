@@ -70,7 +70,7 @@ const ImportanceSection = () => {
           className="text-center"
         >
           <p className="font-display text-2xl md:text-3xl text-off-white/80 italic max-w-3xl mx-auto leading-relaxed">
-            "Este e-book foi criado para ajudar empresários a dar esse primeiro passo."
+            "Mais do que informar, este material ajuda a estruturar uma rotina trabalhista mais segura, clara e economicamente responsavel para a empresa."
           </p>
         </motion.div>
       </div>

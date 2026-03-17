@@ -1,73 +1,86 @@
-# Welcome to your Lovable project
+# Manual do Empregador - E-book
 
-## Project info
+Um site moderno e responsivo para apresentação e distribuição do e-book "Manual do Empregador" de Felipe Lopes Advogados.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## 🚀 Como rodar localmente
 
-## How can I edit this code?
+### Pré-requisitos
+- Node.js 18+ ou Bun
+- Git
 
-There are several ways of editing your application.
+### Setup rápido
 
-**Use Lovable**
+```bash
+# Clone o repositório
+git clone <seu-repositorio>
+cd manual-do-empregador-seguro
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+# Instale as dependências
+npm install
+# ou
+bun install
 
-Changes made via Lovable will be committed automatically to this repo.
-
-**Use your preferred IDE**
-
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Inicie o servidor de desenvolvimento
 npm run dev
+# ou
+bun run dev
 ```
 
-**Edit a file directly in GitHub**
+O app estará disponível em `http://localhost:8080`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Variáveis de ambiente
 
-**Use GitHub Codespaces**
+O arquivo `.env.example` já está configurado para rodar completamente localmente sem banco de dados. Se quiser adicionar persistência com Supabase:
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+1. Crie um projeto em [supabase.com](https://supabase.com)
+2. Copie `.env.example` para `.env.local`
+3. Preencha as credenciais do Supabase
+4. Reinicie o servidor de desenvolvimento
 
-## What technologies are used for this project?
+```bash
+# .env.local
+VITE_SUPABASE_URL=sua-url-supabase
+VITE_SUPABASE_ANON_KEY=sua-chave-anonima
+```
 
-This project is built with:
+## 🛠️ Tecnologias
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- **Vite** - Build tool rápido
+- **React 18** - UI library
+- **TypeScript** - Type safety
+- **Tailwind CSS** - Styling
+- **shadcn/ui** - Componentes UI prontos
+- **React Router** - Navegação
+- **Supabase** - Backend (opcional)
+- **Framer Motion** - Animações
 
-## How can I deploy this project?
+## 📦 Scripts disponíveis
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+- `npm run dev` - Inicia servidor de desenvolvimento
+- `npm run build` - Build para produção
+- `npm run preview` - Pré-visualização do build
+- `npm run lint` - Roda ESLint
+- `npm run test` - Executa testes
+- `npm run test:watch` - Testes em modo watch
 
-## Can I connect a custom domain to my Lovable project?
+## 📁 Estrutura do projeto
 
-Yes, you can!
+```
+src/
+  ├── components/      # Componentes React
+  ├── pages/          # Páginas da aplicação
+  ├── lib/            # Utilitários e hooks
+  ├── assets/         # Imagens e recursos
+  └── App.tsx         # Componente raiz
+```
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## 🚀 Deploy
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Pode fazer deploy em qualquer serviço de hospedagem estática:
+- Vercel
+- Netlify
+- GitHub Pages
+- AWS S3
+- Firebase Hosting
+
+O comando de build gera os arquivos prontos em `dist/`

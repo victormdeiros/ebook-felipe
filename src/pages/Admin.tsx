@@ -21,6 +21,13 @@ import {
   ChevronDown,
   X,
   Menu,
+  Settings,
+  Database,
+  CreditCard,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  Zap,
 } from "lucide-react";
 import {
   AreaChart,
@@ -62,7 +69,7 @@ interface Lead {
   data: string;
 }
 
-type Tab = "metricas" | "leads" | "conteudo";
+type Tab = "metricas" | "leads" | "conteudo" | "configuracoes";
 
 // ─────────────────────────────────────────────────────────────
 // HELPERS
@@ -815,12 +822,242 @@ const ContentTab = () => {
 };
 
 // ─────────────────────────────────────────────────────────────
+// CONFIGURAÇÕES TAB
+// ─────────────────────────────────────────────────────────────
+type SupabaseStatus = "idle" | "testing" | "ok" | "error";
+
+const ConfiguracoesTab = () => {
+  const [supabaseUrl, setSupabaseUrl] = useState(import.meta.env.VITE_SUPABASE_URL ?? "");
+  const [supabaseKey, setSupabaseKey] = useState(import.meta.env.VITE_SUPABASE_ANON_KEY ?? "");
+  const [status, setStatus] = useState<SupabaseStatus>("idle");
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const isConfigured = !!(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
+
+  const testConnection = async () => {
+    if (!supabaseUrl.trim() || !supabaseKey.trim()) {
+      setErrorMsg("Preencha a URL e a Anon Key antes de testar.");
+      setStatus("error");
+      return;
+    }
+    setStatus("testing");
+    setErrorMsg("");
+    try {
+      const res = await fetch(`${supabaseUrl.replace(/\/$/, "")}/rest/v1/leads?select=id&limit=1`, {
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+        },
+      });
+      if (res.ok || res.status === 404) {
+        setStatus("ok");
+      } else {
+        setErrorMsg(`Falha na autenticação (HTTP ${res.status}). Verifique a URL e a Anon Key.`);
+        setStatus("error");
+      }
+    } catch {
+      setErrorMsg("Não foi possível alcançar o servidor. Verifique a URL do projeto.");
+      setStatus("error");
+    }
+  };
+
+  const PAYMENT_INTEGRATIONS = [
+    {
+      name: "Hotmart",
+      icon: "🔥",
+      description: "Venda e distribuição digital via Hotmart.",
+      color: "orange",
+    },
+    {
+      name: "Stripe",
+      icon: "💳",
+      description: "Gateway de pagamento internacional.",
+      color: "indigo",
+    },
+    {
+      name: "Mercado Pago",
+      icon: "💰",
+      description: "Pagamentos com Pix, cartão e boleto.",
+      color: "blue",
+    },
+  ];
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground tracking-tight">
+          Configurações
+        </h2>
+        <p className="text-muted-foreground font-body text-sm mt-1">
+          Gerencie integrações e variáveis do sistema.
+        </p>
+      </div>
+
+      {/* ── Supabase ── */}
+      <div className="surface-card rounded-xl p-5 sm:p-6 space-y-5">
+        <div className="flex items-center gap-3 pb-4 border-b border-white/5">
+          <div className="w-8 h-8 rounded-md bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+            <Database className="w-4 h-4 text-emerald-400" strokeWidth={1.5} />
+          </div>
+          <div>
+            <h3 className="font-display text-lg font-semibold text-foreground">Supabase</h3>
+            <p className="text-muted-foreground font-body text-xs">Banco de dados para leads e persistência</p>
+          </div>
+          <div className="ml-auto">
+            {isConfigured ? (
+              <span className="inline-flex items-center gap-1.5 text-xs font-body text-emerald-400 border border-emerald-500/25 bg-emerald-500/8 px-3 py-1 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Configurado via .env
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 text-xs font-body text-yellow-400 border border-yellow-500/25 bg-yellow-500/8 px-3 py-1 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
+                Não configurado
+              </span>
+            )}
+          </div>
+        </div>
+
+        {!isConfigured && (
+          <div className="rounded-lg bg-yellow-500/5 border border-yellow-500/15 px-4 py-3 font-body text-xs text-yellow-300/80 leading-relaxed">
+            Para ativar o Supabase, crie um arquivo <code className="font-mono bg-white/8 px-1 py-0.5 rounded text-yellow-200">.env.local</code> na raiz do projeto com as variáveis abaixo e reinicie o servidor.
+          </div>
+        )}
+
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="block text-foreground/80 font-body text-sm font-medium">
+              VITE_SUPABASE_URL
+            </label>
+            <input
+              type="url"
+              value={supabaseUrl}
+              onChange={(e) => { setSupabaseUrl(e.target.value); setStatus("idle"); }}
+              placeholder="https://xxxxxxxxxxx.supabase.co"
+              className="w-full bg-background border border-white/8 focus:border-wine/40 rounded-md px-4 py-2.5 text-foreground font-mono text-sm focus:outline-none transition-colors placeholder:text-muted-foreground/40"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-foreground/80 font-body text-sm font-medium">
+              VITE_SUPABASE_ANON_KEY
+            </label>
+            <input
+              type="password"
+              value={supabaseKey}
+              onChange={(e) => { setSupabaseKey(e.target.value); setStatus("idle"); }}
+              placeholder="eyJhbGciOiJIUzI1NiIsInR…"
+              className="w-full bg-background border border-white/8 focus:border-wine/40 rounded-md px-4 py-2.5 text-foreground font-mono text-sm focus:outline-none transition-colors placeholder:text-muted-foreground/40"
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <button
+            onClick={testConnection}
+            disabled={status === "testing"}
+            className="flex items-center gap-2 bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/25 hover:border-emerald-500/40 text-emerald-400 px-5 py-2.5 rounded-md font-body text-sm transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none"
+          >
+            {status === "testing" ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Zap className="w-4 h-4" strokeWidth={1.5} />
+            )}
+            {status === "testing" ? "Testando conexão…" : "Testar conexão"}
+          </button>
+
+          <AnimatePresence mode="wait">
+            {status === "ok" && (
+              <motion.div
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0 }}
+                className="flex items-center gap-2 text-emerald-400 font-body text-sm"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                Conexão estabelecida com sucesso!
+              </motion.div>
+            )}
+            {status === "error" && (
+              <motion.div
+                initial={{ opacity: 0, x: -6 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0 }}
+                className="flex items-start gap-2 text-red-400 font-body text-sm max-w-sm"
+              >
+                <XCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                <span>{errorMsg}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        <div className="rounded-lg bg-support border border-white/5 px-4 py-3 font-mono text-xs text-muted-foreground space-y-1">
+          <p className="text-secondary font-body text-xs mb-2 font-sans">Adicione ao <code className="bg-white/8 px-1 py-0.5 rounded">.env.local</code>:</p>
+          <p className="text-emerald-300/60">VITE_SUPABASE_URL=https://SEU_PROJETO.supabase.co</p>
+          <p className="text-emerald-300/60">VITE_SUPABASE_ANON_KEY=sua_chave_anonima_aqui</p>
+        </div>
+      </div>
+
+      {/* ── Meios de Pagamento ── */}
+      <div className="surface-card rounded-xl p-5 sm:p-6 space-y-5">
+        <div className="flex items-center gap-3 pb-4 border-b border-white/5">
+          <div className="w-8 h-8 rounded-md bg-primary/20 border border-wine/20 flex items-center justify-center">
+            <CreditCard className="w-4 h-4 text-wine" strokeWidth={1.5} />
+          </div>
+          <div>
+            <h3 className="font-display text-lg font-semibold text-foreground">Meios de Pagamento</h3>
+            <p className="text-muted-foreground font-body text-xs">Integrações nativas com plataformas de checkout</p>
+          </div>
+        </div>
+
+        <div className="grid sm:grid-cols-3 gap-4">
+          {PAYMENT_INTEGRATIONS.map((integration) => (
+            <div
+              key={integration.name}
+              className="relative rounded-xl border border-white/5 bg-background p-5 flex flex-col gap-3 overflow-hidden opacity-60"
+            >
+              {/* Em breve badge */}
+              <div className="absolute top-3 right-3">
+                <span className="inline-flex items-center gap-1 text-[10px] font-body font-semibold text-wine/80 border border-wine/20 bg-wine/5 px-2 py-0.5 rounded-full tracking-wide">
+                  EM BREVE
+                </span>
+              </div>
+
+              <div className="text-2xl">{integration.icon}</div>
+              <div>
+                <h4 className="font-display text-base font-semibold text-foreground/80">
+                  {integration.name}
+                </h4>
+                <p className="text-muted-foreground font-body text-xs mt-1 leading-relaxed">
+                  {integration.description}
+                </p>
+              </div>
+              <button
+                disabled
+                className="mt-auto w-full border border-white/8 text-muted-foreground font-body text-xs py-2 rounded-md cursor-not-allowed"
+              >
+                Aguarde
+              </button>
+            </div>
+          ))}
+        </div>
+
+        <p className="text-muted-foreground font-body text-xs leading-relaxed">
+          Em breve você poderá configurar diretamente o checkout via Hotmart, Stripe ou Mercado Pago sem precisar sair do painel. Por enquanto, configure a URL de checkout manualmente na aba <strong className="text-foreground/70">Conteúdo</strong>.
+        </p>
+      </div>
+    </div>
+  );
+};
+
+// ─────────────────────────────────────────────────────────────
 // SIDEBAR NAV
 // ─────────────────────────────────────────────────────────────
 const NAV_ITEMS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "metricas", label: "Métricas", icon: BarChart2 },
   { id: "leads", label: "Leads", icon: Users },
   { id: "conteudo", label: "Conteúdo", icon: Edit3 },
+  { id: "configuracoes", label: "Configurações", icon: Settings },
 ];
 
 // ─────────────────────────────────────────────────────────────
@@ -929,6 +1166,7 @@ const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
             {tab === "metricas" && <MetricsTab />}
             {tab === "leads" && <LeadsTab />}
             {tab === "conteudo" && <ContentTab />}
+            {tab === "configuracoes" && <ConfiguracoesTab />}
           </motion.div>
         </AnimatePresence>
       </main>
