@@ -19,7 +19,7 @@ const LearningSection = () => {
     <section id="conteudo" className="py-24 lg:py-32 section-dark relative">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-px bg-gradient-to-r from-transparent via-wine/40 to-transparent" aria-hidden="true" />
 
-      <div className="container mx-auto px-6 lg:px-12">
+      <div className="container mx-auto">
         <motion.div
           initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -62,7 +62,7 @@ const LearningSection = () => {
         >
           <a
             href="#comprar"
-            className="inline-flex items-center justify-center font-ui font-bold text-sm bg-wine hover:bg-wine-light text-background px-10 min-h-[52px] rounded-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_10px_30px_-5px_rgba(200,121,124,0.35)]"
+            className="inline-flex items-center justify-center font-ui font-bold text-sm bg-gold hover:bg-gold-light text-background px-10 min-h-[52px] rounded-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(201,168,76,0.45)]"
           >
             QUERO ADQUIRIR O E-BOOK
           </a>

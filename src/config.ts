@@ -11,7 +11,8 @@ export const CONFIG = {
   OFFICE_PHONE: "(81) 3132.3686",
   OFFICE_SITE: "https://felipelopesadv.com.br/",
   OFFICE_INSTAGRAM: "https://instagram.com/felipelopesadvogados",
-  OFFICE_ADDRESS: "Av. Montevidéu, 172, 15º andar — Boa Vista, Recife/PE",
+  OFFICE_ADDRESS: "Av. Montevidéu, 172, 16º andar — Boa Vista, Recife/PE",
+  OFFICE_MOBILE: "(81) 98675.8036",
   
   LEAD_STORAGE: "localStorage" as const,
 };

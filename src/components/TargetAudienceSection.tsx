@@ -16,7 +16,7 @@ const TargetAudienceSection = () => {
     <section className="py-24 lg:py-32 section-elevated relative">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-px bg-gradient-to-r from-transparent via-wine/40 to-transparent" aria-hidden="true" />
 
-      <div className="container mx-auto px-6 lg:px-12">
+      <div className="container mx-auto">
         <motion.div
           initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}

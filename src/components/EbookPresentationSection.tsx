@@ -17,7 +17,7 @@ const EbookPresentationSection = () => {
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-px bg-gradient-to-r from-transparent via-wine/40 to-transparent" aria-hidden="true" />
       <div className="absolute right-[-8rem] top-10 h-72 w-72 rounded-full bg-wine/10 blur-[110px]" aria-hidden="true" />
 
-      <div className="container mx-auto px-6 lg:px-12">
+      <div className="container mx-auto">
         <div className="overflow-hidden rounded-[2.4rem] border border-white/8 bg-black/20">
           <VideoScrollHero
             enableAnimations={!shouldReduceMotion}

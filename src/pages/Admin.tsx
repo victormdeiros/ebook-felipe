@@ -162,8 +162,8 @@ const LoginScreen = ({ onLogin }: { onLogin: () => void }) => {
           <h1 className="font-display text-3xl font-semibold text-foreground tracking-tight">
             Área Restrita
           </h1>
-          <p className="text-secondary font-body text-sm mt-2">
-            Felipe Lopes Advogados — Admin
+          <p className="text-white/60 font-body text-sm mt-2">
+            FELIPE LOPES ADVOGADOS — Admin
           </p>
         </div>
 
@@ -185,7 +185,7 @@ const LoginScreen = ({ onLogin }: { onLogin: () => void }) => {
             <button
               type="button"
               onClick={() => setShow(!show)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-foreground transition-colors p-1"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-foreground transition-colors p-1"
               aria-label={show ? "Ocultar senha" : "Mostrar senha"}
             >
               <Eye className="w-4 h-4" />
@@ -238,15 +238,15 @@ const KpiCard = ({ label, value, icon: Icon, accent, sub }: KpiCardProps) => (
     className={`surface-card rounded-xl p-4 sm:p-6 flex flex-col gap-3 ${accent ? "border-wine/15" : ""}`}
   >
     <div className="flex items-center justify-between">
-      <span className="text-secondary font-body text-xs uppercase tracking-[0.15em]">{label}</span>
+      <span className="text-text-muted font-body text-xs uppercase tracking-[0.15em]">{label}</span>
       <div className={`w-8 h-8 rounded-md flex items-center justify-center ${accent ? "bg-wine/10" : "bg-white/4"}`}>
-        <Icon className={`w-4 h-4 ${accent ? "text-wine" : "text-secondary"}`} strokeWidth={1.5} />
+        <Icon className={`w-4 h-4 ${accent ? "text-wine" : "text-text-muted"}`} strokeWidth={1.5} />
       </div>
     </div>
     <span className={`font-body text-3xl sm:text-4xl font-semibold tabular-nums ${accent ? "text-wine" : "text-foreground"}`}>
       {value}
     </span>
-    {sub && <span className="text-secondary font-body text-xs">{sub}</span>}
+    {sub && <span className="text-text-muted font-body text-xs">{sub}</span>}
   </motion.div>
 );
 
@@ -280,7 +280,7 @@ const MetricsTab = () => {
     if (active && payload?.length) {
       return (
         <div className="bg-support border border-white/8 rounded-md px-3 py-2 text-xs font-body">
-          <p className="text-secondary mb-0.5">{label}</p>
+          <p className="text-text-muted mb-0.5">{label}</p>
           <p className="text-wine font-semibold">{payload[0].value} visitas</p>
         </div>
       );
@@ -297,13 +297,13 @@ const MetricsTab = () => {
           <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground tracking-tight">
             Métricas de Performance
           </h2>
-          <p className="text-secondary font-body text-sm mt-1">
+          <p className="text-text-muted font-body text-sm mt-1">
             Dados em tempo real — armazenados localmente no navegador.
           </p>
         </div>
         <button
           onClick={refresh}
-          className="flex items-center gap-2 text-secondary hover:text-foreground font-body text-sm transition-colors border border-white/8 hover:border-white/15 px-3 py-2 rounded-md shrink-0"
+          className="flex items-center gap-2 text-text-muted hover:text-foreground font-body text-sm transition-colors border border-white/8 hover:border-white/15 px-3 py-2 rounded-md shrink-0"
           aria-label="Atualizar métricas"
         >
           <RefreshCw className="w-3.5 h-3.5" />
@@ -346,7 +346,7 @@ const MetricsTab = () => {
         </div>
 
         {chartData.length === 0 ? (
-          <div className="h-48 flex flex-col items-center justify-center text-secondary font-body text-sm gap-2">
+          <div className="h-48 flex flex-col items-center justify-center text-text-muted font-body text-sm gap-2">
             <BarChart2 className="w-8 h-8 opacity-30" strokeWidth={1} />
             <p>Nenhum dado de tráfego ainda.</p>
             <p className="text-xs opacity-60">
@@ -366,15 +366,15 @@ const MetricsTab = () => {
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
               <XAxis
                 dataKey="date"
-                stroke="#514F50"
-                tick={{ fontSize: 10, fill: "#868283", fontFamily: "DM Sans" }}
+                stroke="#6b5f62"
+                tick={{ fontSize: 10, fill: "#a79797", fontFamily: "IBM Plex Sans" }}
                 tickLine={false}
                 axisLine={false}
                 interval="preserveStartEnd"
               />
               <YAxis
-                stroke="#514F50"
-                tick={{ fontSize: 11, fill: "#868283", fontFamily: "DM Sans" }}
+                stroke="#6b5f62"
+                tick={{ fontSize: 11, fill: "#a79797", fontFamily: "IBM Plex Sans" }}
                 tickLine={false}
                 axisLine={false}
                 allowDecimals={false}
@@ -404,7 +404,7 @@ const MetricsTab = () => {
               refresh();
             }
           }}
-          className="text-red-400/60 hover:text-red-400 font-body text-xs transition-colors flex items-center gap-1.5"
+          className="text-red-400/70 hover:text-red-400 font-body text-xs transition-colors flex items-center gap-1.5"
         >
           <X className="w-3 h-3" />
           Zerar dados de rastreamento
@@ -457,7 +457,7 @@ const LeadsTab = () => {
         <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground tracking-tight">
           Gestão de Leads
         </h2>
-        <p className="text-secondary font-body text-sm mt-1">
+        <p className="text-text-muted font-body text-sm mt-1">
           {leads.length} lead{leads.length !== 1 ? "s" : ""} cadastrado{leads.length !== 1 ? "s" : ""}
         </p>
       </div>
@@ -465,7 +465,7 @@ const LeadsTab = () => {
       {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div className="relative w-full sm:w-80">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-secondary pointer-events-none" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
           <input
             type="search"
             value={search}
@@ -478,7 +478,7 @@ const LeadsTab = () => {
           <button
             onClick={() => exportCSV(filtered)}
             disabled={filtered.length === 0}
-            className="flex items-center gap-2 border border-white/8 hover:border-wine/30 text-secondary hover:text-foreground px-4 py-2.5 rounded-md font-body text-sm transition-all duration-200 disabled:opacity-30 disabled:pointer-events-none"
+            className="flex items-center gap-2 border border-white/8 hover:border-wine/30 text-text-muted hover:text-foreground px-4 py-2.5 rounded-md font-body text-sm transition-all duration-200 disabled:opacity-30 disabled:pointer-events-none"
           >
             <Download className="w-3.5 h-3.5" />
             CSV
@@ -486,7 +486,7 @@ const LeadsTab = () => {
           <button
             onClick={() => exportXLS(filtered)}
             disabled={filtered.length === 0}
-            className="flex items-center gap-2 border border-white/8 hover:border-wine/30 text-secondary hover:text-foreground px-4 py-2.5 rounded-md font-body text-sm transition-all duration-200 disabled:opacity-30 disabled:pointer-events-none"
+            className="flex items-center gap-2 border border-white/8 hover:border-wine/30 text-text-muted hover:text-foreground px-4 py-2.5 rounded-md font-body text-sm transition-all duration-200 disabled:opacity-30 disabled:pointer-events-none"
           >
             <Download className="w-3.5 h-3.5" />
             XLS
@@ -497,7 +497,7 @@ const LeadsTab = () => {
       {/* Table */}
       <div className="surface-card rounded-xl overflow-hidden">
         {paginated.length === 0 ? (
-          <div className="py-20 flex flex-col items-center justify-center text-secondary font-body text-sm gap-2">
+          <div className="py-20 flex flex-col items-center justify-center text-text-muted font-body text-sm gap-2">
             <Users className="w-8 h-8 opacity-30" strokeWidth={1} />
             <p>{search ? "Nenhum resultado para a busca." : "Nenhum lead cadastrado ainda."}</p>
           </div>
@@ -506,10 +506,10 @@ const LeadsTab = () => {
             <table className="w-full text-sm font-body">
               <thead>
                 <tr className="border-b border-white/5">
-                  <th className="text-left px-3 sm:px-5 py-3 sm:py-3.5 text-xs uppercase tracking-[0.12em] text-secondary font-semibold w-[40%] sm:w-auto">Nome</th>
-                  <th className="text-left px-3 sm:px-5 py-3 sm:py-3.5 text-xs uppercase tracking-[0.12em] text-secondary font-semibold w-[60%] sm:w-auto">E-mail</th>
-                  <th className="text-left px-3 sm:px-5 py-3 sm:py-3.5 text-xs uppercase tracking-[0.12em] text-secondary font-semibold hidden md:table-cell">WhatsApp</th>
-                  <th className="text-left px-3 sm:px-5 py-3 sm:py-3.5 text-xs uppercase tracking-[0.12em] text-secondary font-semibold hidden sm:table-cell">Data</th>
+                  <th className="text-left px-3 sm:px-5 py-3 sm:py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold w-[40%] sm:w-auto">Nome</th>
+                  <th className="text-left px-3 sm:px-5 py-3 sm:py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold w-[60%] sm:w-auto">E-mail</th>
+                  <th className="text-left px-3 sm:px-5 py-3 sm:py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold hidden md:table-cell">WhatsApp</th>
+                  <th className="text-left px-3 sm:px-5 py-3 sm:py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold hidden sm:table-cell">Data</th>
                 </tr>
               </thead>
               <tbody>
@@ -518,14 +518,14 @@ const LeadsTab = () => {
                     key={i}
                     className="border-b border-white/4 hover:bg-white/2 transition-colors last:border-0"
                   >
-                    <td className="px-3 sm:px-5 py-3 sm:py-3.5 text-foreground/90 max-w-[130px]">
+                    <td className="px-3 sm:px-5 py-3 sm:py-3.5 text-white max-w-[130px]">
                       <span className="block truncate">{lead.name || "—"}</span>
                     </td>
-                    <td className="px-3 sm:px-5 py-3 sm:py-3.5 text-foreground/70 max-w-[160px]">
+                    <td className="px-3 sm:px-5 py-3 sm:py-3.5 text-white/85 max-w-[160px]">
                       <span className="block truncate">{lead.email || "—"}</span>
                     </td>
-                    <td className="px-3 sm:px-5 py-3 sm:py-3.5 text-foreground/70 hidden md:table-cell">{lead.whatsapp || "—"}</td>
-                    <td className="px-3 sm:px-5 py-3 sm:py-3.5 text-secondary hidden sm:table-cell whitespace-nowrap">{formatDate(lead.data)}</td>
+                    <td className="px-3 sm:px-5 py-3 sm:py-3.5 text-white/85 hidden md:table-cell">{lead.whatsapp || "—"}</td>
+                    <td className="px-3 sm:px-5 py-3 sm:py-3.5 text-white/60 hidden sm:table-cell whitespace-nowrap">{formatDate(lead.data)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -536,7 +536,7 @@ const LeadsTab = () => {
 
       {/* Pagination */}
       {pages > 1 && (
-        <div className="flex items-center justify-between text-secondary font-body text-xs sm:text-sm">
+        <div className="flex items-center justify-between text-text-muted font-body text-xs sm:text-sm">
           <span>
             {filtered.length} resultado{filtered.length !== 1 ? "s" : ""}
           </span>
@@ -544,7 +544,7 @@ const LeadsTab = () => {
             <button
               onClick={() => setPage(Math.max(1, page - 1))}
               disabled={page === 1}
-              className="w-8 h-8 rounded-md text-sm font-semibold transition-colors disabled:opacity-25 hover:bg-white/5 text-secondary hover:text-foreground flex items-center justify-center"
+              className="w-8 h-8 rounded-md text-sm font-semibold transition-colors disabled:opacity-25 hover:bg-white/5 text-text-muted hover:text-foreground flex items-center justify-center"
               aria-label="Página anterior"
             >
               ‹
@@ -557,18 +557,18 @@ const LeadsTab = () => {
                   className={`w-8 h-8 rounded-md text-xs font-semibold transition-colors ${
                     p === page
                       ? "bg-wine/15 text-wine border border-wine/20"
-                      : "hover:bg-white/5 text-secondary hover:text-foreground"
+                      : "hover:bg-white/5 text-text-muted hover:text-foreground"
                   }`}
                 >
                   {p}
                 </button>
               ))}
             </div>
-            <span className="sm:hidden px-2 text-xs text-secondary">{page}/{pages}</span>
+            <span className="sm:hidden px-2 text-xs text-text-muted">{page}/{pages}</span>
             <button
               onClick={() => setPage(Math.min(pages, page + 1))}
               disabled={page === pages}
-              className="w-8 h-8 rounded-md text-sm font-semibold transition-colors disabled:opacity-25 hover:bg-white/5 text-secondary hover:text-foreground flex items-center justify-center"
+              className="w-8 h-8 rounded-md text-sm font-semibold transition-colors disabled:opacity-25 hover:bg-white/5 text-text-muted hover:text-foreground flex items-center justify-center"
               aria-label="Próxima página"
             >
               ›
@@ -622,7 +622,7 @@ const ContentTab = () => {
     hint?: string;
   }) => (
     <div className="space-y-1.5">
-      <label className="block text-off-white/80 font-body text-sm font-medium">
+      <label className="block text-white font-body text-sm font-medium">
         {label}
       </label>
       {multiline ? (
@@ -642,7 +642,7 @@ const ContentTab = () => {
           placeholder={placeholder}
         />
       )}
-      {hint && <p className="text-secondary font-body text-xs">{hint}</p>}
+      {hint && <p className="text-text-muted font-body text-xs">{hint}</p>}
     </div>
   );
 
@@ -653,14 +653,14 @@ const ContentTab = () => {
           <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground tracking-tight">
             Edição de Conteúdo
           </h2>
-          <p className="text-secondary font-body text-sm mt-1">
+          <p className="text-text-muted font-body text-sm mt-1">
             Alterações são salvas no navegador e refletidas na landing page.
           </p>
         </div>
         <div className="flex items-center gap-2 self-start sm:shrink-0">
           <button
             onClick={handleReset}
-            className="border border-white/8 hover:border-white/15 text-secondary hover:text-foreground px-4 py-2 rounded-md font-body text-sm transition-all duration-200"
+            className="border border-white/8 hover:border-white/15 text-text-muted hover:text-foreground px-4 py-2 rounded-md font-body text-sm transition-all duration-200"
           >
             Restaurar padrão
           </button>
@@ -767,7 +767,7 @@ const ContentTab = () => {
 
         {/* Live Preview Card */}
         <div className="sm:sticky sm:top-24">
-          <p className="text-secondary font-body text-xs uppercase tracking-[0.15em] mb-3">
+          <p className="text-text-muted font-body text-xs uppercase tracking-[0.15em] mb-3">
             Prévia em tempo real
           </p>
           <div
@@ -786,7 +786,7 @@ const ContentTab = () => {
                   {form.heroHeadline?.replace("Manual do", "").trim() || "Empregador"}
                 </span>
               </h3>
-              <p className="text-off-white/70 font-body text-xs leading-relaxed line-clamp-3">
+              <p className="text-white/80 font-body text-xs leading-relaxed line-clamp-3">
                 {form.heroSubheadline || CONTENT_DEFAULTS.heroSubheadline}
               </p>
               <div className="flex flex-col gap-1.5 pt-1">
@@ -798,7 +798,7 @@ const ContentTab = () => {
                     R$ <span className="text-3xl">{form.price || "49"}</span>
                   </span>
                   {form.priceOriginal && (
-                    <span className="text-secondary line-through font-body text-xs ml-2">
+                    <span className="text-text-muted line-through font-body text-xs ml-2">
                       R$ {form.priceOriginal}
                     </span>
                   )}
@@ -810,7 +810,7 @@ const ContentTab = () => {
             href="/"
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-3 w-full flex items-center justify-center gap-2 border border-white/8 hover:border-wine/30 text-secondary hover:text-foreground font-body text-xs py-2.5 rounded-md transition-all duration-200"
+            className="mt-3 w-full flex items-center justify-center gap-2 border border-white/8 hover:border-wine/30 text-text-muted hover:text-foreground font-body text-xs py-2.5 rounded-md transition-all duration-200"
           >
             <Eye className="w-3.5 h-3.5" />
             Abrir landing page
@@ -888,7 +888,7 @@ const ConfiguracoesTab = () => {
         <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground tracking-tight">
           Configurações
         </h2>
-        <p className="text-muted-foreground font-body text-sm mt-1">
+        <p className="text-text-muted font-body text-sm mt-1">
           Gerencie integrações e variáveis do sistema.
         </p>
       </div>
@@ -901,7 +901,7 @@ const ConfiguracoesTab = () => {
           </div>
           <div>
             <h3 className="font-display text-lg font-semibold text-foreground">Supabase</h3>
-            <p className="text-muted-foreground font-body text-xs">Banco de dados para leads e persistência</p>
+            <p className="text-text-muted font-body text-xs">Banco de dados para leads e persistência</p>
           </div>
           <div className="ml-auto">
             {isConfigured ? (
@@ -919,14 +919,14 @@ const ConfiguracoesTab = () => {
         </div>
 
         {!isConfigured && (
-          <div className="rounded-lg bg-yellow-500/5 border border-yellow-500/15 px-4 py-3 font-body text-xs text-yellow-300/80 leading-relaxed">
+          <div className="rounded-lg bg-yellow-500/5 border border-yellow-500/15 px-4 py-3 font-body text-xs text-yellow-200 leading-relaxed">
             Para ativar o Supabase, crie um arquivo <code className="font-mono bg-white/8 px-1 py-0.5 rounded text-yellow-200">.env.local</code> na raiz do projeto com as variáveis abaixo e reinicie o servidor.
           </div>
         )}
 
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <label className="block text-foreground/80 font-body text-sm font-medium">
+            <label className="block text-white font-body text-sm font-medium">
               VITE_SUPABASE_URL
             </label>
             <input
@@ -934,11 +934,11 @@ const ConfiguracoesTab = () => {
               value={supabaseUrl}
               onChange={(e) => { setSupabaseUrl(e.target.value); setStatus("idle"); }}
               placeholder="https://xxxxxxxxxxx.supabase.co"
-              className="w-full bg-background border border-white/8 focus:border-wine/40 rounded-md px-4 py-2.5 text-foreground font-mono text-sm focus:outline-none transition-colors placeholder:text-muted-foreground/40"
+              className="w-full bg-background border border-white/8 focus:border-wine/40 rounded-md px-4 py-2.5 text-foreground font-mono text-sm focus:outline-none transition-colors placeholder:text-white/30"
             />
           </div>
           <div className="space-y-1.5">
-            <label className="block text-foreground/80 font-body text-sm font-medium">
+            <label className="block text-white font-body text-sm font-medium">
               VITE_SUPABASE_ANON_KEY
             </label>
             <input
@@ -946,7 +946,7 @@ const ConfiguracoesTab = () => {
               value={supabaseKey}
               onChange={(e) => { setSupabaseKey(e.target.value); setStatus("idle"); }}
               placeholder="eyJhbGciOiJIUzI1NiIsInR…"
-              className="w-full bg-background border border-white/8 focus:border-wine/40 rounded-md px-4 py-2.5 text-foreground font-mono text-sm focus:outline-none transition-colors placeholder:text-muted-foreground/40"
+              className="w-full bg-background border border-white/8 focus:border-wine/40 rounded-md px-4 py-2.5 text-foreground font-mono text-sm focus:outline-none transition-colors placeholder:text-white/30"
             />
           </div>
         </div>
@@ -991,10 +991,10 @@ const ConfiguracoesTab = () => {
           </AnimatePresence>
         </div>
 
-        <div className="rounded-lg bg-support border border-white/5 px-4 py-3 font-mono text-xs text-muted-foreground space-y-1">
-          <p className="text-secondary font-body text-xs mb-2 font-sans">Adicione ao <code className="bg-white/8 px-1 py-0.5 rounded">.env.local</code>:</p>
-          <p className="text-emerald-300/60">VITE_SUPABASE_URL=https://SEU_PROJETO.supabase.co</p>
-          <p className="text-emerald-300/60">VITE_SUPABASE_ANON_KEY=sua_chave_anonima_aqui</p>
+        <div className="rounded-lg bg-support border border-white/5 px-4 py-3 font-mono text-xs text-text-muted space-y-1">
+          <p className="text-text-muted font-body text-xs mb-2 font-sans">Adicione ao <code className="bg-white/8 px-1 py-0.5 rounded">.env.local</code>:</p>
+          <p className="text-emerald-300/90">VITE_SUPABASE_URL=https://SEU_PROJETO.supabase.co</p>
+          <p className="text-emerald-300/90">VITE_SUPABASE_ANON_KEY=sua_chave_anonima_aqui</p>
         </div>
       </div>
 
@@ -1006,11 +1006,11 @@ const ConfiguracoesTab = () => {
           </div>
           <div>
             <h3 className="font-display text-lg font-semibold text-foreground">Meios de Pagamento</h3>
-            <p className="text-muted-foreground font-body text-xs">Integrações nativas com plataformas de checkout</p>
+            <p className="text-text-muted font-body text-xs">Integrações nativas com plataformas de checkout</p>
           </div>
         </div>
 
-        <div className="grid sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {PAYMENT_INTEGRATIONS.map((integration) => (
             <div
               key={integration.name}
@@ -1025,16 +1025,16 @@ const ConfiguracoesTab = () => {
 
               <div className="text-2xl">{integration.icon}</div>
               <div>
-                <h4 className="font-display text-base font-semibold text-foreground/80">
+                <h4 className="font-display text-base font-semibold text-white">
                   {integration.name}
                 </h4>
-                <p className="text-muted-foreground font-body text-xs mt-1 leading-relaxed">
+                <p className="text-text-muted font-body text-xs mt-1 leading-relaxed">
                   {integration.description}
                 </p>
               </div>
               <button
                 disabled
-                className="mt-auto w-full border border-white/8 text-muted-foreground font-body text-xs py-2 rounded-md cursor-not-allowed"
+                className="mt-auto w-full border border-white/8 text-text-muted font-body text-xs py-2 rounded-md cursor-not-allowed"
               >
                 Aguarde
               </button>
@@ -1042,8 +1042,8 @@ const ConfiguracoesTab = () => {
           ))}
         </div>
 
-        <p className="text-muted-foreground font-body text-xs leading-relaxed">
-          Em breve você poderá configurar diretamente o checkout via Hotmart, Stripe ou Mercado Pago sem precisar sair do painel. Por enquanto, configure a URL de checkout manualmente na aba <strong className="text-foreground/70">Conteúdo</strong>.
+        <p className="text-text-muted font-body text-xs leading-relaxed">
+          Em breve você poderá configurar diretamente o checkout via Hotmart, Stripe ou Mercado Pago sem precisar sair do painel. Por enquanto, configure a URL de checkout manualmente na aba <strong className="text-white/80">Conteúdo</strong>.
         </p>
       </div>
     </div>
@@ -1079,7 +1079,7 @@ const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setMobileOpen(!mobileOpen)}
-            className="md:hidden p-1 text-secondary hover:text-foreground"
+            className="md:hidden p-1 text-text-muted hover:text-foreground"
             aria-label="Menu"
           >
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
@@ -1091,8 +1091,8 @@ const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
             <span className="font-display text-foreground font-semibold text-base hidden sm:block">
               Admin
             </span>
-            <span className="text-secondary/40 hidden sm:block">·</span>
-            <span className="font-body text-secondary text-sm hidden sm:block">
+            <span className="text-white/25 hidden sm:block">·</span>
+            <span className="font-body text-white/60 text-sm hidden sm:block">
               Manual do Empregador
             </span>
           </div>
@@ -1107,7 +1107,7 @@ const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
               className={`flex items-center gap-2 px-4 py-2 rounded-md font-body text-sm transition-all duration-200 ${
                 tab === id
                   ? "bg-wine/10 text-wine border border-wine/15"
-                  : "text-secondary hover:text-foreground hover:bg-white/4"
+                  : "text-text-muted hover:text-foreground hover:bg-white/4"
               }`}
             >
               <Icon className="w-3.5 h-3.5" strokeWidth={1.5} />
@@ -1118,7 +1118,7 @@ const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
 
         <button
           onClick={handleLogout}
-          className="flex items-center gap-2 text-secondary hover:text-foreground font-body text-sm transition-colors border border-white/8 hover:border-white/15 px-3 py-2 rounded-md"
+          className="flex items-center gap-2 text-text-muted hover:text-foreground font-body text-sm transition-colors border border-white/8 hover:border-white/15 px-3 py-2 rounded-md"
           aria-label="Sair"
         >
           <LogOut className="w-3.5 h-3.5" />
@@ -1142,7 +1142,7 @@ const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
                 key={id}
                 onClick={() => { setTab(id); setMobileOpen(false); }}
                 className={`flex items-center gap-3 w-full px-4 py-3 rounded-md font-body text-sm transition-colors ${
-                  tab === id ? "bg-wine/10 text-wine" : "text-secondary hover:text-foreground"
+                  tab === id ? "bg-wine/10 text-wine" : "text-text-muted hover:text-foreground"
                 }`}
               >
                 <Icon className="w-4 h-4" strokeWidth={1.5} />
@@ -1173,8 +1173,8 @@ const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
 
       {/* Footer */}
       <footer className="border-t border-white/5 px-6 py-4 text-center">
-        <p className="text-white/20 font-body text-xs">
-          Felipe Lopes Advogados — Painel Administrativo · Acesso restrito
+        <p className="text-white/50 font-body text-xs">
+          FELIPE LOPES ADVOGADOS — Painel Administrativo · Acesso restrito
         </p>
       </footer>
     </div>

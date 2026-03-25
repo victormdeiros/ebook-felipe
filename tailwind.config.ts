@@ -7,14 +7,23 @@ export default {
   theme: {
     container: {
       center: true,
-      padding: "2rem",
+      padding: {
+        DEFAULT: "1.5rem",
+        lg: "3rem",
+        xl: "4rem",
+        "2xl": "5rem",
+      },
       screens: {
-        "2xl": "1400px",
+        sm: "640px",
+        md: "768px",
+        lg: "1024px",
+        xl: "1280px",
+        "2xl": "1600px",
       },
     },
     extend: {
       fontFamily: {
-        display: ['"Fraunces"', 'serif'],
+        display: ['"Cinzel"', 'serif'],
         body: ['"IBM Plex Sans"', 'sans-serif'],
       },
       colors: {
@@ -44,6 +53,12 @@ export default {
           DEFAULT: "var(--wine)",
           light: "var(--wine-light)",
           dim: "var(--wine-dim)",
+        },
+        gold: {
+          DEFAULT: "var(--gold)",
+          light: "var(--gold-light)",
+          dark: "var(--gold-dark)",
+          dim: "var(--gold-dim)",
         },
         white: "var(--white)",
         "off-white": "var(--off-white)",

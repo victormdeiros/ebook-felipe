@@ -1,0 +1,172 @@
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700;900&family=IBM+Plex+Sans:wght@400;600&display=swap" rel="stylesheet">
+
+<style>
+  .demo-section {
+    background: #0d090a;
+    border: 1px solid #2a1a1e;
+    border-radius: 12px;
+    padding: 28px;
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+  .demo-section h3 {
+    font-family: 'Cinzel', serif;
+    color: #f3ece8;
+    font-size: 18px;
+    margin: 0 0 20px 0;
+    text-align: center;
+    letter-spacing: 1px;
+  }
+  .photo-placeholder {
+    background: #1a0e11;
+    border: 1px solid #3a2028;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #665555;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    border-radius: 8px;
+  }
+  .person-name {
+    font-family: 'Cinzel', serif;
+    color: #f3ece8;
+    font-size: 14px;
+    font-weight: 700;
+    margin: 10px 0 2px 0;
+  }
+  .person-title {
+    color: #c9a84c;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+  .person-desc {
+    color: #a79797;
+    font-size: 12px;
+    line-height: 1.5;
+    margin-top: 6px;
+  }
+
+  /* Layout A - Side by Side equal */
+  .layout-a {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    text-align: center;
+  }
+  .layout-a .photo-placeholder { height: 180px; }
+
+  /* Layout B - Full width text + two small photos at bottom */
+  .layout-b-text {
+    color: #a79797;
+    font-size: 12px;
+    line-height: 1.6;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  .layout-b-photos {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    text-align: center;
+  }
+  .layout-b-photos .photo-placeholder { height: 120px; }
+
+  /* Layout C - Featured + secondary */
+  .layout-c {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+  .layout-c .photo-main { height: 240px; border-radius: 8px; }
+  .layout-c-right { display: flex; flex-direction: column; gap: 12px; }
+  .layout-c .photo-secondary { height: 110px; border-radius: 8px; }
+</style>
+
+<h2>Layout para duas fotos na seção "Equipe"</h2>
+<p class="subtitle">Felipe Lopes + Laís — como organizar na página?</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="demo-section">
+        <h3>Quem preparou este material</h3>
+        <div class="layout-a">
+          <div>
+            <div class="photo-placeholder">Foto Felipe</div>
+            <div class="person-name">FELIPE LOPES</div>
+            <div class="person-title">Sócio Fundador</div>
+            <div class="person-desc">Advogado trabalhista com mais de 10 anos de experiência.</div>
+          </div>
+          <div>
+            <div class="photo-placeholder">Foto Laís</div>
+            <div class="person-name">LAÍS [SOBRENOME]</div>
+            <div class="person-title">Advogada</div>
+            <div class="person-desc">Especialista em assessoria jurídica empresarial.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Lado a Lado (igual)</h3>
+      <p>Duas colunas simétricas. Destaque igual para os dois. Layout mais moderno e direto.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="demo-section">
+        <h3>Quem preparou este material</h3>
+        <div class="layout-b-text">Ao longo de mais de uma década, o Felipe Lopes Advogados consolidou sua atuação na assessoria jurídica de empresas...</div>
+        <div class="layout-b-photos">
+          <div>
+            <div class="photo-placeholder">Foto Felipe</div>
+            <div class="person-name">FELIPE LOPES</div>
+            <div class="person-title">Sócio Fundador</div>
+          </div>
+          <div>
+            <div class="photo-placeholder">Foto Laís</div>
+            <div class="person-name">LAÍS [SOBRENOME]</div>
+            <div class="person-title">Advogada</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Texto + Fotos embaixo</h3>
+      <p>O texto do escritório aparece acima, as fotos como "crédito" abaixo. Mantém o foco no conteúdo.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="demo-section">
+        <h3>Quem preparou este material</h3>
+        <div class="layout-c">
+          <div>
+            <div class="photo-placeholder photo-main">Foto Felipe</div>
+            <div class="person-name">FELIPE LOPES</div>
+            <div class="person-title">Sócio Fundador</div>
+          </div>
+          <div class="layout-c-right">
+            <div>
+              <div class="photo-placeholder photo-secondary">Foto Laís</div>
+              <div class="person-name" style="font-size:12px">LAÍS</div>
+              <div class="person-title">Advogada</div>
+            </div>
+            <div class="person-desc" style="font-size:11px;color:#665555">+ 2 advogados da equipe</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Felipe destaque + Laís secundária</h3>
+      <p>Felipe como rosto principal (fundador do e-book), Laís como integrante da equipe. Hierarquia clara.</p>
+    </div>
+  </div>
+
+</div>

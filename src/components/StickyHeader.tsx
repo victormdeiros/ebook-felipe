@@ -75,7 +75,7 @@ const StickyHeader = () => {
         <div className="flex items-center gap-3">
           <a
             href="#comprar"
-            className="font-ui text-xs bg-wine hover:bg-wine-light text-background min-h-[44px] px-6 flex items-center rounded-md transition-all duration-200 hover:shadow-[0_4px_20px_-4px_rgba(200,121,124,0.4)]"
+            className="font-ui text-xs bg-gold hover:bg-gold-light text-background min-h-[44px] px-6 flex items-center rounded-md transition-all duration-200 hover:shadow-[0_4px_20px_-4px_rgba(201,168,76,0.4)]"
           >
             ADQUIRIR E-BOOK
           </a>

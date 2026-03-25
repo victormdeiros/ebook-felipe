@@ -192,7 +192,7 @@ export function GlassCheckoutCard({
             O valor, as formas de pagamento e a confirmacao final aparecem apenas no checkout protegido.
           </div>
 
-          <Button type="submit" size="lg" disabled={isSubmitting} className="h-12 w-full rounded-xl text-sm font-semibold">
+          <Button type="submit" size="lg" disabled={isSubmitting} className="h-12 w-full rounded-xl text-sm font-semibold bg-gold hover:bg-gold-light text-background border-0 hover:shadow-[0_8px_24px_-6px_rgba(201,168,76,0.5)]">
             {buttonLabel}
             <ArrowRight className="h-4 w-4" />
           </Button>

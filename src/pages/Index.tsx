@@ -6,6 +6,7 @@ import PainPointsSection from "@/components/PainPointsSection";
 import EbookPresentationSection from "@/components/EbookPresentationSection";
 import LearningSection from "@/components/LearningSection";
 import TargetAudienceSection from "@/components/TargetAudienceSection";
+import TargetAudienceTextSection from "@/components/TargetAudienceTextSection";
 import AboutSection from "@/components/AboutSection";
 import ImportanceSection from "@/components/ImportanceSection";
 import TestimonialsSection from "@/components/TestimonialsSection";
@@ -32,6 +33,7 @@ const Index = () => {
         <PainPointsSection />
         <EbookPresentationSection />
         <LearningSection />
+        <TargetAudienceTextSection />
         <TargetAudienceSection />
         <AboutSection />
         <ImportanceSection />

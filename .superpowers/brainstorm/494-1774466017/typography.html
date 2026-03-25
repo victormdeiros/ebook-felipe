@@ -1,0 +1,131 @@
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700;900&family=Cormorant+Garamond:wght@300;400;600;700&family=DM+Serif+Display&family=Cinzel:wght@400;700;900&family=IBM+Plex+Sans:wght@400;600&family=Raleway:wght@400;600&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+  .typo-demo {
+    background: #0d090a;
+    border: 1px solid #2a1a1e;
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin-bottom: 0;
+  }
+  .typo-badge {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #c9a84c;
+    margin-bottom: 10px;
+    display: block;
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+  .typo-headline {
+    color: #f3ece8;
+    line-height: 1.15;
+    margin: 0 0 12px 0;
+  }
+  .typo-body {
+    color: #a79797;
+    font-size: 14px;
+    line-height: 1.6;
+    margin: 0 0 16px 0;
+  }
+  .typo-button {
+    display: inline-block;
+    background: #c9a84c;
+    color: #090608;
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    font-weight: 700;
+    padding: 10px 22px;
+    border-radius: 4px;
+  }
+  .typo-sub {
+    display: block;
+    color: #c9a84c;
+    font-size: 13px;
+    margin-bottom: 6px;
+  }
+  .font-name {
+    font-size: 11px;
+    color: #665555;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 16px;
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+
+  /* Option A - Playfair Display + Lato */
+  .font-a-head { font-family: 'Playfair Display', serif; font-size: 30px; font-weight: 900; }
+  .font-a-sub { font-family: 'Lato', sans-serif; }
+  .font-a-body { font-family: 'Lato', sans-serif; }
+
+  /* Option B - Cormorant Garamond + Raleway */
+  .font-b-head { font-family: 'Cormorant Garamond', serif; font-size: 36px; font-weight: 700; }
+  .font-b-sub { font-family: 'Raleway', sans-serif; }
+  .font-b-body { font-family: 'Raleway', sans-serif; }
+
+  /* Option C - Cinzel + IBM Plex Sans */
+  .font-c-head { font-family: 'Cinzel', serif; font-size: 24px; font-weight: 700; letter-spacing: 1px; }
+  .font-c-sub { font-family: 'IBM Plex Sans', sans-serif; }
+  .font-c-body { font-family: 'IBM Plex Sans', sans-serif; }
+</style>
+
+<h2>Escolha a tipografia</h2>
+<p class="subtitle">Mesma headline, mesmo layout — só a fonte muda. Fundos escuros como o site real.</p>
+
+<div class="cards">
+
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="typo-demo">
+        <span class="typo-badge font-a-sub">Guia Prático para Empresários</span>
+        <h2 class="typo-headline font-a-head">Manual do Empregador que reduz risco antes do problema chegar.</h2>
+        <span class="typo-sub font-a-sub">Material objetivo para consulta rápida na rotina de gestão e DP.</span>
+        <p class="typo-body font-a-body">Ao longo de mais de uma década, o Felipe Lopes Advogados consolidou sua atuação na assessoria jurídica de empresas.</p>
+        <span class="typo-button font-a-sub">QUERO ADQUIRIR O E-BOOK</span>
+        <div class="font-name">Playfair Display + Lato</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Playfair Display</h3>
+      <p>Clássica, editorial e robusta. Alta legibilidade em dark mode. Usada em publicações de prestígio como NYT e The Economist.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="typo-demo">
+        <span class="typo-badge font-b-sub">Guia Prático para Empresários</span>
+        <h2 class="typo-headline font-b-head">Manual do Empregador que reduz risco antes do problema chegar.</h2>
+        <span class="typo-sub font-b-sub">Material objetivo para consulta rápida na rotina de gestão e DP.</span>
+        <p class="typo-body font-b-body">Ao longo de mais de uma década, o Felipe Lopes Advogados consolidou sua atuação na assessoria jurídica de empresas.</p>
+        <span class="typo-button font-b-sub">QUERO ADQUIRIR O E-BOOK</span>
+        <div class="font-name">Cormorant Garamond + Raleway</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Cormorant Garamond</h3>
+      <p>Elegante e sofisticada. Contraste fino que transmite luxo e autoridade jurídica. Indicada para escritórios premium.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="typo-demo">
+        <span class="typo-badge font-c-sub">Guia Prático para Empresários</span>
+        <h2 class="typo-headline font-c-head">Manual do Empregador que reduz risco antes do problema chegar.</h2>
+        <span class="typo-sub font-c-sub">Material objetivo para consulta rápida na rotina de gestão e DP.</span>
+        <p class="typo-body font-c-body">Ao longo de mais de uma década, o Felipe Lopes Advogados consolidou sua atuação na assessoria jurídica de empresas.</p>
+        <span class="typo-button font-c-sub">QUERO ADQUIRIR O E-BOOK</span>
+        <div class="font-name">Cinzel + IBM Plex Sans</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Cinzel</h3>
+      <p>Inspirada nas inscrições romanas. Muito distintiva e institucional. Transmite autoridade máxima — estilo tribunal/presença.</p>
+    </div>
+  </div>
+
+</div>

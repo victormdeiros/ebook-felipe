@@ -87,7 +87,7 @@ const CtaSection = () => {
       <div className="absolute top-0 right-0 -m-32 w-80 h-80 bg-wine/5 rounded-full blur-[100px] pointer-events-none" aria-hidden="true" />
       <div className="absolute bottom-0 left-0 -m-32 w-80 h-80 bg-primary/8 rounded-full blur-[100px] pointer-events-none" aria-hidden="true" />
 
-      <div className="container mx-auto px-6 lg:px-12 relative z-10">
+      <div className="container mx-auto relative z-10">
         <motion.div
           initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}

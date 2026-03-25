@@ -15,7 +15,7 @@ const TrustBarSection = () => {
     <section className="relative section-elevated py-6 sm:py-8">
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-wine/40 to-transparent" aria-hidden="true" />
 
-      <div className="container mx-auto px-6 lg:px-12">
+      <div className="container mx-auto">
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-4">
           {trustItems.map((item, i) => (
             <motion.div
