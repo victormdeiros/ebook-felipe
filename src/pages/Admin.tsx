@@ -1154,7 +1154,7 @@ const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
       </AnimatePresence>
 
       {/* Main content */}
-      <main className="flex-1 pt-[72px] px-4 sm:px-6 lg:px-10 py-6 sm:py-10 max-w-6xl mx-auto w-full">
+      <main className="flex-1 pt-[72px] px-4 sm:px-6 lg:px-10 pb-6 sm:pb-10 max-w-6xl mx-auto w-full">
         <AnimatePresence mode="wait">
           <motion.div
             key={tab}

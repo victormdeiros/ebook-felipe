@@ -25,7 +25,7 @@ export const CONTENT_DEFAULTS: ContentData = {
   heroBadge: "Guia Prático para Empresários",
   ebookCoverUrl: "",
   checkoutUrl: "https://pay.hotmart.com/example",
-  ebookDownloadUrl: "#",
+  ebookDownloadUrl: "/manual-do-empregador.pdf",
   price: "49",
   priceOriginal: "97",
   whatsappNumber: "5581986758036",

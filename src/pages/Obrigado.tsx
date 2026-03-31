@@ -1,20 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { trackPurchase } from "@/lib/tracking";
 import { motion } from "framer-motion";
-import { CheckCircle, Instagram, ArrowLeft } from "lucide-react";
+import { CheckCircle, Instagram, ArrowLeft, Download } from "lucide-react";
 import { Link } from "react-router-dom";
 import { CONFIG } from "@/config";
 import logoIcon from "@/assets/logo-icon.png";
 
 const Obrigado = () => {
-  const [userEmail, setUserEmail] = useState("");
-
   useEffect(() => {
     try {
       const leads = JSON.parse(localStorage.getItem(CONFIG.LEAD_STORAGE) || "[]");
       if (leads.length > 0) {
         const email = leads[leads.length - 1].email;
-        setUserEmail(email);
         trackPurchase(email);
       }
     } catch (e) {
@@ -51,14 +48,21 @@ const Obrigado = () => {
             Compra aprovada!<br/>Obrigado pela confiança.
           </h1>
           
-          <p className="text-off-white font-body text-lg leading-relaxed mb-10 max-w-lg">
-            As instruções de acesso ao seu Manual do Empregador foram enviadas para o e-mail:<br/>
-            {userEmail ? (
-              <span className="font-semibold text-wine mt-2 block">{userEmail}</span>
-            ) : (
-              <span className="font-semibold text-wine mt-2 block">o e-mail cadastrado.</span>
-            )}
+          <p className="text-off-white font-body text-lg leading-relaxed mb-6 max-w-lg">
+            Seu Manual do Empregador está pronto para download. Clique no botão abaixo para baixar agora:
           </p>
+
+          <motion.a
+            href={CONFIG.EBOOK_DOWNLOAD_URL}
+            download="Manual-do-Empregador-Felipe-Lopes.pdf"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4, delay: 0.4 }}
+            className="w-full max-w-md flex items-center justify-center gap-3 bg-wine hover:bg-wine/90 text-white font-ui font-bold text-base px-8 py-5 rounded-md transition-all duration-300 shadow-lg shadow-wine/30 mb-8"
+          >
+            <Download className="w-5 h-5" />
+            Baixar o Manual do Empregador (PDF)
+          </motion.a>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-md">
             <a

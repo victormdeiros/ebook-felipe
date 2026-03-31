@@ -72,7 +72,7 @@ export function VideoScrollHero({
                   <img
                     src={backgroundSrc}
                     alt="Apresentacao do Manual do Empregador"
-                    className="h-[85%] md:h-[95%] w-auto object-contain object-bottom opacity-60 md:opacity-85"
+                    className="h-[75%] md:h-[95%] w-auto object-contain object-bottom opacity-60 md:opacity-85 translate-x-[-10%] md:translate-x-0"
                   />
                 </div>
               ) : null}
@@ -88,12 +88,12 @@ export function VideoScrollHero({
               <div className="absolute inset-0 bg-gradient-to-b md:bg-none md:inset-y-0 md:left-0 md:w-[60%] md:bg-gradient-to-r from-background/95 via-background/70 to-transparent md:from-background/80 md:via-background/45" />
 
               {foregroundSrc ? (
-                <div className="absolute bottom-[2%] md:bottom-auto right-[-8%] md:right-[6%] md:inset-y-0 flex items-center justify-center translate-y-[10%] md:translate-y-0">
+                <div className="absolute bottom-[4%] md:bottom-auto right-[-2%] sm:right-[4%] md:right-[6%] md:inset-y-0 flex items-center justify-center translate-y-[5%] md:translate-y-0 z-20">
                   <PerspectiveBook
                     coverSrc={foregroundSrc}
                     title="Manual do Empregador"
                     eyebrow={eyebrow}
-                    className="w-[min(65vw,22rem)] md:w-[min(34vw,20rem)]"
+                    className="w-[min(55vw,22rem)] sm:w-[min(45vw,22rem)] md:w-[min(34vw,20rem)]"
                   />
                 </div>
               ) : null}
@@ -114,7 +114,7 @@ export function VideoScrollHero({
                     {eyebrow}
                   </motion.p>
                   <motion.h2
-                    className="mt-3 md:mt-4 max-w-[12ch] md:max-w-[10ch] font-display text-3xl font-semibold leading-[1.05] md:leading-[0.96] sm:text-4xl md:text-5xl lg:text-6xl"
+                    className="mt-3 md:mt-4 max-w-[16ch] sm:max-w-[14ch] md:max-w-[10ch] font-display text-3xl font-semibold leading-[1.05] md:leading-[0.96] sm:text-4xl md:text-5xl lg:text-6xl"
                     initial={{ opacity: 0, y: 24 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.65, duration: 0.8, type: "spring", stiffness: 180, damping: 24 }}

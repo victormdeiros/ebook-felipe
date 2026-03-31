@@ -99,14 +99,7 @@ export function PerspectiveBook({
           <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-white/16 to-transparent" />
           <div className="absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-black/45 to-transparent" />
 
-          {(eyebrow || title) && (
-            <div className="absolute inset-x-5 top-5 rounded-2xl border border-white/10 bg-black/20 px-4 py-3 backdrop-blur-sm">
-              {eyebrow ? (
-                <p className="font-body text-[0.65rem] uppercase tracking-[0.32em] text-white/60">{eyebrow}</p>
-              ) : null}
-              <p className="mt-1 font-body text-sm font-semibold text-white/90">{title}</p>
-            </div>
-          )}
+          {/* Text overlay removed to clean up the design */}
         </motion.div>
       </motion.div>
     </div>

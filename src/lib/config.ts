@@ -6,7 +6,7 @@
 export const CONFIG = {
   // Pagamento
   STRIPE_PAYMENT_LINK: "#STRIPE_PAYMENT_LINK",
-  EBOOK_DOWNLOAD_URL: "#EBOOK_DOWNLOAD_URL",
+  EBOOK_DOWNLOAD_URL: "/manual-do-empregador.pdf",
 
   // Preço
   PRICE: "R$ 49",
