@@ -49,7 +49,7 @@ const FooterSection = () => {
             <nav aria-label="Links do rodapé">
               <ul className="space-y-3">
                 {[
-                  { label: "Comprar o E-book", href: "#comprar" },
+                  { label: "Garantir meu acesso", href: "#checkout" },
                   { label: "Termos de Uso", href: "#" },
                   { label: "Política de Privacidade", href: "#" },
                 ].map((link) => (

@@ -46,7 +46,7 @@ export function GlassCheckoutCard({
   onSubmit,
   onFocus,
   title = "Continue para o checkout seguro",
-  description = "Seus dados liberam o ambiente oficial de pagamento e o acesso imediato ao material apos a confirmacao.",
+  description = "Seus dados liberam o ambiente oficial de pagamento e o acesso imediato ao material após a confirmação.",
   eyebrow = "Cadastro de compra",
   buttonLabel = "Ir para o checkout",
 }: GlassCheckoutCardProps) {
@@ -108,7 +108,7 @@ export function GlassCheckoutCard({
               <BadgeCheck className="h-4 w-4 text-wine" />
               Acesso imediato
             </div>
-            <p className="text-xs leading-relaxed text-white/52">Liberacao do material apos confirmacao do checkout.</p>
+            <p className="text-xs leading-relaxed text-white/52">Liberação do material após confirmação do checkout.</p>
           </div>
         </div>
 
@@ -122,7 +122,7 @@ export function GlassCheckoutCard({
               name="name"
               type="text"
               autoComplete="name"
-              placeholder="Ex: Joao da Silva"
+              placeholder="Ex: João da Silva"
               value={formData.name}
               onChange={onChange}
               onBlur={onBlur}
@@ -179,7 +179,7 @@ export function GlassCheckoutCard({
               className={inputClass("whatsapp")}
             />
             <p id="checkout-whatsapp-hint" className="text-xs text-white/42">
-              Use um numero valido para receber orientacoes da compra, se necessario.
+              Use um número válido para receber orientações da compra, se necessário.
             </p>
             {errors.whatsapp && touched.whatsapp ? (
               <p id="checkout-whatsapp-error" role="alert" className="text-xs text-red-300">
@@ -189,10 +189,10 @@ export function GlassCheckoutCard({
           </div>
 
           <div className="rounded-2xl border border-white/10 bg-black/20 p-4 text-sm text-white/62">
-            O valor, as formas de pagamento e a confirmacao final aparecem apenas no checkout protegido.
+            O valor, as formas de pagamento e a confirmação final aparecem apenas no checkout protegido.
           </div>
 
-          <Button type="submit" size="lg" disabled={isSubmitting} className="h-12 w-full rounded-xl text-sm font-semibold bg-gold hover:bg-gold-light text-background border-0 hover:shadow-[0_8px_24px_-6px_rgba(201,168,76,0.5)]">
+          <Button type="submit" size="lg" disabled={isSubmitting} className="h-12 w-full rounded-xl text-sm font-semibold bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-white border-0 hover:shadow-[0_8px_24px_-6px_rgba(16,185,129,0.5)]">
             {buttonLabel}
             <ArrowRight className="h-4 w-4" />
           </Button>

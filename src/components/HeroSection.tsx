@@ -1,10 +1,17 @@
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, BadgeCheck, MessageCircle, ShieldCheck } from "lucide-react";
+import { BadgeCheck, MessageCircle, ShieldCheck } from "lucide-react";
 import ebookCover from "@/assets/ebook-cover.png";
 import { CountUp } from "@/components/ui/count-up";
 import { PerspectiveBook } from "@/components/ui/perspective-book";
 import { CONFIG } from "@/config";
 import { getContent } from "@/lib/contentStore";
+
+const scrollToCheckout = () => {
+  const el = document.getElementById("checkout");
+  if (!el) return;
+  const offset = 88;
+  window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - offset, behavior: "smooth" });
+};
 
 const HeroSection = () => {
   const shouldReduceMotion = useReducedMotion();
@@ -85,13 +92,12 @@ const HeroSection = () => {
               {...fade(0.48)}
               className="mb-6 flex flex-col gap-3 sm:flex-row"
             >
-              <a
-                href="#comprar"
-                className="flex min-h-[52px] items-center justify-center gap-2 rounded-md bg-gold px-7 text-center font-ui text-sm font-bold text-background transition-all duration-200 hover:-translate-y-0.5 hover:bg-gold-light hover:shadow-[0_14px_34px_-8px_rgba(201,168,76,0.45)] whitespace-nowrap cursor-pointer"
+              <button
+                onClick={scrollToCheckout}
+                className="flex min-h-[52px] items-center justify-center gap-2 rounded-md bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 px-7 text-center font-ui text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(16,185,129,0.45)] whitespace-nowrap cursor-pointer"
               >
-                {content.heroCta}
-                <ArrowRight className="h-4 w-4" />
-              </a>
+                GARANTIR MEU ACESSO
+              </button>
               <a
                 href={whatsappUrl}
                 target="_blank"

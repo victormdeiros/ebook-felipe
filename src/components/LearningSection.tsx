@@ -12,6 +12,13 @@ const learningPoints = [
   "Como reduzir riscos de processos trabalhistas",
 ];
 
+const scrollToCheckout = () => {
+  const el = document.getElementById("checkout");
+  if (!el) return;
+  const offset = 88;
+  window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - offset, behavior: "smooth" });
+};
+
 const LearningSection = () => {
   const shouldReduceMotion = useReducedMotion();
 
@@ -60,12 +67,12 @@ const LearningSection = () => {
           transition={{ duration: 0.4, delay: 0.3 }}
           className="mt-16 text-center"
         >
-          <a
-            href="#comprar"
-            className="inline-flex items-center justify-center font-ui font-bold text-sm bg-gold hover:bg-gold-light text-background px-10 min-h-[52px] rounded-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(201,168,76,0.45)]"
+          <button
+            onClick={scrollToCheckout}
+            className="inline-flex items-center justify-center gap-2 font-ui font-bold text-sm bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-white px-10 min-h-[52px] rounded-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(16,185,129,0.45)]"
           >
-            QUERO ADQUIRIR O E-BOOK
-          </a>
+            GARANTIR MEU ACESSO
+          </button>
         </motion.div>
       </div>
     </section>

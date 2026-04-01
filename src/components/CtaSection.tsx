@@ -1,11 +1,11 @@
 import { useState, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, BadgeCheck, Lock, ShieldCheck } from "lucide-react";
-import { CONFIG } from "@/config";
 import { GlassCheckoutCard } from "@/components/ui/glass-checkout-card-shadcnui";
 import { trackFormStart } from "@/lib/tracking";
 import { getContent } from "@/lib/contentStore";
 import { saveLead } from "@/lib/repository";
+import { useCart } from "@/contexts/CartContext";
 
 type FormErrors = { name?: string; email?: string; whatsapp?: string };
 
@@ -17,6 +17,7 @@ const CtaSection = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const formStarted = useRef(false);
   const content = getContent();
+  const { addToCart, openCart } = useCart();
 
   const handleFormFocus = () => {
     if (!formStarted.current) {
@@ -68,19 +69,15 @@ const CtaSection = () => {
     // Save lead via repository (Supabase + localStorage fallback)
     await saveLead({ ...formData, data: new Date().toISOString() });
 
-    // Brief delay for UX feedback
-    await new Promise((r) => setTimeout(r, 400));
+    // Adiciona ao carrinho e abre o drawer para finalizar a compra
+    addToCart();
+    openCart();
 
-    // Redirect to payment URL — append prefilled_email for Stripe Payment Links
-    const base = content.checkoutUrl || CONFIG.PAYMENT_URL;
-    const url = base.includes("?")
-      ? `${base}&prefilled_email=${encodeURIComponent(formData.email)}`
-      : `${base}?prefilled_email=${encodeURIComponent(formData.email)}`;
-    window.location.href = url;
+    setIsSubmitting(false);
   };
 
   return (
-    <section id="comprar" className="py-24 lg:py-32 section-elevated relative overflow-hidden">
+    <section id="checkout" className="py-24 lg:py-32 section-elevated relative overflow-hidden">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-px bg-gradient-to-r from-transparent via-wine/40 to-transparent" aria-hidden="true" />
 
       {/* Ambient glows */}
@@ -99,7 +96,7 @@ const CtaSection = () => {
             Formalize a compra com um checkout coerente com a proposta do material
           </h2>
           <p className="text-muted-foreground font-body text-lg">
-            Voce cadastra seus dados aqui e conclui o pagamento em ambiente seguro, sem friccao nem duplicidade na jornada.
+            Você cadastra seus dados aqui e conclui o pagamento em ambiente seguro, sem fricção nem duplicidade na jornada.
           </p>
         </motion.div>
 
@@ -120,7 +117,7 @@ const CtaSection = () => {
                 Garanta seu acesso ao material e avance para a etapa final da compra em poucos segundos.
               </h3>
               <p className="max-w-2xl text-base leading-relaxed text-white/68 md:text-lg">
-                Voce informa seus dados uma unica vez, segue para o checkout com mais agilidade e assegura acesso a um conteudo pensado para orientar decisoes trabalhistas com criterio pratico.
+                Você informa seus dados uma única vez, segue para o checkout com mais agilidade e assegura acesso a um conteúdo pensado para orientar decisões trabalhistas com critério prático.
               </p>
             </div>
 
@@ -128,19 +125,19 @@ const CtaSection = () => {
               <div className="rounded-2xl border border-white/8 bg-black/15 p-5">
                 <div className="mb-3 flex items-center gap-2 text-sm font-medium text-off-white">
                   <Lock className="h-4 w-4 text-wine" />
-                  Checkout sem exposicao de dados sensiveis
+                  Checkout sem exposição de dados sensíveis
                 </div>
                 <p className="text-sm leading-relaxed text-white/58">
-                  Nenhum dado de cartao e coletado na landing. O pagamento acontece no ambiente oficial, com o seu e-mail ja encaminhado.
+                  Nenhum dado de cartão é coletado na landing. O pagamento acontece no ambiente oficial, com o seu e-mail já encaminhado.
                 </p>
               </div>
               <div className="rounded-2xl border border-white/8 bg-black/15 p-5">
                 <div className="mb-3 flex items-center gap-2 text-sm font-medium text-off-white">
                   <ShieldCheck className="h-4 w-4 text-wine" />
-                  Cadastro unico, fluxo direto
+                  Cadastro único, fluxo direto
                 </div>
                 <p className="text-sm leading-relaxed text-white/58">
-                  O mesmo formulario abastece seu registro de interesse e acelera a passagem para a etapa final da compra.
+                  O mesmo formulário abastece seu registro de interesse e acelera a passagem para a etapa final da compra.
                 </p>
               </div>
             </div>
@@ -174,8 +171,8 @@ const CtaSection = () => {
               onFocus={handleFormFocus}
               eyebrow="Checkout do Manual"
               title="Cadastre-se para concluir a compra"
-              description="Preencha os dados abaixo para seguir ao pagamento e receber um material criado para orientar a empresa em contratacoes, rotina trabalhista e prevencao de riscos."
-              buttonLabel={isSubmitting ? "Encaminhando..." : content.heroCta || "Ir para o checkout"}
+              description="Preencha os dados abaixo para seguir ao pagamento e receber um material criado para orientar a empresa em contratações, rotina trabalhista e prevenção de riscos."
+              buttonLabel={isSubmitting ? "Aguarde..." : "Confirmar e ir ao checkout →"}
             />
           </motion.div>
         </div>

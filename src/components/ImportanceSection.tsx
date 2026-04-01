@@ -70,7 +70,7 @@ const ImportanceSection = () => {
           className="text-center"
         >
           <p className="font-display text-2xl md:text-3xl text-off-white/80 italic max-w-3xl mx-auto leading-relaxed">
-            "Mais do que informar, este material ajuda a estruturar uma rotina trabalhista mais segura, clara e economicamente responsavel para a empresa."
+            "Mais do que informar, este material ajuda a estruturar uma rotina trabalhista mais segura, clara e economicamente responsável para a empresa."
           </p>
         </motion.div>
       </div>

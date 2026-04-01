@@ -7,9 +7,9 @@ import felipePhoto from "@/assets/felipe-lopes.png";
 const EbookPresentationSection = () => {
   const shouldReduceMotion = useReducedMotion();
   const bullets = [
-    "Orientacoes objetivas sobre admissao, jornada, beneficios, advertencias e desligamento.",
-    "Leitura pensada para consulta rapida quando a empresa precisa decidir com seguranca.",
-    "Conteudo que ajuda a prevenir erros, alinhar procedimentos e reduzir improviso na gestao.",
+    "Orientações objetivas sobre admissão, jornada, benefícios, advertências e desligamento.",
+    "Leitura pensada para consulta rápida quando a empresa precisa decidir com segurança.",
+    "Conteúdo que ajuda a prevenir erros, alinhar procedimentos e reduzir improviso na gestão.",
   ];
 
   return (
@@ -39,10 +39,10 @@ const EbookPresentationSection = () => {
             <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
               <div>
                 <h3 className="font-display text-3xl text-off-white md:text-5xl">
-                  Um guia para transformar duvidas trabalhistas recorrentes em decisoes mais seguras.
+                  Um guia para transformar dúvidas trabalhistas recorrentes em decisões mais seguras.
                 </h3>
                 <p className="mt-6 max-w-2xl text-lg leading-relaxed text-text-secondary">
-                  O Manual do Empregador foi estruturado para ensinar o que realmente impacta a rotina da empresa, com linguagem clara, foco preventivo e aplicacao imediata no dia a dia.
+                  O Manual do Empregador foi estruturado para ensinar o que realmente impacta a rotina da empresa, com linguagem clara, foco preventivo e aplicação imediata no dia a dia.
                 </p>
               </div>
 
@@ -71,7 +71,7 @@ const EbookPresentationSection = () => {
                 >
                   <p className="font-ui text-[0.72rem] tracking-[0.22em] text-wine">APLICAÇÃO PRÁTICA</p>
                   <p className="mt-3 text-base leading-relaxed text-text-secondary">
-                    Ao longo do material, o empresario entende onde costuma errar, o que precisa padronizar e como conduzir relacoes de trabalho com mais previsibilidade e menos exposicao a passivos.
+                    Ao longo do material, o empresário entende onde costuma errar, o que precisa padronizar e como conduzir relações de trabalho com mais previsibilidade e menos exposição a passivos.
                   </p>
                 </motion.div>
               </div>
