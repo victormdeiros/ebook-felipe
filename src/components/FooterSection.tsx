@@ -1,4 +1,4 @@
-import { Instagram, MessageCircle, MapPin, Phone, Mail } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import { CONFIG } from "@/config";
 
 const FooterSection = () => {
@@ -12,25 +12,16 @@ const FooterSection = () => {
           <div>
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 bg-support border border-wine/20 flex items-center justify-center rounded-sm">
-                <span className="text-wine font-display font-bold text-xl">FL</span>
+                <span className="text-wine font-display font-bold text-xl">ME</span>
               </div>
               <span className="font-display text-xl text-off-white font-semibold tracking-wide">
-                FELIPE LOPES ADVOGADOS
+                MANUAL DO EMPREGADOR
               </span>
             </div>
             <p className="text-text-muted font-body text-sm leading-relaxed mb-6 max-w-sm">
-              Orientação jurídica para empresas e empresários, com foco na prevenção de riscos e gestão empresarial segura.
+              Material objetivo para consulta rápida na rotina de gestão e Departamento Pessoal.
             </p>
             <div className="flex gap-4">
-              <a
-                href={CONFIG.OFFICE_INSTAGRAM}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-text-muted hover:text-wine transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
-                aria-label="Instagram"
-              >
-                <Instagram className="w-5 h-5" />
-              </a>
               <a
                 href={`https://wa.me/${CONFIG.WHATSAPP_NUMBER}`}
                 target="_blank"
@@ -70,21 +61,16 @@ const FooterSection = () => {
           <div>
             <h4 className="font-ui text-xs text-wine tracking-[0.2em] mb-6">CONTATO</h4>
             <ul className="space-y-4">
-              <li className="flex items-start gap-3 text-text-muted font-body text-sm">
-                <MapPin className="w-5 h-5 shrink-0 mt-0.5 text-wine/60" />
-                <span className="leading-relaxed">{CONFIG.OFFICE_ADDRESS}</span>
-              </li>
               <li className="flex items-center gap-3 text-text-muted font-body text-sm">
-                <Phone className="w-5 h-5 shrink-0 text-wine/60" />
-                <span>{CONFIG.OFFICE_PHONE}</span>
-              </li>
-              <li className="flex items-center gap-3 text-text-muted font-body text-sm">
-                <Phone className="w-5 h-5 shrink-0 text-wine/60" />
-                <span>{CONFIG.OFFICE_MOBILE}</span>
-              </li>
-              <li className="flex items-center gap-3 text-text-muted font-body text-sm">
-                <Mail className="w-5 h-5 shrink-0 text-wine/60" />
-                <span>{CONFIG.OFFICE_EMAIL}</span>
+                <MessageCircle className="w-5 h-5 shrink-0 text-wine/60" />
+                <a
+                  href={`https://wa.me/${CONFIG.WHATSAPP_NUMBER}?text=${encodeURIComponent("Olá! Quero saber mais sobre o Manual do Empregador.")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-wine transition-colors"
+                >
+                  Fale com um especialista
+                </a>
               </li>
             </ul>
           </div>
@@ -92,7 +78,7 @@ const FooterSection = () => {
 
         <div className="border-t border-white/5 pt-8 mt-4 text-center">
           <p className="text-white/55 font-body text-sm">
-            &copy; {new Date().getFullYear()} FELIPE LOPES ADVOGADOS. Todos os direitos reservados.
+            &copy; {new Date().getFullYear()} MANUAL DO EMPREGADOR. Todos os direitos reservados.
           </p>
         </div>
       </div>

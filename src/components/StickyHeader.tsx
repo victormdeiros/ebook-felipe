@@ -1,15 +1,8 @@
 import { useState, useEffect } from "react";
 import { Menu, X, ShoppingCart } from "lucide-react";
-import logoBranca from "@/assets/logo-branca.png";
 import { useCart } from "@/contexts/CartContext";
 import CartDrawer from "@/components/CartDrawer";
 
-const scrollToCheckout = () => {
-  const el = document.getElementById("checkout");
-  if (!el) return;
-  const offset = 88;
-  window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - offset, behavior: "smooth" });
-};
 
 const NAV_ITEMS = [
   { label: "O Manual", href: "#manual" },
@@ -24,6 +17,11 @@ const StickyHeader = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [cartBounce, setCartBounce] = useState(false);
   const { cartCount, addToCart, openCart } = useCart();
+
+  const handleAddToCart = () => {
+    addToCart();
+    openCart();
+  };
 
   useEffect(() => {
     const handleScroll = () => {
@@ -51,7 +49,7 @@ const StickyHeader = () => {
     }
   }, [cartCount]);
 
-  const handleGuaranteeAccess = () => scrollToCheckout();
+  const handleGuaranteeAccess = () => handleAddToCart();
 
   return (
     <>
@@ -73,14 +71,17 @@ const StickyHeader = () => {
             scrolled ? "py-3" : "py-4"
           }`}
         >
-          <a href="#" aria-label="Felipe Lopes Advogados – Início">
-            <img
-              src={logoBranca}
-              alt="Felipe Lopes Advogados"
-              width={140}
-              height={60}
-              className={`transition-all duration-300 ${scrolled ? "h-[50px]" : "h-[64px]"} w-auto`}
-            />
+          <a href="#" aria-label="Manual do Empregador – Início" className="flex items-center gap-2.5">
+            <div className="w-8 h-8 flex items-center justify-center rounded bg-wine/20 border border-wine/25 shrink-0">
+              <span className="font-display text-wine font-bold text-sm leading-none">ME</span>
+            </div>
+            <span
+              className={`font-display font-semibold text-off-white tracking-wide transition-all duration-300 ${
+                scrolled ? "text-base" : "text-lg"
+              }`}
+            >
+              MANUAL DO EMPREGADOR
+            </span>
           </a>
 
           <nav className="hidden md:flex items-center gap-8" aria-label="Navegação principal">

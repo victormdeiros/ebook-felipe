@@ -1,18 +1,25 @@
 export const CONFIG = {
-  IS_PAID: false,
-  PAYMENT_URL: "https://pay.hotmart.com/example", // Replace with real URL
+  // ── Marca ─────────────────────────────────────────────────────
+  BRAND_NAME: "MANUAL DO EMPREGADOR",
+
+  // ── WhatsApp ──────────────────────────────────────────────────
   WHATSAPP_NUMBER: "5581986758036",
   WHATSAPP_MSG: "Olá! Tenho interesse no Manual do Empregador.",
-  EBOOK_DOWNLOAD_URL: "#",
-  REDIRECT_URL: "/obrigado",
 
-  // Dados institucionais reais
-  OFFICE_EMAIL: "contatos@felipelopesadv.com.br",
-  OFFICE_PHONE: "(81) 3132.3686",
-  OFFICE_SITE: "https://felipelopesadv.com.br/",
-  OFFICE_INSTAGRAM: "https://instagram.com/felipelopesadvogados",
-  OFFICE_ADDRESS: "Av. Montevidéu, 172, 16º andar — Boa Vista, Recife/PE",
-  OFFICE_MOBILE: "(81) 98675.8036",
-  
+  // ── Produto / Checkout ────────────────────────────────────────
+  // Preço em BRL (usado no CartDrawer e na preferência MP)
+  PRODUCT_PRICE: 47,
+  PRODUCT_PRICE_ORIGINAL: 97,
+
+  // URL de fallback se a Edge Function não estiver configurada.
+  // Substitua por um link de pagamento gerado no painel do Mercado Pago:
+  //   https://www.mercadopago.com.br/tools/create
+  PAYMENT_URL: "https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=",
+
+  // Após pagamento aprovado, o MP redireciona para esta rota
+  REDIRECT_URL: "/obrigado",
+  EBOOK_DOWNLOAD_URL: "#",
+
+  // ── Storage ───────────────────────────────────────────────────
   LEAD_STORAGE: "localStorage" as const,
 };

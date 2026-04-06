@@ -1,18 +1,44 @@
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingCart, Trash2, ArrowRight, BookOpen, X, ShieldCheck, Zap } from "lucide-react";
+import { ShoppingCart, Trash2, ArrowRight, BookOpen, X, ShieldCheck, Zap, Loader2 } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { getContent } from "@/lib/contentStore";
 import { CONFIG } from "@/config";
 import ebookMockup from "@/assets/ebook-mockup.png";
+import { createMPPreference, getMPCheckoutUrl, MPNotConfiguredError } from "@/lib/mercadopago";
 
 const CartDrawer = () => {
   const { isCartOpen, closeCart, cartCount, removeFromCart } = useCart();
   const content = getContent();
+  const [isLoading, setIsLoading] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
-  const handleFinalizePurchase = () => {
-    const url = content.checkoutUrl || CONFIG.PAYMENT_URL;
-    closeCart();
-    window.location.href = url;
+  const handleFinalizePurchase = async () => {
+    setCheckoutError(null);
+    setIsLoading(true);
+
+    try {
+      // Tenta criar preferência no Mercado Pago via Edge Function
+      const result = await createMPPreference();
+      const url = getMPCheckoutUrl(result);
+      closeCart();
+      window.location.href = url;
+    } catch (err) {
+      if (err instanceof MPNotConfiguredError) {
+        // Fallback: URL estática configurada no config
+        const url = content.checkoutUrl || CONFIG.PAYMENT_URL;
+        if (url && url !== "#" && !url.includes("example")) {
+          closeCart();
+          window.location.href = url;
+        } else {
+          setCheckoutError("Checkout não configurado. Contate o suporte.");
+        }
+      } else {
+        setCheckoutError("Erro ao iniciar pagamento. Tente novamente.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -124,7 +150,7 @@ const CartDrawer = () => {
                           </p>
                           <div className="mt-3 flex items-center justify-between">
                             <span className="font-display text-lg font-bold text-emerald-400">
-                              R$ {content.price || "49"}
+                              R$ {content.price || CONFIG.PRODUCT_PRICE}
                             </span>
                             <button
                               onClick={removeFromCart}
@@ -148,7 +174,7 @@ const CartDrawer = () => {
                       <div className="px-4 py-3 space-y-2">
                         <div className="flex justify-between text-xs text-off-white/60 font-body">
                           <span>Subtotal (1 item)</span>
-                          <span>R$ {content.price || "49"}</span>
+                          <span>R$ {content.price || CONFIG.PRODUCT_PRICE}</span>
                         </div>
                         <div className="flex justify-between text-xs text-off-white/60 font-body">
                           <span>Entrega</span>
@@ -156,7 +182,7 @@ const CartDrawer = () => {
                         </div>
                         <div className="border-t border-white/6 pt-2 flex justify-between font-display font-semibold text-off-white text-sm">
                           <span>Total</span>
-                          <span className="text-emerald-400">R$ {content.price || "49"}</span>
+                          <span className="text-emerald-400">R$ {content.price || CONFIG.PRODUCT_PRICE}</span>
                         </div>
                       </div>
                     </div>
@@ -183,14 +209,31 @@ const CartDrawer = () => {
                 {/* Bottom gradient bar */}
                 <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent pointer-events-none" />
 
+                {checkoutError && (
+                  <p className="text-xs text-red-400 text-center font-body -mb-1" role="alert">
+                    {checkoutError}
+                  </p>
+                )}
+
                 <motion.button
-                  whileTap={{ scale: 0.98 }}
+                  whileTap={isLoading ? {} : { scale: 0.98 }}
                   onClick={handleFinalizePurchase}
-                  className="relative w-full flex items-center justify-center gap-2 min-h-[52px] rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 font-ui font-bold text-sm text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(16,185,129,0.5)] overflow-hidden group"
+                  disabled={isLoading}
+                  aria-busy={isLoading}
+                  className="relative w-full flex items-center justify-center gap-2 min-h-[52px] rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 font-ui font-bold text-sm text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(16,185,129,0.5)] overflow-hidden group disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none"
                 >
                   <span className="absolute inset-0 bg-gradient-to-r from-emerald-400/0 via-white/10 to-emerald-400/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-                  Finalizar compra
-                  <ArrowRight className="h-4 w-4" />
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Aguarde...
+                    </>
+                  ) : (
+                    <>
+                      Finalizar compra
+                      <ArrowRight className="h-4 w-4" />
+                    </>
+                  )}
                 </motion.button>
 
                 <button

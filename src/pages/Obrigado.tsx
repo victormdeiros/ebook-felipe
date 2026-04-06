@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { trackPurchase } from "@/lib/tracking";
 import { motion } from "framer-motion";
-import { CheckCircle, Instagram, ArrowLeft, Download } from "lucide-react";
+import { CheckCircle, ArrowLeft, Download } from "lucide-react";
 import { Link } from "react-router-dom";
 import { CONFIG } from "@/config";
 import logoIcon from "@/assets/logo-icon.png";
@@ -64,17 +64,7 @@ const Obrigado = () => {
             Baixar o Manual do Empregador (PDF)
           </motion.a>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-md">
-            <a
-              href={CONFIG.OFFICE_INSTAGRAM}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-wine hover:text-background text-wine font-ui font-bold text-sm px-6 py-4 rounded-md transition-all duration-300 border border-wine/30"
-            >
-              <Instagram className="w-5 h-5" />
-              Acompanhar no Instagram
-            </a>
-            
+          <div className="flex items-center justify-center w-full max-w-md">
             <Link
               to="/"
               className="w-full flex items-center justify-center gap-2 bg-support hover:bg-support-dark text-secondary-light font-ui text-sm px-6 py-4 rounded-md transition-all duration-300 border border-primary/50"

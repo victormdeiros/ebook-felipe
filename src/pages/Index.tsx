@@ -10,6 +10,7 @@ import TargetAudienceTextSection from "@/components/TargetAudienceTextSection";
 import AboutSection from "@/components/AboutSection";
 import ImportanceSection from "@/components/ImportanceSection";
 import TestimonialsSection from "@/components/TestimonialsSection";
+import PriceSection from "@/components/PriceSection";
 import CtaSection from "@/components/CtaSection";
 import FooterSection from "@/components/FooterSection";
 import FloatingWhatsApp from "@/components/FloatingWhatsApp";
@@ -38,6 +39,7 @@ const Index = () => {
         <AboutSection />
         <ImportanceSection />
         <TestimonialsSection />
+        <PriceSection />
         <CtaSection />
         <FooterSection />
       </main>

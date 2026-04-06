@@ -16,7 +16,7 @@ const TargetAudienceTextSection = () => {
           className="mb-12 text-center"
         >
           <h2 className="font-display text-3xl md:text-4xl font-semibold tracking-tight text-wine text-balance">
-            PARA QUEM É ESTE LIVRO?
+            PARA QUEM É ESTE EBOOK?
           </h2>
         </motion.div>
 

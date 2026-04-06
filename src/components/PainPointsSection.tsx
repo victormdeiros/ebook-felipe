@@ -26,7 +26,7 @@ const PainPointsSection = () => {
           </h2>
           <p className="text-off-white/80 text-lg font-body leading-relaxed max-w-3xl">
             Muitos empresários enfrentam problemas trabalhistas não por má intenção,
-            mas por falta de orientação jurídica adequada.
+            mas por falta de conhecimento adequado sobre as obrigações trabalhistas.
           </p>
         </motion.div>
 

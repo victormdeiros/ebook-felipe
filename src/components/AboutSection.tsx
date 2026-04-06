@@ -6,17 +6,17 @@ const authors = [
   {
     photo: felipePhoto,
     name: "FELIPE LOPES",
-    role: "SÓCIO FUNDADOR",
-    label: "FELIPE LOPES ADVOGADOS",
-    bio: "Advogado com mais de 15 anos de experiência, especialista em Direito Empresarial e Direito do Trabalho, com formação complementar em Direito Eleitoral. Ao longo de sua trajetória, atuou em diferentes funções públicas e institucionais, incluindo a presidência de comissões da OAB Olinda/PE e cargos de assessoria e gestão jurídica em órgãos públicos. Reconhecido por sua atuação estratégica e análise criteriosa de riscos jurídicos, dedica-se à orientação de empresas e empresários na busca por soluções seguras e bem fundamentadas para os desafios do ambiente empresarial.",
+    role: "AUTOR",
+    label: "",
+    bio: "Advogado com mais de 20 anos de experiência, especialista em Direito Empresarial e Direito do Trabalho, com formação complementar em Direito Eleitoral. Ao longo de sua trajetória, atuou em diferentes funções públicas e institucionais, incluindo a presidência de comissões da OAB Olinda/PE e cargos de assessoria e gestão jurídica em órgãos públicos. Reconhecido por sua atuação estratégica e análise criteriosa de riscos, dedica-se à orientação de empresas e empresários na busca por soluções seguras e bem fundamentadas para os desafios do ambiente empresarial.",
     imgClass: "object-cover",
   },
   {
     photo: laisPhoto,
     name: "LAIS LEITE",
-    role: "SÓCIA",
-    label: "FELIPE LOPES ADVOGADOS",
-    bio: "Advogada há mais de 10 anos, com pós-graduações em Direito do Trabalho e Direito Previdenciário. Atua na advocacia trabalhista empresarial, com foco na orientação jurídica de empresas na gestão das relações de trabalho. Seu trabalho é voltado à prevenção de passivos trabalhistas e à organização de práticas e procedimentos que proporcionem maior segurança jurídica às empresas.",
+    role: "CO-AUTORA",
+    label: "",
+    bio: "Advogada com pós-graduações em Direito do Trabalho e Direito Previdenciário. Atua na área trabalhista empresarial, com foco na orientação de empresas na gestão das relações de trabalho. Seu trabalho é voltado à prevenção de passivos trabalhistas e à organização de práticas e procedimentos que proporcionem maior segurança às empresas.",
     imgClass: "object-cover object-top",
   },
 ];
@@ -68,7 +68,6 @@ const AboutSection = () => {
               <div className="text-center mb-4">
                 <p className="font-display font-semibold text-off-white text-lg tracking-wide">{author.name}</p>
                 <p className="text-gold font-ui text-xs mt-1 tracking-widest uppercase">{author.role}</p>
-                <p className="text-text-muted font-body text-xs mt-0.5 tracking-wider">{author.label}</p>
               </div>
 
               {/* Bio */}

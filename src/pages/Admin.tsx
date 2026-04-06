@@ -163,7 +163,7 @@ const LoginScreen = ({ onLogin }: { onLogin: () => void }) => {
             Área Restrita
           </h1>
           <p className="text-white/60 font-body text-sm mt-2">
-            FELIPE LOPES ADVOGADOS — Admin
+            MANUAL DO EMPREGADOR — Admin
           </p>
         </div>
 
@@ -1174,7 +1174,7 @@ const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
       {/* Footer */}
       <footer className="border-t border-white/5 px-6 py-4 text-center">
         <p className="text-white/50 font-body text-xs">
-          FELIPE LOPES ADVOGADOS — Painel Administrativo · Acesso restrito
+          MANUAL DO EMPREGADOR — Painel Administrativo · Acesso restrito
         </p>
       </footer>
     </div>

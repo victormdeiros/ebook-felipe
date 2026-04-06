@@ -1,5 +1,6 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { Check } from "lucide-react";
+import { useCart } from "@/contexts/CartContext";
 
 const learningPoints = [
   "Quais são os documentos essenciais que toda empresa precisa ter",
@@ -12,15 +13,14 @@ const learningPoints = [
   "Como reduzir riscos de processos trabalhistas",
 ];
 
-const scrollToCheckout = () => {
-  const el = document.getElementById("checkout");
-  if (!el) return;
-  const offset = 88;
-  window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - offset, behavior: "smooth" });
-};
-
 const LearningSection = () => {
   const shouldReduceMotion = useReducedMotion();
+  const { addToCart, openCart } = useCart();
+
+  const handleAddToCart = () => {
+    addToCart();
+    openCart();
+  };
 
   return (
     <section id="conteudo" className="py-24 lg:py-32 section-dark relative">
@@ -68,7 +68,7 @@ const LearningSection = () => {
           className="mt-16 text-center"
         >
           <button
-            onClick={scrollToCheckout}
+            onClick={handleAddToCart}
             className="inline-flex items-center justify-center gap-2 font-ui font-bold text-sm bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-white px-10 min-h-[52px] rounded-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(16,185,129,0.45)]"
           >
             GARANTIR MEU ACESSO

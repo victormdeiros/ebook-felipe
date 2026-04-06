@@ -5,17 +5,17 @@ import { CountUp } from "@/components/ui/count-up";
 import { PerspectiveBook } from "@/components/ui/perspective-book";
 import { CONFIG } from "@/config";
 import { getContent } from "@/lib/contentStore";
-
-const scrollToCheckout = () => {
-  const el = document.getElementById("checkout");
-  if (!el) return;
-  const offset = 88;
-  window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - offset, behavior: "smooth" });
-};
+import { useCart } from "@/contexts/CartContext";
 
 const HeroSection = () => {
   const shouldReduceMotion = useReducedMotion();
   const content = getContent();
+  const { addToCart, openCart } = useCart();
+
+  const handleAddToCart = () => {
+    addToCart();
+    openCart();
+  };
   const whatsappNumber = content.whatsappNumber || CONFIG.WHATSAPP_NUMBER;
   const whatsappMsg = content.whatsappMsg || CONFIG.WHATSAPP_MSG;
   const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMsg)}`;
@@ -93,7 +93,7 @@ const HeroSection = () => {
               className="mb-6 flex flex-col gap-3 sm:flex-row"
             >
               <button
-                onClick={scrollToCheckout}
+                onClick={handleAddToCart}
                 className="flex min-h-[52px] items-center justify-center gap-2 rounded-md bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 px-7 text-center font-ui text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(16,185,129,0.45)] whitespace-nowrap cursor-pointer"
               >
                 GARANTIR MEU ACESSO
@@ -105,7 +105,7 @@ const HeroSection = () => {
                 className="flex min-h-[52px] items-center justify-center gap-2 rounded-md border border-gold/30 px-7 font-ui text-sm text-gold transition-all duration-200 hover:border-gold hover:bg-gold/5 whitespace-nowrap cursor-pointer"
               >
                 <MessageCircle className="w-4 h-4" />
-                FALAR COM UM ADVOGADO
+                FALAR COM UM ESPECIALISTA
               </a>
             </motion.div>
 

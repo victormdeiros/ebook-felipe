@@ -1,7 +1,6 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
 import { VideoScrollHero } from "@/components/ui/video-scroll-hero";
-import ebookMockup from "@/assets/ebook-mockup.png";
 import felipePhoto from "@/assets/felipe-lopes.png";
 
 const EbookPresentationSection = () => {
@@ -23,7 +22,6 @@ const EbookPresentationSection = () => {
             enableAnimations={!shouldReduceMotion}
             className="-mb-32"
             backgroundSrc={felipePhoto}
-            foregroundSrc={ebookMockup}
             eyebrow="Manual do Empregador"
             title="Decisões mais seguras em cada etapa da relação de trabalho"
             description=""

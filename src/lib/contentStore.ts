@@ -24,7 +24,7 @@ export const CONTENT_DEFAULTS: ContentData = {
   heroCta: "QUERO ADQUIRIR O E-BOOK",
   heroBadge: "Guia Prático para Empresários",
   ebookCoverUrl: "",
-  checkoutUrl: "https://pay.hotmart.com/example",
+  checkoutUrl: "",
   ebookDownloadUrl: "/manual-do-empregador.pdf",
   price: "49",
   priceOriginal: "97",

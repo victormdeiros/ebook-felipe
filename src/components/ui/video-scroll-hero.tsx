@@ -24,7 +24,7 @@ export function VideoScrollHero({
   startScale = 0.78,
   title = "Manual do Empregador em destaque",
   description = "Role e veja a vitrine do conteúdo crescer enquanto a narrativa da seção avança.",
-  eyebrow = "Felipe Lopes Advogados",
+  eyebrow = "Manual do Empregador",
 }: VideoScrollHeroProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const shouldReduceMotion = useReducedMotion();

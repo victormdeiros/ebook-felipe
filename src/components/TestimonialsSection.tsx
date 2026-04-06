@@ -4,58 +4,49 @@ import { cn } from "@/lib/utils";
 
 const testimonials = [
   {
-    text: "O material nos ajudou a organizar rotinas que antes dependiam de memória e improviso. Hoje a operação consulta o e-book antes de decidir.",
-    image: "https://randomuser.me/api/portraits/men/32.jpg",
+    text: "Este material me ajudou a entender as obrigações do DP sem precisar consultar um advogado a cada dúvida.",
+    name: "Josiane Ferreira",
+    role: "Assistente de Departamento Pessoal",
+  },
+  {
+    text: "Consulto o ebook toda vez que vou fazer uma rescisão. Prático e muito bem explicado.",
+    name: "Rafael Nascimento",
+    role: "Gestor de RH",
+  },
+  {
+    text: "Finalmente um material direto ao ponto para quem precisa tomar decisões no dia a dia.",
+    name: "Adriana Melo",
+    role: "Analista de Pessoal",
+  },
+  {
+    text: "O material nos ajudou a organizar rotinas que antes dependiam de memória e improviso. Hoje a equipe consulta o e-book antes de decidir.",
     name: "Marcos Andrade",
     role: "Sócio-diretor, Empresa de Logística",
   },
   {
     text: "Conseguimos revisar documentos e procedimentos com mais confiança. A leitura é objetiva e faz sentido para quem está no dia a dia da empresa.",
-    image: "https://randomuser.me/api/portraits/women/44.jpg",
     name: "Carla Mendes",
     role: "Gestora de RH, Comércio Varejista",
   },
   {
     text: "Para quem não é do jurídico, o conteúdo é especialmente útil. Ele traduz o risco trabalhista para uma linguagem de gestão.",
-    image: "https://randomuser.me/api/portraits/men/14.jpg",
     name: "Roberto Silva",
     role: "Empreendedor, Pequena Empresa",
   },
   {
     text: "O e-book nos deu um roteiro para decisões mais consistentes em admissões, férias e desligamentos. Isso reduz desgaste e acelera o trabalho interno.",
-    image: "https://randomuser.me/api/portraits/women/68.jpg",
     name: "Ana Paula Ribeiro",
     role: "Diretora Administrativa",
   },
   {
-    text: "A estrutura é muito boa para consulta rápida. Quando surge uma dúvida, encontramos o ponto central sem interromper a operação por muito tempo.",
-    image: "https://randomuser.me/api/portraits/men/54.jpg",
+    text: "A estrutura é muito boa para consulta rápida. Quando surge uma dúvida, encontramos o ponto central sem interromper a operação.",
     name: "Lucas Fernandes",
     role: "Administrador, Rede de Serviços",
   },
   {
     text: "A maior diferença foi ganhar previsibilidade. O material ajuda a agir antes do problema, e não depois que a situação já escalou.",
-    image: "https://randomuser.me/api/portraits/women/22.jpg",
     name: "Tatiane Costa",
     role: "Coordenadora de Pessoas",
-  },
-  {
-    text: "It gave our team more confidence to standardize decisions and communicate internal procedures with clarity.",
-    image: "https://randomuser.me/api/portraits/men/9.jpg",
-    name: "Hassan Ali",
-    role: "E-commerce Manager",
-  },
-  {
-    text: "O conteúdo não tenta impressionar com juridiquês. Ele resolve dúvidas reais de quem precisa contratar e gerenciar equipe com responsabilidade.",
-    image: "https://randomuser.me/api/portraits/women/57.jpg",
-    name: "Juliana Barros",
-    role: "CEO, Operação Regional",
-  },
-  {
-    text: "Usando o manual como referência, nossa tomada de decisão ficou mais rápida e muito mais segura do ponto de vista preventivo.",
-    image: "https://randomuser.me/api/portraits/men/41.jpg",
-    name: "Eduardo Nascimento",
-    role: "Diretor Operacional",
   },
 ];
 
@@ -99,17 +90,9 @@ const TestimonialsColumn = ({
           <div key={`${testimonial.name}-${index}`} className="surface-card rounded-[1.8rem] border border-white/7 p-6">
             <Stars />
             <p className="text-base leading-relaxed text-off-white/80">{testimonial.text}</p>
-            <div className="mt-6 flex items-center gap-3 border-t border-white/6 pt-5">
-              <img
-                src={testimonial.image}
-                alt={testimonial.name}
-                className="h-12 w-12 rounded-full object-cover"
-                loading="lazy"
-              />
-              <div>
-                <p className="text-sm font-semibold text-off-white">{testimonial.name}</p>
-                <p className="text-xs text-text-muted">{testimonial.role}</p>
-              </div>
+            <div className="mt-6 border-t border-white/6 pt-5">
+              <p className="text-sm font-semibold text-off-white">{testimonial.name}</p>
+              <p className="text-xs text-text-muted">{testimonial.role}</p>
             </div>
           </div>
         ))}
@@ -134,7 +117,7 @@ const TestimonialsSection = () => {
           className="mx-auto flex max-w-[540px] flex-col items-center justify-center"
         >
           <div className="flex justify-center">
-            <div className="rounded-lg border border-white/10 px-4 py-1 text-sm text-off-white/80">Testimonials</div>
+            <div className="rounded-lg border border-white/10 px-4 py-1 text-sm text-off-white/80">Depoimentos</div>
           </div>
 
           <h2 className="mt-5 text-center font-display text-3xl font-semibold tracking-tight text-off-white sm:text-4xl lg:text-5xl">
