@@ -28,7 +28,7 @@ export const CONTENT_DEFAULTS: ContentData = {
   ebookDownloadUrl: "/manual-do-empregador.pdf",
   price: "49",
   priceOriginal: "97",
-  whatsappNumber: "5581986758036",
+  whatsappNumber: "5581985900139",
   whatsappMsg: "Olá! Tenho interesse no Manual do Empregador.",
 };
 

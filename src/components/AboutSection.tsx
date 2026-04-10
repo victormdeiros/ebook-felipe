@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from "framer-motion";
-import felipePhoto from "@/assets/felipe-lopes.png";
+import felipePhoto from "@/felipe.png";
 import laisPhoto from "@/assets/lais-foto.png";
 
 const authors = [

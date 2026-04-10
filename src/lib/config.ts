@@ -13,7 +13,7 @@ export const CONFIG = {
   PRICE_ORIGINAL: "R$ 97",
 
   // WhatsApp
-  WHATSAPP_NUMBER: "5581986758036",
+  WHATSAPP_NUMBER: "5581985900139",
   WHATSAPP_MSG: "Olá! Tenho interesse no Manual do Empregador.",
 
   // Dados da marca

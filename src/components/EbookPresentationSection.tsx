@@ -1,7 +1,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
 import { VideoScrollHero } from "@/components/ui/video-scroll-hero";
-import felipePhoto from "@/assets/felipe-lopes.png";
+import felipePhoto from "@/felipe.png";
 
 const EbookPresentationSection = () => {
   const shouldReduceMotion = useReducedMotion();
