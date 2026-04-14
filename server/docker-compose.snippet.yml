@@ -1,0 +1,31 @@
+# ──────────────────────────────────────────────────────────────
+# Snippet to add to the existing docker-compose.yml on VPS 157
+# (the one that already runs evolution-postgres).
+#
+# The service joins the same network so it reaches the DB at
+# the hostname "evolution-postgres" on port 5432 — no SSH tunnel,
+# no exposed DB port needed.
+#
+# 1) Copy the manual-empregador-server folder to the VPS
+# 2) Append this block under "services:" in your compose file
+#    (adjust the "networks" key to match your stack's network name)
+# 3) docker compose build manual-empregador-server
+# 4) docker compose up -d manual-empregador-server
+# 5) docker compose exec manual-empregador-server npm run migrate
+# ──────────────────────────────────────────────────────────────
+
+services:
+  manual-empregador-server:
+    build: ./manual-empregador-server
+    container_name: manual-empregador-server
+    restart: unless-stopped
+    env_file:
+      - ./manual-empregador-server/.env
+    ports:
+      # Expose only if you don't have a reverse proxy in front.
+      # Behind nginx/traefik, remove this.
+      - "3000:3000"
+    networks:
+      - default  # CHANGE: use the same network as evolution-postgres
+    depends_on:
+      - evolution-postgres
