@@ -7,8 +7,8 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
   CORS_ORIGIN: z.string().min(1, "CORS_ORIGIN is required"),
   ADMIN_TOKEN: z.string().min(16, "ADMIN_TOKEN must be at least 16 chars"),
-  MP_ACCESS_TOKEN: z.string().min(1, "MP_ACCESS_TOKEN is required"),
-  SITE_URL: z.string().url("SITE_URL must be a valid URL"),
+  MP_ACCESS_TOKEN: z.string().optional(),
+  SITE_URL: z.string().url().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);
