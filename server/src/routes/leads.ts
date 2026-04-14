@@ -19,7 +19,7 @@ router.post("/", async (req, res, next) => {
     const data = leadSchema.parse(req.body);
 
     const { rows } = await pool.query<{ id: string; created_at: string }>(
-      `INSERT INTO leads (name, email, whatsapp)
+      `INSERT INTO manual_leads (name, email, whatsapp)
        VALUES ($1, $2, $3)
        RETURNING id, created_at`,
       [data.name, data.email, data.whatsapp],

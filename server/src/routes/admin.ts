@@ -18,14 +18,14 @@ router.get("/leads", async (req, res, next) => {
 
     const { rows } = await pool.query(
       `SELECT id, name, email, whatsapp, created_at
-       FROM leads
+       FROM manual_leads
        ORDER BY created_at DESC
        LIMIT $1 OFFSET $2`,
       [limit, offset],
     );
 
     const { rows: countRows } = await pool.query<{ count: string }>(
-      `SELECT COUNT(*)::text AS count FROM leads`,
+      `SELECT COUNT(*)::text AS count FROM manual_leads`,
     );
 
     res.json({
@@ -45,7 +45,7 @@ router.get("/events", async (req, res, next) => {
 
     const { rows } = await pool.query(
       `SELECT id, name, payload, occurred_at
-       FROM events
+       FROM manual_events
        ORDER BY occurred_at DESC
        LIMIT $1 OFFSET $2`,
       [limit, offset],

@@ -14,7 +14,7 @@ router.post("/", async (req, res, next) => {
     const data = eventSchema.parse(req.body);
 
     await pool.query(
-      `INSERT INTO events (name, payload) VALUES ($1, $2)`,
+      `INSERT INTO manual_events (name, payload) VALUES ($1, $2)`,
       [data.name, data.payload ? JSON.stringify(data.payload) : null],
     );
 
