@@ -54,9 +54,9 @@ const AddToCartModal = () => {
           >
             <div className="relative overflow-hidden rounded-[28px] border border-white/10 bg-[#0d0608]/90 shadow-[0_40px_100px_-20px_rgba(0,0,0,0.85)] backdrop-blur-2xl">
               {/* Top gradient bar */}
-              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/60 to-transparent" />
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
               {/* Ambient glow */}
-              <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-48 h-32 bg-emerald-500/10 blur-[60px] pointer-events-none" />
+              <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-48 h-32 bg-gold/10 blur-[60px] pointer-events-none" />
 
               {/* Close button */}
               <button
@@ -74,12 +74,12 @@ const AddToCartModal = () => {
                     initial={{ scale: 0 }}
                     animate={showCheck ? { scale: 1 } : { scale: 0 }}
                     transition={{ type: "spring", stiffness: 320, damping: 20, delay: 0.05 }}
-                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 border border-emerald-500/30"
+                    className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gold/15 border border-gold/30"
                   >
-                    <Check className="h-6 w-6 text-emerald-400" strokeWidth={2.5} />
+                    <Check className="h-6 w-6 text-gold" strokeWidth={2.5} />
                   </motion.div>
                   <div>
-                    <p className="font-ui text-[0.65rem] tracking-[0.22em] text-emerald-400 mb-0.5">
+                    <p className="font-ui text-[0.65rem] tracking-[0.22em] text-gold mb-0.5">
                       ADICIONADO AO CARRINHO
                     </p>
                     <h3 className="font-display text-lg font-semibold text-off-white leading-snug">
@@ -104,7 +104,7 @@ const AddToCartModal = () => {
                     <p className="mt-1 text-xs text-text-muted font-body">
                       E-book digital · Acesso imediato
                     </p>
-                    <p className="mt-2 font-display text-base font-bold text-emerald-400">
+                    <p className="mt-2 font-display text-base font-bold text-gold">
                       R$ {content.price || "49"}
                     </p>
                   </div>
@@ -115,7 +115,7 @@ const AddToCartModal = () => {
                   <motion.button
                     whileTap={{ scale: 0.98 }}
                     onClick={handleViewCart}
-                    className="flex w-full items-center justify-center gap-2 min-h-[52px] rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 font-ui font-bold text-sm text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(16,185,129,0.45)]"
+                    className="flex w-full items-center justify-center gap-2 min-h-[52px] rounded-xl bg-gold hover:bg-gold-light active:bg-gold-dark font-ui font-bold text-sm text-background transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(201,168,76,0.45)]"
                   >
                     <ShoppingCart className="h-4 w-4" />
                     Ver carrinho

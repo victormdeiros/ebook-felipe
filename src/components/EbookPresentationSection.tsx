@@ -1,6 +1,5 @@
 import { motion, useReducedMotion } from "framer-motion";
 import { CheckCircle2 } from "lucide-react";
-import { VideoScrollHero } from "@/components/ui/video-scroll-hero";
 import felipePhoto from "@/felipe.png";
 
 const EbookPresentationSection = () => {
@@ -17,65 +16,90 @@ const EbookPresentationSection = () => {
       <div className="absolute right-[-8rem] top-10 h-72 w-72 rounded-full bg-wine/10 blur-[110px]" aria-hidden="true" />
 
       <div className="container mx-auto">
-        <div className="overflow-hidden rounded-[2.4rem] border border-white/8 bg-black/20">
-          <VideoScrollHero
-            enableAnimations={!shouldReduceMotion}
-            className="-mb-32"
-            backgroundSrc={felipePhoto}
-            eyebrow="Manual do Empregador"
-            title="Decisões mais seguras em cada etapa da relação de trabalho"
-            description=""
-          />
 
-          <motion.section
-            className="relative -mt-8 min-h-[42rem] rounded-t-[2rem] bg-support px-6 py-16 md:px-10"
-            initial={shouldReduceMotion ? false : { opacity: 0, y: 50 }}
+        {/* ── Section label ── */}
+        <motion.p
+          className="font-ui text-[0.65rem] tracking-[0.26em] text-wine mb-6"
+          initial={shouldReduceMotion ? false : { opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+        >
+          MANUAL DO EMPREGADOR
+        </motion.p>
+
+        {/* ── Main block: title (left) + photo (right) ── */}
+        <div className="grid lg:grid-cols-[1fr_340px] gap-12 lg:gap-16 items-start mb-16">
+
+          {/* Title */}
+          <motion.h2
+            className="font-display text-4xl sm:text-5xl lg:text-[3.25rem] font-semibold leading-[1.03] text-off-white"
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.8, type: "spring", stiffness: 180, damping: 24 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, ease: [0.25, 0, 0, 1] }}
           >
-            <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)]">
-              <div>
-                <h3 className="font-display text-3xl text-off-white md:text-5xl">
-                  Um guia para transformar dúvidas trabalhistas recorrentes em decisões mais seguras.
-                </h3>
-                <p className="mt-6 max-w-2xl text-lg leading-relaxed text-text-secondary">
-                  O Manual do Empregador foi estruturado para ensinar o que realmente impacta a rotina da empresa, com linguagem clara, foco preventivo e aplicação imediata no dia a dia.
-                </p>
-              </div>
+            Decisões mais seguras em cada etapa da relação de trabalho
+          </motion.h2>
 
-              <div className="grid gap-5 md:grid-cols-2">
-                {bullets.map((bullet, index) => (
-                  <motion.div
-                    key={bullet}
-                    initial={shouldReduceMotion ? false : { opacity: 0, y: 24, scale: 0.97 }}
-                    whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: 0.12 + index * 0.1, duration: 0.55 }}
-                    className="rounded-[1.5rem] border border-white/7 bg-background/35 p-6"
-                  >
-                    <div className="mb-4 flex h-11 w-11 items-center justify-center rounded-xl bg-wine/10 text-wine">
-                      <CheckCircle2 className="h-5 w-5" />
-                    </div>
-                    <p className="text-base leading-relaxed text-off-white/80">{bullet}</p>
-                  </motion.div>
-                ))}
-                <motion.div
-                  initial={shouldReduceMotion ? false : { opacity: 0, y: 24, scale: 0.97 }}
-                  whileInView={{ opacity: 1, y: 0, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: 0.42, duration: 0.55 }}
-                  className="rounded-[1.5rem] border border-white/7 bg-background/35 p-6 md:col-span-2"
-                >
-                  <p className="font-ui text-[0.72rem] tracking-[0.22em] text-wine">APLICAÇÃO PRÁTICA</p>
-                  <p className="mt-3 text-base leading-relaxed text-text-secondary">
-                    Ao longo do material, o empresário entende onde costuma errar, o que precisa padronizar e como conduzir relações de trabalho com mais previsibilidade e menos exposição a passivos.
-                  </p>
-                </motion.div>
-              </div>
+          {/* Photo + author bio card */}
+          <motion.div
+            initial={shouldReduceMotion ? false : { opacity: 0, x: 20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.7, delay: 0.15 }}
+            className="lg:row-span-2"
+          >
+            <div className="overflow-hidden rounded-2xl border border-white/10">
+              <img
+                src={felipePhoto}
+                alt="Dr. Felipe Lopes"
+                className="w-full h-72 lg:h-96 object-cover object-top"
+              />
             </div>
-          </motion.section>
+            <div className="mt-4 px-1">
+              <p className="font-ui text-[0.7rem] tracking-[0.18em] text-wine mb-1">DR. FELIPE LOPES</p>
+              <p className="text-xs text-text-muted leading-relaxed text-justify">
+                Advogado com mais de 20 anos de experiência, especialista em Direito Empresarial e Direito do Trabalho, com formação complementar em Direito Eleitoral. Ao longo de sua trajetória, atuou em diferentes funções públicas e institucionais, incluindo a presidência de comissões da OAB Olinda/PE e cargos de assessoria e gestão jurídica em órgãos públicos. Reconhecido por sua atuação estratégica e análise criteriosa de riscos, dedica-se à orientação de empresas e empresários na busca por soluções seguras e bem fundamentadas para os desafios do ambiente empresarial.
+              </p>
+            </div>
+          </motion.div>
+
+          {/* Description + bullets */}
+          <motion.div
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+          >
+            <h3 className="font-display text-xl sm:text-2xl text-off-white leading-snug mb-5">
+              Um guia para transformar dúvidas trabalhistas recorrentes em decisões mais seguras.
+            </h3>
+            <p className="text-base leading-relaxed text-text-secondary mb-2 text-justify">
+              O Manual do Empregador foi estruturado para ensinar o que realmente impacta a rotina da empresa, com linguagem clara, foco preventivo e aplicação imediata no dia a dia.
+            </p>
+
+            <div className="h-px w-full bg-white/8 my-7" />
+
+            <ul className="space-y-0">
+              {bullets.map((bullet, index) => (
+                <motion.li
+                  key={bullet}
+                  initial={shouldReduceMotion ? false : { opacity: 0, x: 12 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: 0.15 + index * 0.1, duration: 0.5 }}
+                  className="flex items-start gap-4 border-b border-white/8 py-5 first:pt-0 last:border-0"
+                >
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-wine" />
+                  <p className="text-sm leading-relaxed text-off-white/80">{bullet}</p>
+                </motion.li>
+              ))}
+            </ul>
+          </motion.div>
+
         </div>
+
       </div>
     </section>
   );

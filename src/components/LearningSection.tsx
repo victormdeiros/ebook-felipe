@@ -69,7 +69,7 @@ const LearningSection = () => {
         >
           <button
             onClick={handleAddToCart}
-            className="inline-flex items-center justify-center gap-2 font-ui font-bold text-sm bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-white px-10 min-h-[52px] rounded-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(16,185,129,0.45)]"
+            className="inline-flex items-center justify-center gap-2 font-ui font-bold text-sm bg-gold hover:bg-gold-light active:bg-gold-dark text-background px-10 min-h-[52px] rounded-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(201,168,76,0.45)]"
           >
             GARANTIR MEU ACESSO
           </button>

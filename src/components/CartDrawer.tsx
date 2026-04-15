@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingCart, Trash2, ArrowRight, BookOpen, X, ShieldCheck, Zap, Loader2 } from "lucide-react";
+import { ShoppingCart, Trash2, ArrowRight, BookOpen, X, ShieldCheck, Zap, Loader2, CalendarDays } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { getContent } from "@/lib/contentStore";
 import { CONFIG } from "@/config";
@@ -8,36 +8,74 @@ import ebookMockup from "@/assets/ebook-mockup.png";
 import { createMPPreference, getMPCheckoutUrl, MPNotConfiguredError } from "@/lib/mercadopago";
 
 const CartDrawer = () => {
-  const { isCartOpen, closeCart, cartCount, removeFromCart } = useCart();
+  const { isCartOpen, closeCart, cartCount, cartItems, removeItem } = useCart();
   const content = getContent();
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingEbook, setIsLoadingEbook] = useState(false);
+  const [isLoadingEvent, setIsLoadingEvent] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
 
-  const handleFinalizePurchase = async () => {
-    setCheckoutError(null);
-    setIsLoading(true);
+  const hasEbook = cartItems.some((i) => i.id === "ebook");
+  const hasEvent = cartItems.some((i) => i.id === "event");
 
+  const ebookPrice = content.price || String(CONFIG.PRODUCT_PRICE);
+  const eventPrice = content.eventPrice || String(CONFIG.EVENT_PRICE);
+
+  const totalPrice = (
+    (hasEbook ? Number(ebookPrice) : 0) +
+    (hasEvent ? Number(eventPrice) : 0)
+  ).toFixed(2).replace(".", ",");
+
+  const handleCheckoutEbook = async () => {
+    setCheckoutError(null);
+    setIsLoadingEbook(true);
     try {
-      // Tenta criar preferência no Mercado Pago via Edge Function
-      const result = await createMPPreference();
+      const result = await createMPPreference("ebook");
       const url = getMPCheckoutUrl(result);
       closeCart();
       window.location.href = url;
     } catch (err) {
       if (err instanceof MPNotConfiguredError) {
-        // Fallback: URL estática configurada no config
         const url = content.checkoutUrl || CONFIG.PAYMENT_URL;
         if (url && url !== "#" && !url.includes("example")) {
           closeCart();
           window.location.href = url;
         } else {
-          setCheckoutError("Checkout não configurado. Contate o suporte.");
+          setCheckoutError("Checkout do e-book não configurado. Contate o suporte.");
         }
+      } else if (err instanceof TypeError) {
+        setCheckoutError("Servidor de pagamento offline. Aguarde um instante e tente novamente.");
       } else {
-        setCheckoutError("Erro ao iniciar pagamento. Tente novamente.");
+        setCheckoutError((err as Error).message || "Erro ao iniciar pagamento. Tente novamente.");
       }
     } finally {
-      setIsLoading(false);
+      setIsLoadingEbook(false);
+    }
+  };
+
+  const handleCheckoutEvent = async () => {
+    setCheckoutError(null);
+    setIsLoadingEvent(true);
+    try {
+      const result = await createMPPreference("event");
+      const url = getMPCheckoutUrl(result);
+      closeCart();
+      window.location.href = url;
+    } catch (err) {
+      if (err instanceof MPNotConfiguredError) {
+        const url = content.eventCheckoutUrl || CONFIG.EVENT_PAYMENT_URL;
+        if (url && url !== "#") {
+          closeCart();
+          window.location.href = url;
+        } else {
+          setCheckoutError("Link de inscrição do evento não configurado. Contate o suporte.");
+        }
+      } else if (err instanceof TypeError) {
+        setCheckoutError("Servidor de pagamento offline. Aguarde um instante e tente novamente.");
+      } else {
+        setCheckoutError((err as Error).message || "Erro ao iniciar pagamento. Tente novamente.");
+      }
+    } finally {
+      setIsLoadingEvent(false);
     }
   };
 
@@ -75,14 +113,14 @@ const CartDrawer = () => {
             {/* Header */}
             <div className="flex items-center justify-between border-b border-white/8 px-6 py-5">
               <div className="flex items-center gap-2.5">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/15 border border-emerald-500/20">
-                  <ShoppingCart className="w-4 h-4 text-emerald-400" />
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gold/15 border border-gold/20">
+                  <ShoppingCart className="w-4 h-4 text-gold" />
                 </div>
                 <span className="font-display text-base font-semibold text-off-white tracking-wide">
                   Carrinho
                 </span>
                 {cartCount > 0 && (
-                  <span className="inline-flex items-center justify-center h-5 min-w-[1.25rem] rounded-full bg-emerald-500 px-1.5 text-[10px] font-bold text-white">
+                  <span className="inline-flex items-center justify-center h-5 min-w-[1.25rem] rounded-full bg-gold px-1.5 text-[10px] font-bold text-background">
                     {cartCount}
                   </span>
                 )}
@@ -127,62 +165,75 @@ const CartDrawer = () => {
                     transition={{ duration: 0.25 }}
                     className="space-y-5"
                   >
-                    {/* Product item */}
+                    {/* Ebook item */}
+                    {hasEbook && (
                     <div className="group relative overflow-hidden rounded-2xl border border-white/8 bg-black/20 p-4">
-                      <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/[0.04] to-transparent pointer-events-none" />
+                      <div className="absolute inset-0 bg-gradient-to-br from-gold/[0.04] to-transparent pointer-events-none" />
                       <div className="flex items-start gap-4">
-                        {/* Cover */}
                         <div className="w-[3.5rem] h-[4.5rem] shrink-0 overflow-hidden rounded-xl bg-support shadow-lg">
-                          <img
-                            src={content.ebookCoverUrl || ebookMockup}
-                            alt="Manual do Empregador Seguro"
-                            className="w-full h-full object-cover"
-                          />
+                          <img src={content.ebookCoverUrl || ebookMockup} alt="Manual do Empregador" className="w-full h-full object-cover" />
                         </div>
-
-                        {/* Info */}
                         <div className="flex-1 min-w-0">
-                          <p className="font-display text-sm font-semibold text-off-white leading-snug">
-                            Manual do Empregador Seguro
-                          </p>
-                          <p className="mt-1 font-ui text-[0.6rem] tracking-[0.18em] text-text-muted uppercase">
-                            E-book digital
-                          </p>
+                          <p className="font-display text-sm font-semibold text-off-white leading-snug">Manual do Empregador</p>
+                          <p className="mt-1 font-ui text-[0.6rem] tracking-[0.18em] text-text-muted uppercase">E-book digital</p>
                           <div className="mt-3 flex items-center justify-between">
-                            <span className="font-display text-lg font-bold text-emerald-400">
-                              R$ {content.price || CONFIG.PRODUCT_PRICE}
-                            </span>
-                            <button
-                              onClick={removeFromCart}
-                              className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/8 bg-white/[0.03] text-white/30 hover:border-red-400/30 hover:text-red-400 hover:bg-red-400/10 transition-all duration-200"
-                              aria-label="Remover item"
-                            >
+                            <span className="font-display text-lg font-bold text-gold">R$ {ebookPrice}</span>
+                            <button onClick={() => removeItem("ebook")} className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/8 bg-white/[0.03] text-white/30 hover:border-red-400/30 hover:text-red-400 hover:bg-red-400/10 transition-all duration-200" aria-label="Remover e-book">
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </div>
                       </div>
                     </div>
+                    )}
+
+                    {/* Event item */}
+                    {hasEvent && (
+                    <div className="group relative overflow-hidden rounded-2xl border border-gold/15 bg-[#0f0c08] p-4">
+                      <div className="absolute inset-0 bg-gradient-to-br from-gold/[0.06] to-transparent pointer-events-none" />
+                      <div className="flex items-start gap-4">
+                        <div className="w-[3.5rem] h-[4.5rem] shrink-0 overflow-hidden rounded-xl bg-[#1a1508] border border-gold/15 flex items-center justify-center">
+                          <CalendarDays className="w-6 h-6 text-gold/60" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-display text-sm font-semibold text-off-white leading-snug">Segurança Jurídica 360</p>
+                          <p className="mt-1 font-ui text-[0.6rem] tracking-[0.18em] text-text-muted uppercase">Inscrição no evento</p>
+                          <div className="mt-3 flex items-center justify-between">
+                            <span className="font-display text-lg font-bold text-gold">R$ {eventPrice}</span>
+                            <button onClick={() => removeItem("event")} className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/8 bg-white/[0.03] text-white/30 hover:border-red-400/30 hover:text-red-400 hover:bg-red-400/10 transition-all duration-200" aria-label="Remover evento">
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    )}
 
                     {/* Order summary */}
                     <div className="rounded-2xl border border-white/8 bg-black/10 overflow-hidden">
                       <div className="px-4 py-3 border-b border-white/6">
-                        <p className="font-ui text-[0.6rem] tracking-[0.2em] text-text-muted uppercase">
-                          Resumo do pedido
-                        </p>
+                        <p className="font-ui text-[0.6rem] tracking-[0.2em] text-text-muted uppercase">Resumo do pedido</p>
                       </div>
                       <div className="px-4 py-3 space-y-2">
+                        {hasEbook && (
                         <div className="flex justify-between text-xs text-off-white/60 font-body">
-                          <span>Subtotal (1 item)</span>
-                          <span>R$ {content.price || CONFIG.PRODUCT_PRICE}</span>
+                          <span>E-book</span>
+                          <span>R$ {ebookPrice}</span>
                         </div>
+                        )}
+                        {hasEvent && (
+                        <div className="flex justify-between text-xs text-off-white/60 font-body">
+                          <span>Evento</span>
+                          <span>R$ {eventPrice}</span>
+                        </div>
+                        )}
                         <div className="flex justify-between text-xs text-off-white/60 font-body">
                           <span>Entrega</span>
-                          <span className="text-emerald-400">Gratuita</span>
+                          <span className="text-gold">Gratuita</span>
                         </div>
                         <div className="border-t border-white/6 pt-2 flex justify-between font-display font-semibold text-off-white text-sm">
                           <span>Total</span>
-                          <span className="text-emerald-400">R$ {content.price || CONFIG.PRODUCT_PRICE}</span>
+                          <span className="text-gold">R$ {totalPrice}</span>
                         </div>
                       </div>
                     </div>
@@ -194,7 +245,7 @@ const CartDrawer = () => {
                         <span className="text-[0.68rem] text-text-muted font-body leading-snug">Pagamento seguro</span>
                       </div>
                       <div className="flex items-center gap-2 rounded-xl border border-white/6 bg-black/10 px-3 py-2.5">
-                        <Zap className="w-3.5 h-3.5 text-emerald-500/70 shrink-0" />
+                        <Zap className="w-3.5 h-3.5 text-gold/70 shrink-0" />
                         <span className="text-[0.68rem] text-text-muted font-body leading-snug">Acesso imediato</span>
                       </div>
                     </div>
@@ -206,8 +257,7 @@ const CartDrawer = () => {
             {/* Footer */}
             {cartCount > 0 && (
               <div className="border-t border-white/8 px-6 py-5 space-y-3">
-                {/* Bottom gradient bar */}
-                <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent pointer-events-none" />
+                <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent pointer-events-none" />
 
                 {checkoutError && (
                   <p className="text-xs text-red-400 text-center font-body -mb-1" role="alert">
@@ -215,26 +265,40 @@ const CartDrawer = () => {
                   </p>
                 )}
 
+                {/* Ebook checkout */}
+                {hasEbook && (
                 <motion.button
-                  whileTap={isLoading ? {} : { scale: 0.98 }}
-                  onClick={handleFinalizePurchase}
-                  disabled={isLoading}
-                  aria-busy={isLoading}
-                  className="relative w-full flex items-center justify-center gap-2 min-h-[52px] rounded-xl bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 font-ui font-bold text-sm text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(16,185,129,0.5)] overflow-hidden group disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none"
+                  whileTap={isLoadingEbook ? {} : { scale: 0.98 }}
+                  onClick={handleCheckoutEbook}
+                  disabled={isLoadingEbook || isLoadingEvent}
+                  aria-busy={isLoadingEbook}
+                  className="relative w-full flex items-center justify-center gap-2 min-h-[48px] rounded-xl bg-gold hover:bg-gold-light active:bg-gold-dark font-ui font-bold text-sm text-background transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(201,168,76,0.5)] overflow-hidden group disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none"
                 >
-                  <span className="absolute inset-0 bg-gradient-to-r from-emerald-400/0 via-white/10 to-emerald-400/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Aguarde...
-                    </>
+                  <span className="absolute inset-0 bg-gradient-to-r from-gold/0 via-white/10 to-gold/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+                  {isLoadingEbook ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" />Aguarde...</>
                   ) : (
-                    <>
-                      Finalizar compra
-                      <ArrowRight className="h-4 w-4" />
-                    </>
+                    <>Finalizar compra do e-book<ArrowRight className="h-4 w-4" /></>
                   )}
                 </motion.button>
+                )}
+
+                {/* Event checkout */}
+                {hasEvent && (
+                <motion.button
+                  whileTap={isLoadingEvent ? {} : { scale: 0.98 }}
+                  onClick={handleCheckoutEvent}
+                  disabled={isLoadingEbook || isLoadingEvent}
+                  aria-busy={isLoadingEvent}
+                  className="relative w-full flex items-center justify-center gap-2 min-h-[48px] rounded-xl border border-gold/30 bg-gold/[0.07] hover:bg-gold/[0.14] font-ui font-bold text-sm text-gold transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                >
+                  {isLoadingEvent ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" />Aguarde...</>
+                  ) : (
+                    <><CalendarDays className="h-4 w-4" />Inscrever no Segurança Jurídica 360<ArrowRight className="h-4 w-4" /></>
+                  )}
+                </motion.button>
+                )}
 
                 <button
                   onClick={closeCart}

@@ -1,10 +1,9 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+﻿import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BarChart2,
   Users,
   ShoppingCart,
-  Clock,
   Eye,
   LogOut,
   Search,
@@ -18,16 +17,21 @@ import {
   AlertCircle,
   TrendingUp,
   Lock,
-  ChevronDown,
   X,
   Menu,
   Settings,
-  Database,
   CreditCard,
   Loader2,
   CheckCircle2,
   XCircle,
   Zap,
+  Package,
+  CalendarDays,
+  BookOpen,
+  Activity,
+  ArrowRight,
+  ExternalLink,
+  Wallet,
 } from "lucide-react";
 import {
   AreaChart,
@@ -37,9 +41,17 @@ import {
   Tooltip,
   ResponsiveContainer,
   CartesianGrid,
+  BarChart,
+  Bar,
 } from "recharts";
-import { getTrackingData, resetTracking, TrackingData } from "@/lib/tracking";
-import { getLeads as fetchLeads } from "@/lib/repository";
+import {
+  getLeads,
+  getOrders,
+  getDashboardStats,
+  type Lead,
+  type Order,
+  type DashboardStats,
+} from "@/lib/repository";
 import {
   getContent,
   saveContent,
@@ -47,56 +59,40 @@ import {
   CONTENT_DEFAULTS,
   ContentData,
 } from "@/lib/contentStore";
+import { createMPPreference, getMPCheckoutUrl, getMPStatus } from "@/lib/mercadopago";
 
-// ─────────────────────────────────────────────────────────────
 // AUTH
-// ─────────────────────────────────────────────────────────────
-// NOTE: Password is hardcoded for MVP. Move to env var before production.
-const ADMIN_PASSWORD = "ManualEmpregador@2024";
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_TOKEN ?? "ManualEmpregador@2024";
 const AUTH_KEY = "fl_admin_auth";
 
 const isAuthed = () => sessionStorage.getItem(AUTH_KEY) === "true";
 const setAuthed = () => sessionStorage.setItem(AUTH_KEY, "true");
 const clearAuth = () => sessionStorage.removeItem(AUTH_KEY);
 
-// ─────────────────────────────────────────────────────────────
 // TYPES
-// ─────────────────────────────────────────────────────────────
-interface Lead {
-  name: string;
-  email: string;
-  whatsapp: string;
-  data: string;
-}
+type Tab = "metricas" | "leads" | "pedidos" | "produtos" | "conteudo" | "configuracoes";
 
-type Tab = "metricas" | "leads" | "conteudo" | "configuracoes";
-
-// ─────────────────────────────────────────────────────────────
 // HELPERS
-// ─────────────────────────────────────────────────────────────
-const formatDuration = (seconds: number): string => {
-  if (seconds <= 0) return "—";
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
-  return m > 0 ? `${m}m ${s}s` : `${s}s`;
-};
+const formatCurrency = (v: number) =>
+  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-const aggregateByDay = (timestamps: string[]): { date: string; count: number }[] => {
-  const counts: Record<string, number> = {};
-  timestamps.forEach((ts) => {
-    const day = ts.split("T")[0];
-    counts[day] = (counts[day] || 0) + 1;
-  });
-  return Object.entries(counts)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .slice(-30)
-    .map(([date, count]) => ({ date: date.slice(5), count }));
+const formatDate = (iso: string) => {
+  try {
+    return new Date(iso).toLocaleDateString("pt-BR", {
+      day: "2-digit", month: "2-digit", year: "2-digit",
+      hour: "2-digit", minute: "2-digit",
+    });
+  } catch { return iso; }
 };
 
 const exportCSV = (leads: Lead[]) => {
   if (!leads.length) return;
   const headers = ["Nome", "E-mail", "WhatsApp", "Data"];
-  const rows = leads.map((l) => [l.name, l.email, l.whatsapp, l.data].map((v) => `"${(v ?? "").replace(/"/g, '""')}"`).join(";"));
+  const rows = leads.map((l) =>
+    [l.name, l.email, l.whatsapp, l.data]
+      .map((v) => `"${(v ?? "").replace(/"/g, '""')}"`)
+      .join(";")
+  );
   const csv = [headers.join(";"), ...rows].join("\n");
   const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
@@ -107,21 +103,7 @@ const exportCSV = (leads: Lead[]) => {
   URL.revokeObjectURL(url);
 };
 
-const exportXLS = (leads: Lead[]) => {
-  if (!leads.length) return;
-  const table = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="UTF-8"/></head><body><table><tr><th>Nome</th><th>E-mail</th><th>WhatsApp</th><th>Data</th></tr>${leads.map((l) => `<tr><td>${l.name}</td><td>${l.email}</td><td>${l.whatsapp}</td><td>${l.data}</td></tr>`).join("")}</table></body></html>`;
-  const blob = new Blob([table], { type: "application/vnd.ms-excel;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `leads_${new Date().toISOString().split("T")[0]}.xls`;
-  a.click();
-  URL.revokeObjectURL(url);
-};
-
-// ─────────────────────────────────────────────────────────────
 // LOGIN SCREEN
-// ─────────────────────────────────────────────────────────────
 const LoginScreen = ({ onLogin }: { onLogin: () => void }) => {
   const [pw, setPw] = useState("");
   const [error, setError] = useState(false);
@@ -129,88 +111,36 @@ const LoginScreen = ({ onLogin }: { onLogin: () => void }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pw === ADMIN_PASSWORD) {
-      setAuthed();
-      onLogin();
-    } else {
-      setError(true);
-      setPw("");
-      setTimeout(() => setError(false), 2000);
-    }
+    if (pw === ADMIN_PASSWORD) { setAuthed(); onLogin(); }
+    else { setError(true); setPw(""); setTimeout(() => setError(false), 2000); }
   };
 
   return (
     <main className="min-h-screen bg-background flex items-center justify-center px-6">
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          backgroundImage:
-            "radial-gradient(ellipse 60% 40% at 50% 0%, rgba(62,21,23,0.5) 0%, transparent 70%)",
-        }}
-      />
-      <motion.div
-        initial={{ opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.25, 0, 0, 1] }}
-        className="w-full max-w-sm relative z-10"
-      >
-        {/* Logo area */}
+      <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: "radial-gradient(ellipse 60% 40% at 50% 0%, rgba(62,21,23,0.5) 0%, transparent 70%)" }} />
+      <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.25, 0, 0, 1] }} className="w-full max-w-sm relative z-10">
         <div className="text-center mb-10">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-md bg-primary/20 border border-wine/20 mb-5">
             <Lock className="w-5 h-5 text-wine" />
           </div>
-          <h1 className="font-display text-3xl font-semibold text-foreground tracking-tight">
-            Área Restrita
-          </h1>
-          <p className="text-white/60 font-body text-sm mt-2">
-            MANUAL DO EMPREGADOR — Admin
-          </p>
+          <h1 className="font-display text-3xl font-semibold text-foreground tracking-tight">Área Restrita</h1>
+          <p className="text-white/60 font-body text-sm mt-2">MANUAL DO EMPREGADOR — Admin</p>
         </div>
-
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="relative">
-            <input
-              type={show ? "text" : "password"}
-              value={pw}
-              onChange={(e) => setPw(e.target.value)}
-              placeholder="Senha de acesso"
-              autoFocus
-              className={`w-full bg-support border rounded-md px-4 py-3.5 text-foreground font-body text-base focus:outline-none transition-all duration-200 pr-12 ${
-                error
-                  ? "border-red-400/60 shake"
-                  : "border-white/8 focus:border-wine/50"
-              }`}
-              aria-label="Senha de administrador"
-            />
-            <button
-              type="button"
-              onClick={() => setShow(!show)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-foreground transition-colors p-1"
-              aria-label={show ? "Ocultar senha" : "Mostrar senha"}
-            >
+            <input type={show ? "text" : "password"} value={pw} onChange={(e) => setPw(e.target.value)} placeholder="Senha de acesso" autoFocus className={`w-full bg-support border rounded-md px-4 py-3.5 text-foreground font-body text-base focus:outline-none transition-all duration-200 pr-12 ${error ? "border-red-400/60" : "border-white/8 focus:border-wine/50"}`} aria-label="Senha de administrador" />
+            <button type="button" onClick={() => setShow(!show)} className="absolute right-3 top-1/2 -translate-y-1/2 text-text-muted hover:text-foreground transition-colors p-1" aria-label={show ? "Ocultar senha" : "Mostrar senha"}>
               <Eye className="w-4 h-4" />
             </button>
           </div>
-
           <AnimatePresence>
             {error && (
-              <motion.p
-                initial={{ opacity: 0, y: -4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className="text-red-400 text-xs font-body flex items-center gap-1.5"
-                role="alert"
-              >
-                <AlertCircle className="w-3.5 h-3.5" />
-                Senha incorreta.
+              <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="text-red-400 text-xs font-body flex items-center gap-1.5" role="alert">
+                <AlertCircle className="w-3.5 h-3.5" />Senha incorreta.
               </motion.p>
             )}
           </AnimatePresence>
-
-          <button
-            type="submit"
-            className="w-full bg-wine hover:bg-wine-light text-background font-ui font-bold text-sm min-h-[48px] rounded-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-4px_rgba(200,121,124,0.3)]"
-          >
+          <button type="submit" className="w-full bg-wine hover:bg-wine-light text-background font-ui font-bold text-sm min-h-[48px] rounded-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-4px_rgba(200,121,124,0.3)]">
             ENTRAR
           </button>
         </form>
@@ -219,313 +149,204 @@ const LoginScreen = ({ onLogin }: { onLogin: () => void }) => {
   );
 };
 
-// ─────────────────────────────────────────────────────────────
 // KPI CARD
-// ─────────────────────────────────────────────────────────────
 interface KpiCardProps {
-  label: string;
-  value: string | number;
-  icon: React.ElementType;
-  accent?: boolean;
-  sub?: string;
+  label: string; value: string | number; icon: React.ElementType;
+  accent?: "wine" | "gold"; sub?: string; loading?: boolean;
 }
-
-const KpiCard = ({ label, value, icon: Icon, accent, sub }: KpiCardProps) => (
-  <motion.div
-    initial={{ opacity: 0, y: 8 }}
-    animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.35 }}
-    className={`surface-card rounded-xl p-4 sm:p-6 flex flex-col gap-3 ${accent ? "border-wine/15" : ""}`}
-  >
+const KpiCard = ({ label, value, icon: Icon, accent, sub, loading }: KpiCardProps) => (
+  <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }} className={`surface-card rounded-xl p-4 sm:p-6 flex flex-col gap-3 ${accent === "wine" ? "border-wine/15" : accent === "gold" ? "border-gold/15" : ""}`}>
     <div className="flex items-center justify-between">
       <span className="text-text-muted font-body text-xs uppercase tracking-[0.15em]">{label}</span>
-      <div className={`w-8 h-8 rounded-md flex items-center justify-center ${accent ? "bg-wine/10" : "bg-white/4"}`}>
-        <Icon className={`w-4 h-4 ${accent ? "text-wine" : "text-text-muted"}`} strokeWidth={1.5} />
+      <div className={`w-8 h-8 rounded-md flex items-center justify-center ${accent === "wine" ? "bg-wine/10" : accent === "gold" ? "bg-gold/10" : "bg-white/4"}`}>
+        <Icon className={`w-4 h-4 ${accent === "wine" ? "text-wine" : accent === "gold" ? "text-gold" : "text-text-muted"}`} strokeWidth={1.5} />
       </div>
     </div>
-    <span className={`font-body text-3xl sm:text-4xl font-semibold tabular-nums ${accent ? "text-wine" : "text-foreground"}`}>
-      {value}
-    </span>
+    {loading ? (<div className="h-9 w-24 bg-white/5 rounded animate-pulse" />) : (
+      <span className={`font-body text-3xl sm:text-4xl font-semibold tabular-nums ${accent === "wine" ? "text-wine" : accent === "gold" ? "text-gold" : "text-foreground"}`}>{value}</span>
+    )}
     {sub && <span className="text-text-muted font-body text-xs">{sub}</span>}
   </motion.div>
 );
 
-// ─────────────────────────────────────────────────────────────
 // METRICS TAB
-// ─────────────────────────────────────────────────────────────
 const MetricsTab = () => {
-  const [data, setData] = useState<TrackingData | null>(null);
-  const [leads, setLeads] = useState<Lead[]>([]);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const refresh = useCallback(() => {
-    setData(getTrackingData());
-    fetchLeads().then(setLeads);
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    const data = await getDashboardStats();
+    setStats(data);
+    setLoading(false);
   }, []);
 
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
+  useEffect(() => { refresh(); }, [refresh]);
 
-  const chartData = useMemo(
-    () => (data ? aggregateByDay(data.pageviews.timestamps) : []),
-    [data]
-  );
-
-  const abandoned = useMemo(() => {
-    if (!data) return 0;
-    return Math.max(0, data.formStarts - leads.length);
-  }, [data, leads]);
-
-  const customTooltip = ({ active, payload, label }: { active?: boolean; payload?: { value: number }[]; label?: string }) => {
+  const customTooltip = ({ active, payload, label }: { active?: boolean; payload?: { value: number; name: string }[]; label?: string; }) => {
     if (active && payload?.length) {
       return (
-        <div className="bg-support border border-white/8 rounded-md px-3 py-2 text-xs font-body">
+        <div className="bg-support border border-white/8 rounded-md px-3 py-2 text-xs font-body space-y-1">
           <p className="text-text-muted mb-0.5">{label}</p>
-          <p className="text-wine font-semibold">{payload[0].value} visitas</p>
+          {payload.map((p) => (
+            <p key={p.name} className="font-semibold" style={{ color: p.name === "revenue" ? "#c9a84c" : "#C8797C" }}>
+              {p.name === "revenue" ? formatCurrency(p.value) : `${p.value} ${p.name === "leads" ? "leads" : "pedidos"}`}
+            </p>
+          ))}
         </div>
       );
     }
     return null;
   };
 
-  if (!data) return null;
-
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-start sm:items-center justify-between gap-3">
         <div>
-          <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground tracking-tight">
-            Métricas de Performance
-          </h2>
-          <p className="text-text-muted font-body text-sm mt-1">
-            Dados em tempo real — armazenados localmente no navegador.
-          </p>
+          <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground tracking-tight">Métricas de Performance</h2>
+          <p className="text-text-muted font-body text-sm mt-1">{stats ? "Dados do banco em tempo real." : "Conectando ao backend…"}</p>
         </div>
-        <button
-          onClick={refresh}
-          className="flex items-center gap-2 text-text-muted hover:text-foreground font-body text-sm transition-colors border border-white/8 hover:border-white/15 px-3 py-2 rounded-md shrink-0"
-          aria-label="Atualizar métricas"
-        >
-          <RefreshCw className="w-3.5 h-3.5" />
-          Atualizar
+        <button onClick={refresh} className="flex items-center gap-2 text-text-muted hover:text-foreground font-body text-sm transition-colors border border-white/8 hover:border-white/15 px-3 py-2 rounded-md shrink-0">
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />Atualizar
         </button>
       </div>
 
-      {/* KPI Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
-        <KpiCard label="Pageviews" value={data.pageviews.count} icon={Eye} />
-        <KpiCard
-          label="Tempo médio"
-          value={formatDuration(data.avgTimeOnPage)}
-          icon={Clock}
-          sub="por sessão"
-        />
-        <KpiCard label="Leads" value={leads.length} icon={Users} accent />
-        <KpiCard
-          label="Compras"
-          value={data.purchases.count}
-          icon={ShoppingCart}
-          accent
-          sub={data.purchases.count > 0 ? `${Math.round((data.purchases.count / Math.max(leads.length, 1)) * 100)}% conv.` : undefined}
-        />
-        <KpiCard
-          label="Aband. de carrinho"
-          value={abandoned}
-          icon={AlertCircle}
-          sub={data.formStarts > 0 ? `de ${data.formStarts} interações` : undefined}
-        />
+      {!stats && !loading && (
+        <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 px-5 py-4 text-xs text-yellow-200 font-body flex items-start gap-3">
+          <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-yellow-400" />
+          <div>
+            <p className="font-semibold text-yellow-300 mb-1">Backend não acessível</p>
+            <p>Verifique se o servidor Express está rodando e se <code className="bg-white/10 px-1 rounded">VITE_API_URL</code> está configurado no <code className="bg-white/10 px-1 rounded">.env</code>.</p>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+        <KpiCard label="Total Leads" value={stats?.total_leads ?? "—"} icon={Users} accent="wine" loading={loading} />
+        <KpiCard label="Leads (30d)" value={stats?.leads_last_30d ?? "—"} icon={TrendingUp} loading={loading} />
+        <KpiCard label="Pedidos Aprovados" value={stats?.total_orders ?? "—"} icon={ShoppingCart} accent="gold" loading={loading} />
+        <KpiCard label="E-books" value={stats?.ebook_orders ?? "—"} icon={BookOpen} loading={loading} sub="aprovados" />
+        <KpiCard label="Eventos" value={stats?.event_orders ?? "—"} icon={CalendarDays} loading={loading} sub="aprovados" />
+        <KpiCard label="Receita Total" value={stats ? formatCurrency(Number(stats.total_revenue)) : "—"} icon={Wallet} accent="gold" loading={loading} />
       </div>
 
-      {/* Chart */}
-      <div className="surface-card rounded-xl p-4 sm:p-6">
-        <div className="flex items-center gap-2 mb-4 sm:mb-6">
-          <TrendingUp className="w-4 h-4 text-wine" strokeWidth={1.5} />
-          <h3 className="font-display text-lg font-semibold text-foreground">
-            Pageviews nos últimos 30 dias
-          </h3>
+      <div className="grid lg:grid-cols-2 gap-6">
+        <div className="surface-card rounded-xl p-4 sm:p-6">
+          <div className="flex items-center gap-2 mb-4 sm:mb-6">
+            <Users className="w-4 h-4 text-wine" strokeWidth={1.5} />
+            <h3 className="font-display text-base font-semibold text-foreground">Leads — últimos 30 dias</h3>
+          </div>
+          {!stats?.leads_by_day?.length ? (
+            <div className="h-40 flex flex-col items-center justify-center text-text-muted font-body text-xs gap-2">
+              <BarChart2 className="w-7 h-7 opacity-30" strokeWidth={1} /><p>Nenhum dado ainda.</p>
+            </div>
+          ) : (
+            <div className="h-40">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={stats.leads_by_day} margin={{ top: 4, right: 4, bottom: 0, left: -24 }}>
+                  <defs>
+                    <linearGradient id="wineGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#C8797C" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#C8797C" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                  <XAxis dataKey="date" stroke="#6b5f62" tick={{ fontSize: 10, fill: "#a79797" }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                  <YAxis stroke="#6b5f62" tick={{ fontSize: 10, fill: "#a79797" }} tickLine={false} axisLine={false} allowDecimals={false} />
+                  <Tooltip content={(p) => customTooltip({ ...p, payload: p.payload?.map((x) => ({ value: x.value as number, name: "leads" })) })} cursor={{ stroke: "rgba(200,121,124,0.2)", strokeWidth: 1 }} />
+                  <Area type="monotone" dataKey="count" stroke="#C8797C" strokeWidth={2} fill="url(#wineGrad)" dot={false} activeDot={{ r: 4, fill: "#C8797C", stroke: "#000", strokeWidth: 2 }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
 
-        {chartData.length === 0 ? (
-          <div className="h-48 flex flex-col items-center justify-center text-text-muted font-body text-sm gap-2">
-            <BarChart2 className="w-8 h-8 opacity-30" strokeWidth={1} />
-            <p>Nenhum dado de tráfego ainda.</p>
-            <p className="text-xs opacity-60">
-              Os dados aparecem após visitas à landing page.
-            </p>
+        <div className="surface-card rounded-xl p-4 sm:p-6">
+          <div className="flex items-center gap-2 mb-4 sm:mb-6">
+            <Wallet className="w-4 h-4 text-gold" strokeWidth={1.5} />
+            <h3 className="font-display text-base font-semibold text-foreground">Receita — últimos 30 dias</h3>
           </div>
-        ) : (
-          <div className="h-40 sm:h-52">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: -24 }}>
-              <defs>
-                <linearGradient id="wineGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#C8797C" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="#C8797C" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-              <XAxis
-                dataKey="date"
-                stroke="#6b5f62"
-                tick={{ fontSize: 10, fill: "#a79797", fontFamily: "IBM Plex Sans" }}
-                tickLine={false}
-                axisLine={false}
-                interval="preserveStartEnd"
-              />
-              <YAxis
-                stroke="#6b5f62"
-                tick={{ fontSize: 11, fill: "#a79797", fontFamily: "IBM Plex Sans" }}
-                tickLine={false}
-                axisLine={false}
-                allowDecimals={false}
-              />
-              <Tooltip content={customTooltip} cursor={{ stroke: "rgba(200,121,124,0.2)", strokeWidth: 1 }} />
-              <Area
-                type="monotone"
-                dataKey="count"
-                stroke="#C8797C"
-                strokeWidth={2}
-                fill="url(#wineGrad)"
-                dot={false}
-                activeDot={{ r: 4, fill: "#C8797C", stroke: "#000", strokeWidth: 2 }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-          </div>
-        )}
-      </div>
-
-      {/* Reset */}
-      <div className="border-t border-white/5 pt-6">
-        <button
-          onClick={() => {
-            if (window.confirm("Zerar todos os dados de rastreamento? Esta ação não pode ser desfeita.")) {
-              resetTracking();
-              refresh();
-            }
-          }}
-          className="text-red-400/70 hover:text-red-400 font-body text-xs transition-colors flex items-center gap-1.5"
-        >
-          <X className="w-3 h-3" />
-          Zerar dados de rastreamento
-        </button>
+          {!stats?.orders_by_day?.length ? (
+            <div className="h-40 flex flex-col items-center justify-center text-text-muted font-body text-xs gap-2">
+              <BarChart2 className="w-7 h-7 opacity-30" strokeWidth={1} /><p>Nenhum pedido aprovado ainda.</p>
+            </div>
+          ) : (
+            <div className="h-40">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={stats.orders_by_day} margin={{ top: 4, right: 4, bottom: 0, left: -8 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                  <XAxis dataKey="date" stroke="#6b5f62" tick={{ fontSize: 10, fill: "#a79797" }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                  <YAxis stroke="#6b5f62" tick={{ fontSize: 10, fill: "#a79797" }} tickLine={false} axisLine={false} />
+                  <Tooltip content={(p) => customTooltip({ ...p, payload: p.payload?.map((x) => ({ value: x.value as number, name: "revenue" })) })} cursor={{ fill: "rgba(201,168,76,0.06)" }} />
+                  <Bar dataKey="revenue" fill="#c9a84c" fillOpacity={0.7} radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
 };
 
-// ─────────────────────────────────────────────────────────────
 // LEADS TAB
-// ─────────────────────────────────────────────────────────────
 const LeadsTab = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [loading, setLoading] = useState(true);
   const PER_PAGE = 15;
 
-  useEffect(() => {
-    fetchLeads().then(setLeads);
-  }, []);
+  useEffect(() => { getLeads().then((data) => { setLeads(data); setLoading(false); }); }, []);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
-    return leads.filter(
-      (l) => l.name?.toLowerCase().includes(q) || l.email?.toLowerCase().includes(q)
-    );
+    return leads.filter((l) => l.name?.toLowerCase().includes(q) || l.email?.toLowerCase().includes(q));
   }, [leads, search]);
 
   const pages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
   const paginated = filtered.slice((page - 1) * PER_PAGE, page * PER_PAGE);
 
-  const formatDate = (iso: string) => {
-    try {
-      return new Date(iso).toLocaleDateString("pt-BR", {
-        day: "2-digit",
-        month: "2-digit",
-        year: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } catch {
-      return iso;
-    }
-  };
-
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground tracking-tight">
-          Gestão de Leads
-        </h2>
-        <p className="text-text-muted font-body text-sm mt-1">
-          {leads.length} lead{leads.length !== 1 ? "s" : ""} cadastrado{leads.length !== 1 ? "s" : ""}
-        </p>
+        <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground tracking-tight">Gestão de Leads</h2>
+        <p className="text-text-muted font-body text-sm mt-1">{loading ? "Carregando…" : `${leads.length} lead${leads.length !== 1 ? "s" : ""} cadastrado${leads.length !== 1 ? "s" : ""}`}</p>
       </div>
-
-      {/* Toolbar */}
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div className="relative w-full sm:w-80">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-            placeholder="Buscar por nome ou e-mail…"
-            className="w-full bg-support border border-white/8 rounded-md pl-9 pr-4 py-2.5 text-foreground font-body text-sm focus:outline-none focus:border-wine/40 transition-colors"
-          />
+          <input type="search" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Buscar por nome ou e-mail…" className="w-full bg-support border border-white/8 rounded-md pl-9 pr-4 py-2.5 text-foreground font-body text-sm focus:outline-none focus:border-wine/40 transition-colors" />
         </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <button
-            onClick={() => exportCSV(filtered)}
-            disabled={filtered.length === 0}
-            className="flex items-center gap-2 border border-white/8 hover:border-wine/30 text-text-muted hover:text-foreground px-4 py-2.5 rounded-md font-body text-sm transition-all duration-200 disabled:opacity-30 disabled:pointer-events-none"
-          >
-            <Download className="w-3.5 h-3.5" />
-            CSV
-          </button>
-          <button
-            onClick={() => exportXLS(filtered)}
-            disabled={filtered.length === 0}
-            className="flex items-center gap-2 border border-white/8 hover:border-wine/30 text-text-muted hover:text-foreground px-4 py-2.5 rounded-md font-body text-sm transition-all duration-200 disabled:opacity-30 disabled:pointer-events-none"
-          >
-            <Download className="w-3.5 h-3.5" />
-            XLS
-          </button>
-        </div>
+        <button onClick={() => exportCSV(filtered)} disabled={filtered.length === 0} className="flex items-center gap-2 border border-white/8 hover:border-wine/30 text-text-muted hover:text-foreground px-4 py-2.5 rounded-md font-body text-sm transition-all duration-200 disabled:opacity-30 disabled:pointer-events-none">
+          <Download className="w-3.5 h-3.5" />Exportar CSV
+        </button>
       </div>
-
-      {/* Table */}
       <div className="surface-card rounded-xl overflow-hidden">
-        {paginated.length === 0 ? (
+        {loading ? (
+          <div className="py-16 flex flex-col items-center justify-center gap-3">
+            <Loader2 className="w-6 h-6 text-wine animate-spin" /><p className="text-text-muted font-body text-sm">Carregando leads…</p>
+          </div>
+        ) : paginated.length === 0 ? (
           <div className="py-20 flex flex-col items-center justify-center text-text-muted font-body text-sm gap-2">
-            <Users className="w-8 h-8 opacity-30" strokeWidth={1} />
-            <p>{search ? "Nenhum resultado para a busca." : "Nenhum lead cadastrado ainda."}</p>
+            <Users className="w-8 h-8 opacity-30" strokeWidth={1} /><p>{search ? "Nenhum resultado." : "Nenhum lead ainda."}</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm font-body">
-              <thead>
-                <tr className="border-b border-white/5">
-                  <th className="text-left px-3 sm:px-5 py-3 sm:py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold w-[40%] sm:w-auto">Nome</th>
-                  <th className="text-left px-3 sm:px-5 py-3 sm:py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold w-[60%] sm:w-auto">E-mail</th>
-                  <th className="text-left px-3 sm:px-5 py-3 sm:py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold hidden md:table-cell">WhatsApp</th>
-                  <th className="text-left px-3 sm:px-5 py-3 sm:py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold hidden sm:table-cell">Data</th>
-                </tr>
-              </thead>
+              <thead><tr className="border-b border-white/5">
+                <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold">Nome</th>
+                <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold">E-mail</th>
+                <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold hidden md:table-cell">WhatsApp</th>
+                <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold hidden sm:table-cell">Data</th>
+              </tr></thead>
               <tbody>
                 {paginated.map((lead, i) => (
-                  <tr
-                    key={i}
-                    className="border-b border-white/4 hover:bg-white/2 transition-colors last:border-0"
-                  >
-                    <td className="px-3 sm:px-5 py-3 sm:py-3.5 text-white max-w-[130px]">
-                      <span className="block truncate">{lead.name || "—"}</span>
-                    </td>
-                    <td className="px-3 sm:px-5 py-3 sm:py-3.5 text-white/85 max-w-[160px]">
-                      <span className="block truncate">{lead.email || "—"}</span>
-                    </td>
-                    <td className="px-3 sm:px-5 py-3 sm:py-3.5 text-white/85 hidden md:table-cell">{lead.whatsapp || "—"}</td>
-                    <td className="px-3 sm:px-5 py-3 sm:py-3.5 text-white/60 hidden sm:table-cell whitespace-nowrap">{formatDate(lead.data)}</td>
+                  <tr key={i} className="border-b border-white/4 hover:bg-white/2 transition-colors last:border-0">
+                    <td className="px-5 py-3.5 text-white max-w-[140px]"><span className="block truncate">{lead.name || "—"}</span></td>
+                    <td className="px-5 py-3.5 text-white/85 max-w-[180px]"><span className="block truncate">{lead.email || "—"}</span></td>
+                    <td className="px-5 py-3.5 text-white/85 hidden md:table-cell">{lead.whatsapp || "—"}</td>
+                    <td className="px-5 py-3.5 text-white/60 hidden sm:table-cell whitespace-nowrap">{formatDate(lead.data)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -533,46 +354,15 @@ const LeadsTab = () => {
           </div>
         )}
       </div>
-
-      {/* Pagination */}
       {pages > 1 && (
-        <div className="flex items-center justify-between text-text-muted font-body text-xs sm:text-sm">
-          <span>
-            {filtered.length} resultado{filtered.length !== 1 ? "s" : ""}
-          </span>
+        <div className="flex items-center justify-between text-text-muted font-body text-sm">
+          <span>{filtered.length} resultado{filtered.length !== 1 ? "s" : ""}</span>
           <div className="flex items-center gap-1">
-            <button
-              onClick={() => setPage(Math.max(1, page - 1))}
-              disabled={page === 1}
-              className="w-8 h-8 rounded-md text-sm font-semibold transition-colors disabled:opacity-25 hover:bg-white/5 text-text-muted hover:text-foreground flex items-center justify-center"
-              aria-label="Página anterior"
-            >
-              ‹
-            </button>
-            <div className="hidden sm:flex items-center gap-1">
-              {Array.from({ length: pages }, (_, i) => i + 1).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPage(p)}
-                  className={`w-8 h-8 rounded-md text-xs font-semibold transition-colors ${
-                    p === page
-                      ? "bg-wine/15 text-wine border border-wine/20"
-                      : "hover:bg-white/5 text-text-muted hover:text-foreground"
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
-            <span className="sm:hidden px-2 text-xs text-text-muted">{page}/{pages}</span>
-            <button
-              onClick={() => setPage(Math.min(pages, page + 1))}
-              disabled={page === pages}
-              className="w-8 h-8 rounded-md text-sm font-semibold transition-colors disabled:opacity-25 hover:bg-white/5 text-text-muted hover:text-foreground flex items-center justify-center"
-              aria-label="Próxima página"
-            >
-              ›
-            </button>
+            <button onClick={() => setPage(Math.max(1, page - 1))} disabled={page === 1} className="w-8 h-8 rounded-md transition-colors disabled:opacity-25 hover:bg-white/5 text-text-muted hover:text-foreground flex items-center justify-center">‹</button>
+            {Array.from({ length: Math.min(pages, 7) }, (_, i) => i + 1).map((p) => (
+              <button key={p} onClick={() => setPage(p)} className={`w-8 h-8 rounded-md text-xs font-semibold transition-colors ${p === page ? "bg-wine/15 text-wine border border-wine/20" : "hover:bg-white/5 text-text-muted hover:text-foreground"}`}>{p}</button>
+            ))}
+            <button onClick={() => setPage(Math.min(pages, page + 1))} disabled={page === pages} className="w-8 h-8 rounded-md transition-colors disabled:opacity-25 hover:bg-white/5 text-text-muted hover:text-foreground flex items-center justify-center">›</button>
           </div>
         </div>
       )}
@@ -580,17 +370,125 @@ const LeadsTab = () => {
   );
 };
 
-// ─────────────────────────────────────────────────────────────
+// PEDIDOS TAB
+const STATUS_LABELS: Record<Order["status"], { label: string; color: string }> = {
+  approved: { label: "Aprovado", color: "text-green-400 bg-green-500/10 border-green-500/25" },
+  pending: { label: "Pendente", color: "text-yellow-400 bg-yellow-500/10 border-yellow-500/25" },
+  in_process: { label: "Em análise", color: "text-blue-400 bg-blue-500/10 border-blue-500/25" },
+  rejected: { label: "Rejeitado", color: "text-red-400 bg-red-500/10 border-red-500/25" },
+  refunded: { label: "Estornado", color: "text-orange-400 bg-orange-500/10 border-orange-500/25" },
+};
+
+const PedidosTab = () => {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<"all" | Order["status"]>("all");
+  const [loading, setLoading] = useState(true);
+
+  const refresh = useCallback(() => {
+    setLoading(true);
+    getOrders().then((data) => { setOrders(data); setLoading(false); });
+  }, []);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  const filtered = useMemo(() => {
+    let list = orders;
+    if (filter !== "all") list = list.filter((o) => o.status === filter);
+    if (search) {
+      const q = search.toLowerCase();
+      list = list.filter((o) => o.payer_email?.toLowerCase().includes(q) || o.payer_name?.toLowerCase().includes(q) || o.mp_payment_id?.includes(q));
+    }
+    return list;
+  }, [orders, search, filter]);
+
+  const totalApproved = orders.filter((o) => o.status === "approved").reduce((s, o) => s + Number(o.amount), 0);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground tracking-tight">Pedidos & Pagamentos</h2>
+          <p className="text-text-muted font-body text-sm mt-1">
+            {loading ? "Carregando…" : `${orders.length} pedido${orders.length !== 1 ? "s" : ""} · Aprovado: `}
+            {!loading && <span className="text-gold font-semibold">{formatCurrency(totalApproved)}</span>}
+          </p>
+        </div>
+        <button onClick={refresh} className="flex items-center gap-2 text-text-muted hover:text-foreground font-body text-sm transition-colors border border-white/8 hover:border-white/15 px-3 py-2 rounded-md shrink-0">
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />Atualizar
+        </button>
+      </div>
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1 sm:max-w-72">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
+          <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por e-mail, nome ou ID…" className="w-full bg-support border border-white/8 rounded-md pl-9 pr-4 py-2.5 text-foreground font-body text-sm focus:outline-none focus:border-gold/40 transition-colors" />
+        </div>
+        <div className="flex items-center gap-1 flex-wrap">
+          {(["all", "approved", "pending", "rejected"] as const).map((s) => (
+            <button key={s} onClick={() => setFilter(s)} className={`px-3 py-1.5 rounded-md font-body text-xs transition-colors ${filter === s ? "bg-gold/15 text-gold border border-gold/25" : "text-text-muted hover:text-foreground border border-white/8 hover:border-white/15"}`}>
+              {s === "all" ? "Todos" : STATUS_LABELS[s as Order["status"]]?.label ?? s}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="surface-card rounded-xl overflow-hidden">
+        {loading ? (
+          <div className="py-16 flex flex-col items-center justify-center gap-3">
+            <Loader2 className="w-6 h-6 text-gold animate-spin" /><p className="text-text-muted font-body text-sm">Carregando pedidos…</p>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="py-20 flex flex-col items-center justify-center text-text-muted font-body text-sm gap-2">
+            <Package className="w-8 h-8 opacity-30" strokeWidth={1} /><p>Nenhum pedido encontrado.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm font-body">
+              <thead><tr className="border-b border-white/5">
+                <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold">Produto</th>
+                <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold hidden md:table-cell">Comprador</th>
+                <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold">Valor</th>
+                <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold">Status</th>
+                <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold hidden sm:table-cell">Data</th>
+              </tr></thead>
+              <tbody>
+                {filtered.map((order) => {
+                  const statusInfo = STATUS_LABELS[order.status] ?? { label: order.status, color: "text-white/50" };
+                  return (
+                    <tr key={order.id} className="border-b border-white/4 hover:bg-white/2 transition-colors last:border-0">
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-2.5">
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${order.product === "event" ? "bg-gold/10 border border-gold/15" : "bg-wine/10 border border-wine/15"}`}>
+                            {order.product === "event" ? <CalendarDays className="w-3.5 h-3.5 text-gold" /> : <BookOpen className="w-3.5 h-3.5 text-wine" />}
+                          </div>
+                          <span className="text-white text-xs">{order.product === "event" ? "Evento" : "E-book"}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5 hidden md:table-cell">
+                        <p className="text-white/85 truncate max-w-[160px]">{order.payer_name || "—"}</p>
+                        <p className="text-white/45 text-xs truncate max-w-[160px]">{order.payer_email || "—"}</p>
+                      </td>
+                      <td className="px-5 py-3.5 font-semibold text-gold whitespace-nowrap">{formatCurrency(Number(order.amount))}</td>
+                      <td className="px-5 py-3.5"><span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[0.65rem] font-semibold ${statusInfo.color}`}>{statusInfo.label}</span></td>
+                      <td className="px-5 py-3.5 text-white/60 hidden sm:table-cell whitespace-nowrap">{formatDate(order.created_at)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
 // CONTENT TAB
-// ─────────────────────────────────────────────────────────────
 const ContentTab = () => {
   const [form, setForm] = useState<ContentData>(() => getContent());
   const [saved, setSaved] = useState(false);
   const saveTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  const update = (field: keyof ContentData, value: string) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
-  };
+  const update = (field: keyof ContentData, value: string) => setForm((prev) => ({ ...prev, [field]: value }));
 
   const handleSave = () => {
     saveContent(form);
@@ -600,47 +498,16 @@ const ContentTab = () => {
   };
 
   const handleReset = () => {
-    if (window.confirm("Restaurar todos os textos para o padrão original?")) {
-      resetContent();
-      setForm({ ...CONTENT_DEFAULTS });
-    }
+    if (window.confirm("Restaurar todos os textos para o padrão original?")) { resetContent(); setForm({ ...CONTENT_DEFAULTS }); }
   };
 
-  const Field = ({
-    label,
-    field,
-    multiline,
-    placeholder,
-    type = "text",
-    hint,
-  }: {
-    label: string;
-    field: keyof ContentData;
-    multiline?: boolean;
-    placeholder?: string;
-    type?: string;
-    hint?: string;
-  }) => (
+  const Field = ({ label, field, multiline, placeholder, type = "text", hint }: { label: string; field: keyof ContentData; multiline?: boolean; placeholder?: string; type?: string; hint?: string; }) => (
     <div className="space-y-1.5">
-      <label className="block text-white font-body text-sm font-medium">
-        {label}
-      </label>
+      <label className="block text-white font-body text-sm font-medium">{label}</label>
       {multiline ? (
-        <textarea
-          value={form[field]}
-          onChange={(e) => update(field, e.target.value)}
-          rows={3}
-          className="w-full bg-background border border-white/8 focus:border-wine/40 rounded-md px-4 py-3 text-foreground font-body text-sm focus:outline-none transition-colors resize-none"
-          placeholder={placeholder}
-        />
+        <textarea value={form[field]} onChange={(e) => update(field, e.target.value)} rows={3} className="w-full bg-background border border-white/8 focus:border-wine/40 rounded-md px-4 py-3 text-foreground font-body text-sm focus:outline-none transition-colors resize-none" placeholder={placeholder} />
       ) : (
-        <input
-          type={type}
-          value={form[field]}
-          onChange={(e) => update(field, e.target.value)}
-          className="w-full bg-background border border-white/8 focus:border-wine/40 rounded-md px-4 py-2.5 text-foreground font-body text-sm focus:outline-none transition-colors"
-          placeholder={placeholder}
-        />
+        <input type={type} value={form[field]} onChange={(e) => update(field, e.target.value)} className="w-full bg-background border border-white/8 focus:border-wine/40 rounded-md px-4 py-2.5 text-foreground font-body text-sm focus:outline-none transition-colors" placeholder={placeholder} />
       )}
       {hint && <p className="text-text-muted font-body text-xs">{hint}</p>}
     </div>
@@ -650,170 +517,69 @@ const ContentTab = () => {
     <div className="space-y-8">
       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
         <div>
-          <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground tracking-tight">
-            Edição de Conteúdo
-          </h2>
-          <p className="text-text-muted font-body text-sm mt-1">
-            Alterações são salvas no navegador e refletidas na landing page.
-          </p>
+          <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground tracking-tight">Edição de Conteúdo</h2>
+          <p className="text-text-muted font-body text-sm mt-1">Alterações salvas no navegador e refletidas na landing page.</p>
         </div>
         <div className="flex items-center gap-2 self-start sm:shrink-0">
-          <button
-            onClick={handleReset}
-            className="border border-white/8 hover:border-white/15 text-text-muted hover:text-foreground px-4 py-2 rounded-md font-body text-sm transition-all duration-200"
-          >
-            Restaurar padrão
-          </button>
-          <button
-            onClick={handleSave}
-            className={`flex items-center gap-2 px-5 py-2 rounded-md font-ui text-xs transition-all duration-200 ${
-              saved
-                ? "bg-green-600/20 border border-green-500/30 text-green-400"
-                : "bg-wine hover:bg-wine-light text-background hover:-translate-y-0.5"
-            }`}
-          >
-            {saved ? <Check className="w-3.5 h-3.5" /> : null}
-            {saved ? "SALVO!" : "SALVAR"}
+          <button onClick={handleReset} className="border border-white/8 hover:border-white/15 text-text-muted hover:text-foreground px-4 py-2 rounded-md font-body text-sm transition-all duration-200">Restaurar padrão</button>
+          <button onClick={handleSave} className={`flex items-center gap-2 px-5 py-2 rounded-md font-ui text-xs transition-all duration-200 ${saved ? "bg-green-600/20 border border-green-500/30 text-green-400" : "bg-wine hover:bg-wine-light text-background hover:-translate-y-0.5"}`}>
+            {saved ? <Check className="w-3.5 h-3.5" /> : null}{saved ? "SALVO!" : "SALVAR"}
           </button>
         </div>
       </div>
-
       <div className="grid lg:grid-cols-[1fr_300px] gap-8 items-start">
-        {/* Form */}
         <div className="space-y-8">
-          {/* Section: Textos */}
           <div className="surface-card rounded-xl p-4 sm:p-6 space-y-5">
-            <div className="flex items-center gap-2 pb-4 border-b border-white/5">
-              <Edit3 className="w-4 h-4 text-wine" strokeWidth={1.5} />
-              <h3 className="font-display text-lg font-semibold text-foreground">Textos Principais</h3>
-            </div>
+            <div className="flex items-center gap-2 pb-4 border-b border-white/5"><Edit3 className="w-4 h-4 text-wine" strokeWidth={1.5} /><h3 className="font-display text-lg font-semibold text-foreground">Textos Principais</h3></div>
             <Field label="Badge do Hero" field="heroBadge" placeholder="Ex: Guia Prático para Empresários" />
             <Field label="Headline principal" field="heroHeadline" placeholder="Ex: Manual do Empregador" />
             <Field label="Subtítulo" field="heroSubheadline" multiline placeholder="Descrição breve do material…" />
             <Field label="Texto do corpo" field="heroBody" multiline placeholder="Texto explicativo mais longo…" />
-            <Field label="Texto do botão CTA principal" field="heroCta" placeholder="Ex: QUERO ADQUIRIR O E-BOOK" />
+            <Field label="Texto do botão CTA" field="heroCta" placeholder="Ex: QUERO ADQUIRIR O E-BOOK" />
           </div>
-
-          {/* Section: Links */}
           <div className="surface-card rounded-xl p-4 sm:p-6 space-y-5">
-            <div className="flex items-center gap-2 pb-4 border-b border-white/5">
-              <LinkIcon className="w-4 h-4 text-wine" strokeWidth={1.5} />
-              <h3 className="font-display text-lg font-semibold text-foreground">Links & Integração</h3>
-            </div>
-            <Field
-              label="URL do checkout (Hotmart, Stripe…)"
-              field="checkoutUrl"
-              type="url"
-              placeholder="https://pay.hotmart.com/…"
-              hint="O lead é capturado e então redirecionado para esta URL."
-            />
-            <Field
-              label="Link de download do eBook"
-              field="ebookDownloadUrl"
-              type="url"
-              placeholder="https://…"
-              hint="Enviado ao comprador na página de obrigado."
-            />
-            <Field
-              label="Número WhatsApp (com DDI)"
-              field="whatsappNumber"
-              placeholder="5581986758036"
-              hint="Apenas números, sem formatação."
-            />
-            <Field
-              label="Mensagem padrão WhatsApp"
-              field="whatsappMsg"
-              placeholder="Olá! Tenho interesse no Manual do Empregador."
-            />
+            <div className="flex items-center gap-2 pb-4 border-b border-white/5"><LinkIcon className="w-4 h-4 text-wine" strokeWidth={1.5} /><h3 className="font-display text-lg font-semibold text-foreground">Links & Integração</h3></div>
+            <Field label="URL de checkout fallback" field="checkoutUrl" type="url" placeholder="https://…" hint="Usado apenas se o Mercado Pago não responder." />
+            <Field label="Link de download do eBook" field="ebookDownloadUrl" type="url" placeholder="https://…" />
+            <Field label="Número WhatsApp (com DDI)" field="whatsappNumber" placeholder="5581986758036" hint="Apenas números, sem formatação." />
+            <Field label="Mensagem padrão WhatsApp" field="whatsappMsg" placeholder="Olá! Tenho interesse no Manual do Empregador." />
           </div>
-
-          {/* Section: Preços */}
           <div className="surface-card rounded-xl p-4 sm:p-6 space-y-5">
-            <div className="flex items-center gap-2 pb-4 border-b border-white/5">
-              <DollarSign className="w-4 h-4 text-wine" strokeWidth={1.5} />
-              <h3 className="font-display text-lg font-semibold text-foreground">Preços</h3>
-            </div>
+            <div className="flex items-center gap-2 pb-4 border-b border-white/5"><DollarSign className="w-4 h-4 text-wine" strokeWidth={1.5} /><h3 className="font-display text-lg font-semibold text-foreground">Preços — E-book</h3></div>
             <div className="grid sm:grid-cols-2 gap-5">
-              <Field label="Preço atual (R$)" field="price" placeholder="49" />
+              <Field label="Preço atual (R$)" field="price" placeholder="47" />
               <Field label="Preço original / De (R$)" field="priceOriginal" placeholder="97" />
             </div>
           </div>
-
-          {/* Section: Imagens */}
+          <div className="surface-card rounded-xl p-4 sm:p-6 space-y-5" style={{ borderColor: "rgba(201,168,76,0.18)" }}>
+            <div className="flex items-center gap-2 pb-4 border-b border-white/5"><CreditCard className="w-4 h-4 text-gold" strokeWidth={1.5} /><h3 className="font-display text-lg font-semibold text-foreground">Evento — Segurança Jurídica 360</h3></div>
+            <Field label="Preço da inscrição (R$)" field="eventPrice" placeholder="67" />
+            <Field label="URL de checkout do evento" field="eventCheckoutUrl" type="url" placeholder="https://…" hint="O carrinho redireciona aqui ao comprar a inscrição." />
+          </div>
           <div className="surface-card rounded-xl p-4 sm:p-6 space-y-5">
-            <div className="flex items-center gap-2 pb-4 border-b border-white/5">
-              <ImageIcon className="w-4 h-4 text-wine" strokeWidth={1.5} />
-              <h3 className="font-display text-lg font-semibold text-foreground">Imagens</h3>
-            </div>
-            <Field
-              label="URL da capa do eBook"
-              field="ebookCoverUrl"
-              type="url"
-              placeholder="https://… (deixe vazio para usar a imagem padrão)"
-              hint="Use uma URL pública de imagem (PNG, JPG, WebP)."
-            />
-            {form.ebookCoverUrl && (
-              <div className="mt-3">
-                <img
-                  src={form.ebookCoverUrl}
-                  alt="Prévia da capa"
-                  className="h-32 w-auto rounded-md object-contain border border-white/8"
-                  onError={(e) => (e.currentTarget.style.display = "none")}
-                />
-              </div>
-            )}
+            <div className="flex items-center gap-2 pb-4 border-b border-white/5"><ImageIcon className="w-4 h-4 text-wine" strokeWidth={1.5} /><h3 className="font-display text-lg font-semibold text-foreground">Imagens</h3></div>
+            <Field label="URL da capa do eBook" field="ebookCoverUrl" type="url" placeholder="https://… (deixe vazio para usar a imagem padrão)" hint="URL pública de imagem (PNG, JPG, WebP)." />
+            {form.ebookCoverUrl && (<img src={form.ebookCoverUrl} alt="Prévia da capa" className="h-32 w-auto rounded-md object-contain border border-white/8" onError={(e) => (e.currentTarget.style.display = "none")} />)}
           </div>
         </div>
-
-        {/* Live Preview Card */}
         <div className="sm:sticky sm:top-24">
-          <p className="text-text-muted font-body text-xs uppercase tracking-[0.15em] mb-3">
-            Prévia em tempo real
-          </p>
-          <div
-            className="rounded-xl overflow-hidden border border-white/8"
-            style={{
-              background: "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(62,21,23,0.7) 0%, transparent 70%), #000",
-            }}
-          >
+          <p className="text-text-muted font-body text-xs uppercase tracking-[0.15em] mb-3">Prévia em tempo real</p>
+          <div className="rounded-xl overflow-hidden border border-white/8" style={{ background: "radial-gradient(ellipse 80% 50% at 50% -10%, rgba(62,21,23,0.7) 0%, transparent 70%), #000" }}>
             <div className="p-5 space-y-3">
-              <span className="inline-flex items-center border border-wine/25 text-wine font-ui text-[9px] tracking-[0.15em] px-3 py-1 rounded-full">
-                {form.heroBadge || CONTENT_DEFAULTS.heroBadge}
-              </span>
-              <h3 className="font-display text-xl font-semibold text-foreground leading-tight">
-                Manual do{" "}
-                <span className="text-wine italic">
-                  {form.heroHeadline?.replace("Manual do", "").trim() || "Empregador"}
-                </span>
-              </h3>
-              <p className="text-white/80 font-body text-xs leading-relaxed line-clamp-3">
-                {form.heroSubheadline || CONTENT_DEFAULTS.heroSubheadline}
-              </p>
+              <span className="inline-flex items-center border border-wine/25 text-wine font-ui text-[9px] tracking-[0.15em] px-3 py-1 rounded-full">{form.heroBadge || CONTENT_DEFAULTS.heroBadge}</span>
+              <h3 className="font-display text-xl font-semibold text-foreground leading-tight">Manual do{" "}<span className="text-wine italic">{form.heroHeadline?.replace("Manual do", "").trim() || "Empregador"}</span></h3>
+              <p className="text-white/80 font-body text-xs leading-relaxed line-clamp-3">{form.heroSubheadline || CONTENT_DEFAULTS.heroSubheadline}</p>
               <div className="flex flex-col gap-1.5 pt-1">
-                <div className="bg-wine text-background font-ui text-[9px] px-3 py-2 rounded text-center tracking-widest">
-                  {form.heroCta || CONTENT_DEFAULTS.heroCta}
-                </div>
+                <div className="bg-wine text-background font-ui text-[9px] px-3 py-2 rounded text-center tracking-widest">{form.heroCta || CONTENT_DEFAULTS.heroCta}</div>
                 <div className="text-center">
-                  <span className="text-wine font-display text-xl font-bold">
-                    R$ <span className="text-3xl">{form.price || "49"}</span>
-                  </span>
-                  {form.priceOriginal && (
-                    <span className="text-text-muted line-through font-body text-xs ml-2">
-                      R$ {form.priceOriginal}
-                    </span>
-                  )}
+                  <span className="text-wine font-display text-xl font-bold">R$ <span className="text-3xl">{form.price || "47"}</span></span>
+                  {form.priceOriginal && (<span className="text-text-muted line-through font-body text-xs ml-2">R$ {form.priceOriginal}</span>)}
                 </div>
               </div>
             </div>
           </div>
-          <a
-            href="/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3 w-full flex items-center justify-center gap-2 border border-white/8 hover:border-wine/30 text-text-muted hover:text-foreground font-body text-xs py-2.5 rounded-md transition-all duration-200"
-          >
-            <Eye className="w-3.5 h-3.5" />
-            Abrir landing page
+          <a href="/" target="_blank" rel="noopener noreferrer" className="mt-3 w-full flex items-center justify-center gap-2 border border-white/8 hover:border-wine/30 text-text-muted hover:text-foreground font-body text-xs py-2.5 rounded-md transition-all duration-200">
+            <Eye className="w-3.5 h-3.5" />Abrir landing page
           </a>
         </div>
       </div>
@@ -821,377 +587,419 @@ const ContentTab = () => {
   );
 };
 
-// ─────────────────────────────────────────────────────────────
 // CONFIGURAÇÕES TAB
-// ─────────────────────────────────────────────────────────────
-type SupabaseStatus = "idle" | "testing" | "ok" | "error";
-
 const ConfiguracoesTab = () => {
-  const [supabaseUrl, setSupabaseUrl] = useState(import.meta.env.VITE_SUPABASE_URL ?? "");
-  const [supabaseKey, setSupabaseKey] = useState(import.meta.env.VITE_SUPABASE_ANON_KEY ?? "");
-  const [status, setStatus] = useState<SupabaseStatus>("idle");
-  const [errorMsg, setErrorMsg] = useState("");
+  const [backendStatus, setBackendStatus] = useState<"idle" | "checking" | "ok" | "error">("idle");
+  const [mpStatus, setMpStatus] = useState<{ configured: boolean; public_key: string | null; products: { ebook: { price: number }; event: { price: number } } } | null>(null);
+  const [simulating, setSimulating] = useState<"ebook" | "event" | null>(null);
+  const [simResult, setSimResult] = useState<{ url: string; product: string } | null>(null);
+  const [simError, setSimError] = useState("");
+  const apiUrl = import.meta.env.VITE_API_URL ?? "";
 
-  const isConfigured = !!(import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY);
-
-  const testConnection = async () => {
-    if (!supabaseUrl.trim() || !supabaseKey.trim()) {
-      setErrorMsg("Preencha a URL e a Anon Key antes de testar.");
-      setStatus("error");
-      return;
-    }
-    setStatus("testing");
-    setErrorMsg("");
+  const checkBackend = async () => {
+    setBackendStatus("checking");
     try {
-      const res = await fetch(`${supabaseUrl.replace(/\/$/, "")}/rest/v1/leads?select=id&limit=1`, {
-        headers: {
-          apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
-        },
-      });
-      if (res.ok || res.status === 404) {
-        setStatus("ok");
-      } else {
-        setErrorMsg(`Falha na autenticação (HTTP ${res.status}). Verifique a URL e a Anon Key.`);
-        setStatus("error");
-      }
-    } catch {
-      setErrorMsg("Não foi possível alcançar o servidor. Verifique a URL do projeto.");
-      setStatus("error");
-    }
+      const res = await fetch(`${apiUrl}/api/health`);
+      const json = await res.json() as { ok: boolean; db: string };
+      setBackendStatus(json.ok && json.db === "up" ? "ok" : "error");
+      const mp = await getMPStatus();
+      setMpStatus(mp);
+    } catch { setBackendStatus("error"); }
   };
 
-  const PAYMENT_INTEGRATIONS = [
+  useEffect(() => { if (apiUrl) checkBackend(); }, [apiUrl]);
+
+  const simulatePurchase = async (product: "ebook" | "event") => {
+    setSimulating(product); setSimResult(null); setSimError("");
+    try {
+      const result = await createMPPreference(product);
+      const url = result.sandbox_init_point ?? result.init_point;
+      setSimResult({ url, product });
+    } catch (err) {
+      setSimError(err instanceof Error ? err.message : "Erro ao simular compra.");
+    } finally { setSimulating(null); }
+  };
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground tracking-tight">Configurações</h2>
+        <p className="text-text-muted font-body text-sm mt-1">Integrações, status do backend e simulação de compra.</p>
+      </div>
+
+      {/* Backend */}
+      <div className="surface-card rounded-xl p-5 sm:p-6 space-y-5">
+        <div className="flex items-center gap-3 pb-4 border-b border-white/5">
+          <div className="w-8 h-8 rounded-md bg-blue-500/10 border border-blue-500/20 flex items-center justify-center"><Activity className="w-4 h-4 text-blue-400" strokeWidth={1.5} /></div>
+          <div className="flex-1"><h3 className="font-display text-lg font-semibold text-foreground">Backend & Banco de Dados</h3><p className="text-text-muted font-body text-xs">{apiUrl || "VITE_API_URL não definida"}</p></div>
+          <div>
+            {backendStatus === "ok" ? (<span className="inline-flex items-center gap-1.5 text-xs font-body text-green-400 border border-green-500/25 bg-green-500/8 px-3 py-1 rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />Online</span>)
+              : backendStatus === "error" ? (<span className="inline-flex items-center gap-1.5 text-xs font-body text-red-400 border border-red-500/25 bg-red-500/8 px-3 py-1 rounded-full"><span className="w-1.5 h-1.5 rounded-full bg-red-400" />Não encontrado</span>)
+              : (<span className="inline-flex items-center gap-1.5 text-xs font-body text-text-muted border border-white/15 bg-white/5 px-3 py-1 rounded-full">Verificando…</span>)}
+          </div>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-3">
+          <div className="rounded-lg bg-background border border-white/5 px-4 py-3 font-body text-xs space-y-1">
+            <p className="text-text-muted mb-1.5 text-[0.65rem] uppercase tracking-[0.15em]">Frontend (.env)</p>
+            <p className="font-mono text-white/70">VITE_API_URL=http://localhost:5000</p>
+            <p className="font-mono text-white/70">VITE_ADMIN_TOKEN=senha_admin</p>
+            <p className="font-mono text-white/70">VITE_MP_SANDBOX=false</p>
+          </div>
+          <div className="rounded-lg bg-background border border-white/5 px-4 py-3 font-body text-xs space-y-1">
+            <p className="text-text-muted mb-1.5 text-[0.65rem] uppercase tracking-[0.15em]">Servidor (server/.env)</p>
+            <p className="font-mono text-white/70">DATABASE_URL=postgresql://…</p>
+            <p className="font-mono text-white/70">ADMIN_TOKEN=senha_admin</p>
+            <p className="font-mono text-white/70">MP_ACCESS_TOKEN=APP_USR-…</p>
+          </div>
+        </div>
+        {backendStatus === "error" && (
+          <div className="rounded-lg border border-red-500/15 bg-red-500/5 px-4 py-3 font-body text-xs">
+            <p className="text-red-300 font-semibold mb-1.5">Servidor não acessível</p>
+            <p className="text-white/50 mb-2">O Express precisa estar rodando na porta 5000. Execute no terminal:</p>
+            <p className="font-mono bg-black/30 rounded px-3 py-2 text-green-300 select-all">cd server &amp;&amp; npm run dev</p>
+            <p className="text-white/40 mt-2">Depois clique em &quot;Verificar conexão&quot; abaixo.</p>
+          </div>
+        )}
+        <button onClick={checkBackend} disabled={backendStatus === "checking"} className="flex items-center gap-2 border border-white/8 hover:border-blue-400/30 text-text-muted hover:text-blue-400 px-4 py-2 rounded-md font-body text-sm transition-all duration-200 disabled:opacity-50">
+          <RefreshCw className={`w-3.5 h-3.5 ${backendStatus === "checking" ? "animate-spin" : ""}`} />Verificar conexão
+        </button>
+      </div>
+
+      {/* Mercado Pago */}
+      <div className="surface-card rounded-xl p-5 sm:p-6 space-y-5">
+        <div className="flex items-center gap-3 pb-4 border-b border-white/5">
+          <div className="w-8 h-8 rounded-md bg-gold/10 border border-gold/20 flex items-center justify-center"><CreditCard className="w-4 h-4 text-gold" strokeWidth={1.5} /></div>
+          <div className="flex-1"><h3 className="font-display text-lg font-semibold text-foreground">Mercado Pago</h3><p className="text-text-muted font-body text-xs">Checkout transparente — Pix, cartão e boleto</p></div>
+          {mpStatus !== null && (
+            <span className={`inline-flex items-center gap-1.5 text-xs font-body border px-3 py-1 rounded-full ${mpStatus.configured ? "text-green-400 border-green-500/25 bg-green-500/8" : "text-yellow-400 border-yellow-500/25 bg-yellow-500/8"}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${mpStatus.configured ? "bg-green-400 animate-pulse" : "bg-yellow-400"}`} />{mpStatus.configured ? "Conectado" : "Sem token"}
+            </span>
+          )}
+        </div>
+        {mpStatus && (
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div className="rounded-lg border border-white/5 bg-background p-4">
+              <p className="text-text-muted text-xs font-body mb-2">Public Key</p>
+              <p className="font-mono text-xs text-white/70 truncate">{mpStatus.public_key ?? "—"}</p>
+            </div>
+            <div className="rounded-lg border border-white/5 bg-background p-4">
+              <p className="text-text-muted text-xs font-body mb-2">Produtos configurados</p>
+              <p className="text-white/70 text-xs">E-book: <span className="text-gold">R$ {mpStatus.products.ebook.price}</span></p>
+              <p className="text-white/70 text-xs">Evento: <span className="text-gold">R$ {mpStatus.products.event.price}</span></p>
+            </div>
+          </div>
+        )}
+        <div className="rounded-xl border border-gold/15 bg-gold/[0.04] p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <Zap className="w-4 h-4 text-gold" />
+            <h4 className="font-display text-base font-semibold text-foreground">Simulação de Compra</h4>
+            <span className="ml-auto text-[0.6rem] font-body text-gold/60 border border-gold/20 bg-gold/5 px-2 py-0.5 rounded-full tracking-wide">SANDBOX</span>
+          </div>
+          <p className="text-text-muted font-body text-xs mb-5 leading-relaxed">Cria uma preferência real no MP e abre o <strong className="text-white/70">sandbox</strong> para testar sem cobrança real.</p>
+          <div className="grid sm:grid-cols-2 gap-3">
+            {(["ebook", "event"] as const).map((product) => (
+              <button key={product} onClick={() => simulatePurchase(product)} disabled={!!simulating || !mpStatus?.configured} className="flex items-center justify-between gap-3 border border-gold/20 bg-gold/[0.07] hover:bg-gold/[0.14] px-4 py-3 rounded-xl text-sm font-body text-gold transition-all disabled:opacity-40 disabled:pointer-events-none">
+                <div className="flex items-center gap-2.5">
+                  {simulating === product ? <Loader2 className="w-4 h-4 animate-spin" /> : (product === "ebook" ? <BookOpen className="w-4 h-4" /> : <CalendarDays className="w-4 h-4" />)}
+                  <span>Simular {product === "ebook" ? "e-book" : "evento"}</span>
+                </div>
+                <ArrowRight className="w-3.5 h-3.5 shrink-0" />
+              </button>
+            ))}
+          </div>
+          <AnimatePresence>
+            {simResult && (
+              <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-4 rounded-xl border border-green-500/25 bg-green-500/5 p-4">
+                <div className="flex items-center gap-2 mb-2"><CheckCircle2 className="w-4 h-4 text-green-400" /><p className="text-green-400 text-sm font-body font-semibold">Preferência criada — {simResult.product}</p></div>
+                <a href={simResult.url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-center gap-1.5 bg-green-600/20 hover:bg-green-600/30 border border-green-500/30 text-green-400 text-xs px-4 py-2 rounded-lg font-body transition-all">
+                  Abrir checkout sandbox<ExternalLink className="w-3 h-3" />
+                </a>
+              </motion.div>
+            )}
+            {simError && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="mt-4 flex items-start gap-2 text-red-400 text-xs font-body">
+                <XCircle className="w-4 h-4 mt-0.5 shrink-0" /><span>{simError}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+        <div className="rounded-lg bg-support border border-white/5 px-4 py-3 font-body text-xs text-text-muted">
+          <p className="mb-2 text-white/50 text-[0.65rem] uppercase tracking-[0.15em]">Executar migrações</p>
+          <p className="font-mono text-white/60">cd server && npm run migrate</p>
+          <p className="mt-1 text-white/40">Arquivos: <code className="bg-white/5 px-1 rounded">001_init.sql</code> e <code className="bg-white/5 px-1 rounded">002_orders.sql</code></p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// PRODUTOS TAB
+const ProdutosTab = () => {
+  const content = getContent();
+  const [mpStatus, setMpStatus] = useState<{ configured: boolean; public_key: string | null; products: { ebook: { price: number }; event: { price: number } } } | null>(null);
+  const [loadingMp, setLoadingMp] = useState(true);
+
+  useEffect(() => {
+    getMPStatus().then((s) => { setMpStatus(s); setLoadingMp(false); });
+  }, []);
+
+  const products = [
     {
-      name: "Hotmart",
-      icon: "🔥",
-      description: "Venda e distribuição digital via Hotmart.",
-      color: "orange",
+      id: "ebook" as const,
+      name: "Manual do Empregador",
+      badge: "E-book Digital",
+      description: "Guia prático para gestão trabalhista segura — do início ao fim da relação de trabalho.",
+      price: content.price || "47",
+      priceOriginal: content.priceOriginal,
+      backendPrice: mpStatus?.products.ebook.price,
+      checkoutUrl: content.checkoutUrl,
+      downloadUrl: content.ebookDownloadUrl,
+      coverUrl: content.ebookCoverUrl,
+      icon: BookOpen,
+      theme: "wine" as const,
     },
     {
-      name: "Stripe",
-      icon: "💳",
-      description: "Gateway de pagamento internacional.",
-      color: "indigo",
-    },
-    {
-      name: "Mercado Pago",
-      icon: "💰",
-      description: "Pagamentos com Pix, cartão e boleto.",
-      color: "blue",
+      id: "event" as const,
+      name: "Segurança Jurídica 360",
+      badge: "Evento Presencial",
+      description: "Evento com especialistas em Direito Trabalhista, IA e Marketing para empresários — Segurança jurídica na prática.",
+      price: content.eventPrice || "67",
+      backendPrice: mpStatus?.products.event.price,
+      checkoutUrl: content.eventCheckoutUrl,
+      icon: CalendarDays,
+      theme: "gold" as const,
     },
   ];
 
   return (
     <div className="space-y-8">
-      <div>
-        <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground tracking-tight">
-          Configurações
-        </h2>
-        <p className="text-text-muted font-body text-sm mt-1">
-          Gerencie integrações e variáveis do sistema.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground tracking-tight">Produtos</h2>
+          <p className="text-text-muted font-body text-sm mt-1">Gerencie os produtos disponíveis para venda.</p>
+        </div>
+        <span className="inline-flex items-center gap-1.5 text-xs font-body border px-3 py-1.5 rounded-full mt-1 sm:mt-0 self-start">
+          {loadingMp
+            ? <span className="text-text-muted border-white/15 bg-white/5">MP verificando…</span>
+            : mpStatus?.configured
+              ? <span className="text-green-400 border-green-500/25 bg-green-500/8"><span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block mr-1.5" />MP Ativo</span>
+              : <span className="text-yellow-400 border-yellow-500/25 bg-yellow-500/8">MP sem token</span>
+          }
+        </span>
       </div>
 
-      {/* ── Supabase ── */}
-      <div className="surface-card rounded-xl p-5 sm:p-6 space-y-5">
-        <div className="flex items-center gap-3 pb-4 border-b border-white/5">
-          <div className="w-8 h-8 rounded-md bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
-            <Database className="w-4 h-4 text-emerald-400" strokeWidth={1.5} />
-          </div>
-          <div>
-            <h3 className="font-display text-lg font-semibold text-foreground">Supabase</h3>
-            <p className="text-text-muted font-body text-xs">Banco de dados para leads e persistência</p>
-          </div>
-          <div className="ml-auto">
-            {isConfigured ? (
-              <span className="inline-flex items-center gap-1.5 text-xs font-body text-emerald-400 border border-emerald-500/25 bg-emerald-500/8 px-3 py-1 rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Configurado via .env
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-1.5 text-xs font-body text-yellow-400 border border-yellow-500/25 bg-yellow-500/8 px-3 py-1 rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
-                Não configurado
-              </span>
-            )}
-          </div>
-        </div>
-
-        {!isConfigured && (
-          <div className="rounded-lg bg-yellow-500/5 border border-yellow-500/15 px-4 py-3 font-body text-xs text-yellow-200 leading-relaxed">
-            Para ativar o Supabase, crie um arquivo <code className="font-mono bg-white/8 px-1 py-0.5 rounded text-yellow-200">.env.local</code> na raiz do projeto com as variáveis abaixo e reinicie o servidor.
-          </div>
-        )}
-
-        <div className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="block text-white font-body text-sm font-medium">
-              VITE_SUPABASE_URL
-            </label>
-            <input
-              type="url"
-              value={supabaseUrl}
-              onChange={(e) => { setSupabaseUrl(e.target.value); setStatus("idle"); }}
-              placeholder="https://xxxxxxxxxxx.supabase.co"
-              className="w-full bg-background border border-white/8 focus:border-wine/40 rounded-md px-4 py-2.5 text-foreground font-mono text-sm focus:outline-none transition-colors placeholder:text-white/30"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <label className="block text-white font-body text-sm font-medium">
-              VITE_SUPABASE_ANON_KEY
-            </label>
-            <input
-              type="password"
-              value={supabaseKey}
-              onChange={(e) => { setSupabaseKey(e.target.value); setStatus("idle"); }}
-              placeholder="eyJhbGciOiJIUzI1NiIsInR…"
-              className="w-full bg-background border border-white/8 focus:border-wine/40 rounded-md px-4 py-2.5 text-foreground font-mono text-sm focus:outline-none transition-colors placeholder:text-white/30"
-            />
-          </div>
-        </div>
-
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-          <button
-            onClick={testConnection}
-            disabled={status === "testing"}
-            className="flex items-center gap-2 bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/25 hover:border-emerald-500/40 text-emerald-400 px-5 py-2.5 rounded-md font-body text-sm transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none"
-          >
-            {status === "testing" ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Zap className="w-4 h-4" strokeWidth={1.5} />
-            )}
-            {status === "testing" ? "Testando conexão…" : "Testar conexão"}
-          </button>
-
-          <AnimatePresence mode="wait">
-            {status === "ok" && (
-              <motion.div
-                initial={{ opacity: 0, x: -6 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0 }}
-                className="flex items-center gap-2 text-emerald-400 font-body text-sm"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                Conexão estabelecida com sucesso!
-              </motion.div>
-            )}
-            {status === "error" && (
-              <motion.div
-                initial={{ opacity: 0, x: -6 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0 }}
-                className="flex items-start gap-2 text-red-400 font-body text-sm max-w-sm"
-              >
-                <XCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                <span>{errorMsg}</span>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-
-        <div className="rounded-lg bg-support border border-white/5 px-4 py-3 font-mono text-xs text-text-muted space-y-1">
-          <p className="text-text-muted font-body text-xs mb-2 font-sans">Adicione ao <code className="bg-white/8 px-1 py-0.5 rounded">.env.local</code>:</p>
-          <p className="text-emerald-300/90">VITE_SUPABASE_URL=https://SEU_PROJETO.supabase.co</p>
-          <p className="text-emerald-300/90">VITE_SUPABASE_ANON_KEY=sua_chave_anonima_aqui</p>
-        </div>
-      </div>
-
-      {/* ── Meios de Pagamento ── */}
-      <div className="surface-card rounded-xl p-5 sm:p-6 space-y-5">
-        <div className="flex items-center gap-3 pb-4 border-b border-white/5">
-          <div className="w-8 h-8 rounded-md bg-primary/20 border border-wine/20 flex items-center justify-center">
-            <CreditCard className="w-4 h-4 text-wine" strokeWidth={1.5} />
-          </div>
-          <div>
-            <h3 className="font-display text-lg font-semibold text-foreground">Meios de Pagamento</h3>
-            <p className="text-text-muted font-body text-xs">Integrações nativas com plataformas de checkout</p>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {PAYMENT_INTEGRATIONS.map((integration) => (
-            <div
-              key={integration.name}
-              className="relative rounded-xl border border-white/5 bg-background p-5 flex flex-col gap-3 overflow-hidden opacity-60"
+      <div className="grid sm:grid-cols-2 gap-6">
+        {products.map((p) => {
+          const isWine = p.theme === "wine";
+          return (
+            <motion.div
+              key={p.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35 }}
+              className={`surface-card rounded-2xl overflow-hidden flex flex-col ${
+                isWine ? "border-wine/20" : "border-gold/20"
+              }`}
             >
-              {/* Em breve badge */}
-              <div className="absolute top-3 right-3">
-                <span className="inline-flex items-center gap-1 text-[10px] font-body font-semibold text-wine/80 border border-wine/20 bg-wine/5 px-2 py-0.5 rounded-full tracking-wide">
-                  EM BREVE
-                </span>
+              {/* Header */}
+              <div className={`px-5 pt-5 pb-4 border-b border-white/5 flex items-start gap-3`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                  isWine ? "bg-wine/15 border border-wine/20" : "bg-gold/15 border border-gold/20"
+                }`}>
+                  <p.icon className={`w-5 h-5 ${isWine ? "text-wine" : "text-gold"}`} strokeWidth={1.5} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="font-display text-lg font-semibold text-foreground leading-tight">{p.name}</h3>
+                    <span className={`text-[0.6rem] font-ui tracking-widest px-2 py-0.5 rounded-full border ${
+                      isWine ? "text-wine border-wine/25 bg-wine/10" : "text-gold border-gold/25 bg-gold/10"
+                    }`}>{p.badge}</span>
+                  </div>
+                  <p className="text-text-muted font-body text-xs mt-1 leading-relaxed">{p.description}</p>
+                </div>
               </div>
 
-              <div className="text-2xl">{integration.icon}</div>
-              <div>
-                <h4 className="font-display text-base font-semibold text-white">
-                  {integration.name}
-                </h4>
-                <p className="text-text-muted font-body text-xs mt-1 leading-relaxed">
-                  {integration.description}
+              {/* Pricing */}
+              <div className="px-5 py-4 flex items-end justify-between border-b border-white/5">
+                <div>
+                  <p className="text-text-muted font-body text-[0.65rem] uppercase tracking-[0.12em] mb-1">Preço de venda</p>
+                  <div className="flex items-baseline gap-2">
+                    <span className={`font-display text-3xl font-bold ${isWine ? "text-wine" : "text-gold"}`}>
+                      R$ {p.price}
+                    </span>
+                    {p.priceOriginal && (
+                      <span className="text-text-muted line-through font-body text-sm">R$ {p.priceOriginal}</span>
+                    )}
+                  </div>
+                </div>
+                {loadingMp ? (
+                  <div className="h-5 w-20 bg-white/5 rounded animate-pulse" />
+                ) : p.backendPrice !== undefined ? (
+                  <div className="text-right">
+                    <p className="text-text-muted font-body text-[0.6rem] uppercase tracking-[0.12em] mb-0.5">Backend MP</p>
+                    <p className="font-body text-sm font-semibold text-white/70">R$ {p.backendPrice}</p>
+                  </div>
+                ) : (
+                  <span className="text-xs font-body text-text-muted border border-white/10 bg-white/4 px-2.5 py-1 rounded-full">MP offline</span>
+                )}
+              </div>
+
+              {/* Links */}
+              <div className="px-5 py-4 space-y-2 flex-1">
+                <p className="text-text-muted font-body text-[0.65rem] uppercase tracking-[0.12em] mb-2">Links</p>
+                {p.checkoutUrl ? (
+                  <a href={p.checkoutUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-body text-white/60 hover:text-white transition-colors group">
+                    <CreditCard className={`w-3.5 h-3.5 shrink-0 ${isWine ? "text-wine/60 group-hover:text-wine" : "text-gold/60 group-hover:text-gold"}`} strokeWidth={1.5} />
+                    <span className="truncate">Checkout: {p.checkoutUrl}</span>
+                    <ExternalLink className="w-3 h-3 shrink-0 opacity-50" />
+                  </a>
+                ) : (
+                  <p className="text-xs font-body text-text-muted italic">Checkout URL não configurada</p>
+                )}
+                {"downloadUrl" in p && p.downloadUrl && (
+                  <a href={p.downloadUrl as string} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-body text-white/60 hover:text-white transition-colors group">
+                    <Download className={`w-3.5 h-3.5 shrink-0 ${isWine ? "text-wine/60 group-hover:text-wine" : "text-gold/60 group-hover:text-gold"}`} strokeWidth={1.5} />
+                    <span className="truncate">Download: {p.downloadUrl as string}</span>
+                    <ExternalLink className="w-3 h-3 shrink-0 opacity-50" />
+                  </a>
+                )}
+              </div>
+
+              {/* Footer hint */}
+              <div className="px-5 pb-4">
+                <p className="text-text-muted font-body text-xs">
+                  Edite preços e links na aba <span className={`font-semibold ${isWine ? "text-wine" : "text-gold"}`}>Conteúdo</span>.
                 </p>
               </div>
-              <button
-                disabled
-                className="mt-auto w-full border border-white/8 text-text-muted font-body text-xs py-2 rounded-md cursor-not-allowed"
-              >
-                Aguarde
-              </button>
-            </div>
-          ))}
-        </div>
+            </motion.div>
+          );
+        })}
+      </div>
 
-        <p className="text-text-muted font-body text-xs leading-relaxed">
-          Em breve você poderá configurar diretamente o checkout via Hotmart, Stripe ou Mercado Pago sem precisar sair do painel. Por enquanto, configure a URL de checkout manualmente na aba <strong className="text-white/80">Conteúdo</strong>.
-        </p>
+      {/* Info note */}
+      <div className="rounded-xl border border-white/8 bg-white/2 px-5 py-4 font-body text-xs text-text-muted">
+        <p className="text-white/50 text-[0.65rem] uppercase tracking-[0.15em] mb-2">Preços no backend (MP)</p>
+        <p>Os preços cobrados no Mercado Pago são definidos em <code className="bg-white/8 px-1.5 py-0.5 rounded">server/src/config.ts</code> → <code className="bg-white/8 px-1.5 py-0.5 rounded">config.products</code>. Altere lá e reinicie o servidor para que as cobranças reflitam o novo valor.</p>
       </div>
     </div>
   );
 };
 
-// ─────────────────────────────────────────────────────────────
-// SIDEBAR NAV
-// ─────────────────────────────────────────────────────────────
+// NAV
 const NAV_ITEMS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "metricas", label: "Métricas", icon: BarChart2 },
   { id: "leads", label: "Leads", icon: Users },
+  { id: "pedidos", label: "Pedidos", icon: ShoppingCart },
+  { id: "produtos", label: "Produtos", icon: Package },
   { id: "conteudo", label: "Conteúdo", icon: Edit3 },
   { id: "configuracoes", label: "Configurações", icon: Settings },
 ];
 
-// ─────────────────────────────────────────────────────────────
-// ADMIN DASHBOARD
-// ─────────────────────────────────────────────────────────────
+// DASHBOARD
 const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
   const [tab, setTab] = useState<Tab>("metricas");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [serverOnline, setServerOnline] = useState<boolean | null>(null);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
+  const handleLogout = () => { clearAuth(); onLogout(); };
 
-  const handleLogout = () => {
-    clearAuth();
-    onLogout();
-  };
+  const apiUrl = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
+  useEffect(() => {
+    if (!apiUrl) { setServerOnline(false); return; }
+    fetch(`${apiUrl}/api/health`)
+      .then((r) => r.json())
+      .then((j) => setServerOnline(j.ok === true))
+      .catch(() => setServerOnline(false));
+  }, [apiUrl]);
+
+  const showOfflineBanner = serverOnline === false && !bannerDismissed;
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      {/* Top bar */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-white/5 px-6 py-3 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className="md:hidden p-1 text-text-muted hover:text-foreground"
-            aria-label="Menu"
-          >
+          <button onClick={() => setMobileOpen(!mobileOpen)} className="md:hidden p-1 text-text-muted hover:text-foreground" aria-label="Menu">
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-wine/15 border border-wine/25 rounded-md flex items-center justify-center">
-              <span className="font-display font-bold text-wine text-xs">FL</span>
-            </div>
-            <span className="font-display text-foreground font-semibold text-base hidden sm:block">
-              Admin
-            </span>
+            <div className="w-7 h-7 bg-wine/15 border border-wine/25 rounded-md flex items-center justify-center"><span className="font-display font-bold text-wine text-xs">FL</span></div>
+            <span className="font-display text-foreground font-semibold text-base hidden sm:block">Admin</span>
             <span className="text-white/25 hidden sm:block">·</span>
-            <span className="font-body text-white/60 text-sm hidden sm:block">
-              Manual do Empregador
-            </span>
+            <span className="font-body text-white/60 text-sm hidden sm:block">Manual do Empregador</span>
           </div>
         </div>
-
-        {/* Desktop Nav */}
         <nav className="hidden md:flex items-center gap-1" aria-label="Navegação admin">
           {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => setTab(id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-md font-body text-sm transition-all duration-200 ${
-                tab === id
-                  ? "bg-wine/10 text-wine border border-wine/15"
-                  : "text-text-muted hover:text-foreground hover:bg-white/4"
-              }`}
-            >
-              <Icon className="w-3.5 h-3.5" strokeWidth={1.5} />
-              {label}
+            <button key={id} onClick={() => setTab(id)} className={`flex items-center gap-2 px-4 py-2 rounded-md font-body text-sm transition-all duration-200 ${tab === id ? "bg-wine/10 text-wine border border-wine/15" : "text-text-muted hover:text-foreground hover:bg-white/4"}`}>
+              <Icon className="w-3.5 h-3.5" strokeWidth={1.5} />{label}
             </button>
           ))}
         </nav>
-
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-2 text-text-muted hover:text-foreground font-body text-sm transition-colors border border-white/8 hover:border-white/15 px-3 py-2 rounded-md"
-          aria-label="Sair"
-        >
-          <LogOut className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">Sair</span>
+        <button onClick={handleLogout} className="flex items-center gap-2 text-text-muted hover:text-foreground font-body text-sm transition-colors border border-white/8 hover:border-white/15 px-3 py-2 rounded-md" aria-label="Sair">
+          <LogOut className="w-3.5 h-3.5" /><span className="hidden sm:inline">Sair</span>
         </button>
       </header>
-
-      {/* Mobile nav drawer */}
       <AnimatePresence>
         {mobileOpen && (
-          <motion.nav
-            initial={{ opacity: 0, y: -8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.15 }}
-            className="fixed top-[56px] left-0 right-0 z-40 bg-support border-b border-white/5 px-4 py-3 md:hidden"
-            aria-label="Navegação mobile"
-          >
+          <motion.nav initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.15 }} className="fixed top-[56px] left-0 right-0 z-40 bg-support border-b border-white/5 px-4 py-3 md:hidden">
             {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
-              <button
-                key={id}
-                onClick={() => { setTab(id); setMobileOpen(false); }}
-                className={`flex items-center gap-3 w-full px-4 py-3 rounded-md font-body text-sm transition-colors ${
-                  tab === id ? "bg-wine/10 text-wine" : "text-text-muted hover:text-foreground"
-                }`}
-              >
-                <Icon className="w-4 h-4" strokeWidth={1.5} />
-                {label}
+              <button key={id} onClick={() => { setTab(id); setMobileOpen(false); }} className={`flex items-center gap-3 w-full px-4 py-3 rounded-md font-body text-sm transition-colors ${tab === id ? "bg-wine/10 text-wine" : "text-text-muted hover:text-foreground"}`}>
+                <Icon className="w-4 h-4" strokeWidth={1.5} />{label}
               </button>
             ))}
           </motion.nav>
         )}
       </AnimatePresence>
-
-      {/* Main content */}
-      <main className="flex-1 pt-[72px] px-4 sm:px-6 lg:px-10 pb-6 sm:pb-10 max-w-6xl mx-auto w-full">
-        <AnimatePresence mode="wait">
+      <AnimatePresence>
+        {showOfflineBanner && (
           <motion.div
-            key={tab}
-            initial={{ opacity: 0, y: 6 }}
+            initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -6 }}
+            exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2 }}
+            className="fixed top-[56px] left-0 right-0 z-30 bg-[#1a1200] border-b border-yellow-500/20 px-5 py-2.5 flex items-center gap-3"
           >
+            <AlertCircle className="w-3.5 h-3.5 text-yellow-400 shrink-0" />
+            <p className="flex-1 font-body text-xs text-yellow-200/80">
+              Backend offline — métricas e checkout desabilitados.
+              {" "}Inicie com:{" "}
+              <code className="font-mono text-yellow-300 bg-black/30 px-1.5 py-0.5 rounded">cd server &amp;&amp; npm run dev</code>
+            </p>
+            <button
+              onClick={() => setBannerDismissed(true)}
+              className="text-yellow-400/50 hover:text-yellow-300 transition-colors ml-2 shrink-0"
+              aria-label="Fechar aviso"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <main className={`flex-1 px-4 sm:px-6 lg:px-10 pb-6 sm:pb-10 max-w-6xl mx-auto w-full ${showOfflineBanner ? "pt-[96px]" : "pt-[72px]"}`}>
+        <AnimatePresence mode="wait">
+          <motion.div key={tab} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.2 }}>
             {tab === "metricas" && <MetricsTab />}
             {tab === "leads" && <LeadsTab />}
+            {tab === "pedidos" && <PedidosTab />}
+            {tab === "produtos" && <ProdutosTab />}
             {tab === "conteudo" && <ContentTab />}
             {tab === "configuracoes" && <ConfiguracoesTab />}
           </motion.div>
         </AnimatePresence>
       </main>
-
-      {/* Footer */}
       <footer className="border-t border-white/5 px-6 py-4 text-center">
-        <p className="text-white/50 font-body text-xs">
-          MANUAL DO EMPREGADOR — Painel Administrativo · Acesso restrito
-        </p>
+        <p className="text-white/50 font-body text-xs">MANUAL DO EMPREGADOR — Painel Administrativo · Acesso restrito</p>
       </footer>
     </div>
   );
 };
 
-// ─────────────────────────────────────────────────────────────
-// MAIN EXPORT
-// ─────────────────────────────────────────────────────────────
+// ROOT
 const AdminPage = () => {
-  const [authed, setAuthed] = useState(isAuthed());
-
-  return authed ? (
-    <AdminDashboard onLogout={() => setAuthed(false)} />
-  ) : (
-    <LoginScreen onLogin={() => setAuthed(true)} />
-  );
+  const [authed, setAuthed] = useState(isAuthed);
+  if (!authed) return <LoginScreen onLogin={() => setAuthed(true)} />;
+  return <AdminDashboard onLogout={() => setAuthed(false)} />;
 };
 
 export default AdminPage;

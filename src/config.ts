@@ -16,6 +16,10 @@ export const CONFIG = {
   //   https://www.mercadopago.com.br/tools/create
   PAYMENT_URL: "https://www.mercadopago.com.br/checkout/v1/redirect?pref_id=",
 
+  // ── Evento: Segurança Jurídica 360 ───────────────────────────
+  EVENT_PRICE: 67,
+  EVENT_PAYMENT_URL: "",
+
   // Após pagamento aprovado, o MP redireciona para esta rota
   REDIRECT_URL: "/obrigado",
   EBOOK_DOWNLOAD_URL: "#",

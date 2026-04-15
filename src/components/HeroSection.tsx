@@ -94,7 +94,7 @@ const HeroSection = () => {
             >
               <button
                 onClick={handleAddToCart}
-                className="flex min-h-[52px] items-center justify-center gap-2 rounded-md bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 px-7 text-center font-ui text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(16,185,129,0.45)] whitespace-nowrap cursor-pointer"
+                className="flex min-h-[52px] items-center justify-center gap-2 rounded-md bg-gold hover:bg-gold-light active:bg-gold-dark px-7 text-center font-ui text-sm font-bold text-background transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(201,168,76,0.45)] whitespace-nowrap cursor-pointer"
               >
                 GARANTIR MEU ACESSO
               </button>
@@ -169,7 +169,7 @@ const HeroSection = () => {
 
               <PerspectiveBook
                 coverSrc={content.ebookCoverUrl || ebookCover}
-                title=""
+                title="Manual do Empregador"
                 eyebrow={undefined}
               />
 

@@ -28,7 +28,7 @@ const AboutSection = () => {
     <section id="autores" className="py-24 lg:py-32 section-dark relative overflow-hidden">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-px bg-gradient-to-r from-transparent via-wine/40 to-transparent" aria-hidden="true" />
 
-      <div className="container mx-auto relative z-10 max-w-5xl">
+      <div className="container mx-auto relative z-10">
         <motion.div
           initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}

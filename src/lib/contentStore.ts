@@ -13,6 +13,9 @@ export interface ContentData {
   priceOriginal: string;
   whatsappNumber: string;
   whatsappMsg: string;
+  // Event product
+  eventPrice: string;
+  eventCheckoutUrl: string;
 }
 
 export const CONTENT_DEFAULTS: ContentData = {
@@ -30,6 +33,8 @@ export const CONTENT_DEFAULTS: ContentData = {
   priceOriginal: "97",
   whatsappNumber: "5581985900139",
   whatsappMsg: "Olá! Tenho interesse no Manual do Empregador.",
+  eventPrice: "67",
+  eventCheckoutUrl: "",
 };
 
 export const getContent = (): ContentData => {

@@ -108,7 +108,7 @@ const TestimonialsSection = () => {
     <section id="depoimentos" className="bg-background relative my-20 overflow-hidden">
       <div className="absolute top-0 left-1/2 h-px w-20 -translate-x-1/2 bg-gradient-to-r from-transparent via-wine/40 to-transparent" aria-hidden="true" />
 
-      <div className="container z-10 mx-auto px-6 lg:px-12">
+      <div className="container mx-auto z-10">
         <motion.div
           initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}

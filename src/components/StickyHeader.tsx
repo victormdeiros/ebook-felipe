@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { label: "Conteúdo", href: "#conteudo" },
   { label: "Autores", href: "#autores" },
   { label: "Depoimentos", href: "#depoimentos" },
+  { label: "Lançamento", href: "#evento", highlight: true },
 ];
 
 const StickyHeader = () => {
@@ -89,7 +90,11 @@ const StickyHeader = () => {
               <a
                 key={item.href}
                 href={item.href}
-                className="font-body text-sm text-secondary-light hover:text-wine transition-colors duration-200"
+                className={`font-body text-sm transition-colors duration-200 ${
+                  item.highlight
+                    ? "text-gold hover:text-gold-light font-semibold"
+                    : "text-secondary-light hover:text-wine"
+                }`}
               >
                 {item.label}
               </a>
@@ -100,16 +105,16 @@ const StickyHeader = () => {
             {/* Cart icon */}
             <button
               onClick={openCart}
-              className="relative min-w-[44px] min-h-[44px] flex items-center justify-center text-off-white hover:text-emerald-400 transition-colors duration-200 cursor-pointer"
+              className="relative min-w-[44px] min-h-[44px] flex items-center justify-center text-off-white hover:text-gold transition-colors duration-200 cursor-pointer"
               aria-label={`Carrinho${cartCount > 0 ? ` — ${cartCount} item` : ""}`}
             >
               <ShoppingCart
                 className={`w-5 h-5 transition-all duration-300 ${
-                  cartBounce ? "scale-125 text-emerald-400" : "scale-100"
+                  cartBounce ? "scale-125 text-gold" : "scale-100"
                 }`}
               />
               {cartCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500 text-[10px] font-bold text-white leading-none shadow-[0_0_8px_rgba(16,185,129,0.6)]">
+                <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-gold text-[10px] font-bold text-background leading-none shadow-[0_0_8px_rgba(201,168,76,0.6)]">
                   {cartCount}
                 </span>
               )}
@@ -117,9 +122,9 @@ const StickyHeader = () => {
 
             <button
               onClick={handleGuaranteeAccess}
-              className="font-ui text-xs bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-white min-h-[44px] px-5 flex items-center gap-1.5 rounded-md transition-all duration-200 hover:shadow-[0_4px_20px_-4px_rgba(16,185,129,0.5)] cursor-pointer"
+              className="font-ui text-xs bg-gold hover:bg-gold-light active:bg-gold-dark text-background min-h-[44px] px-5 flex items-center gap-1.5 rounded-md transition-all duration-200 hover:shadow-[0_4px_20px_-4px_rgba(201,168,76,0.5)] cursor-pointer"
             >
-              GARANTIR MEU ACESSO
+              GARANTIR MINHA VAGA
             </button>
 
             <button
@@ -144,7 +149,11 @@ const StickyHeader = () => {
                   key={item.href}
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
-                  className="font-body text-base text-secondary-light hover:text-wine transition-colors py-3 border-b border-white/5"
+                  className={`font-body text-base transition-colors py-3 border-b border-white/5 ${
+                    item.highlight
+                      ? "text-gold hover:text-gold-light font-semibold"
+                      : "text-secondary-light hover:text-wine"
+                  }`}
                 >
                   {item.label}
                 </a>

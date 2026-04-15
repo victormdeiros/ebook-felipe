@@ -7,7 +7,7 @@ const TargetAudienceTextSection = () => {
     <section className="py-24 lg:py-32 section-elevated relative">
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-20 h-px bg-gradient-to-r from-transparent via-wine/40 to-transparent" aria-hidden="true" />
 
-      <div className="container mx-auto max-w-3xl">
+      <div className="container mx-auto">
         <motion.div
           initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -25,7 +25,7 @@ const TargetAudienceTextSection = () => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="space-y-6 text-off-white/80 font-body leading-relaxed text-base lg:text-lg"
+          className="space-y-6 text-off-white/80 font-body leading-relaxed text-base lg:text-lg max-w-3xl mx-auto"
         >
           <p>
             O presente Manual tem por objetivo instruir a pessoa do empregador, trazendo, de forma clara e objetiva, orientações acerca da sua relação com o empregado, almejando garantir a concretização dos direitos e o adimplemento das obrigações existentes na relação empregatícia.

@@ -1,0 +1,59 @@
+name: Dokku Auto Deploy ebookfelipelopesadv
+
+on:
+  push:
+    branches: ["master"]
+  workflow_dispatch:
+
+concurrency:
+  group: dokku-ebookfelipelopesadv-master
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Dokku deploy
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: 157.173.118.98
+          username: converseia
+          password: ${{ secrets.VPS_OS_PASSWORD }}
+          script_stop: true
+          script: |
+            COMMIT_NAME=$(printf '%s' "${{ github.event.head_commit.message }}" | head -n 1)
+            COMMIT_DATE="${{ github.event.head_commit.timestamp }}"
+            if [ -z "$COMMIT_NAME" ]; then COMMIT_NAME="${{ github.sha }}"; fi
+            if [ -z "$COMMIT_DATE" ]; then COMMIT_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ); fi
+
+            echo ${{ secrets.VPS_OS_PASSWORD }} | sudo -S dokku config:set --no-restart ebookfelipelopesadv \
+              DEPLOYED_BRANCH=master \
+              DEPLOYED_REPO_URL=https://github.com/${{ github.repository }}.git \
+              DEPLOYED_COMMIT_SHA=${{ github.sha }} \
+              DEPLOYED_COMMIT_NAME="$COMMIT_NAME" \
+              DEPLOYED_COMMIT_URL=https://github.com/${{ github.repository }}/commit/${{ github.sha }} \
+              DEPLOYED_COMMIT_DATE="$COMMIT_DATE"
+
+            AUTH_REPO="https://x-access-token:${{ secrets.GITHUB_DOKKU_TOKEN }}@github.com/${{ github.repository }}.git"
+
+            detect_lock() {
+              printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | grep -Eq "deploy lock in place|app is currently locked|deploy lock"
+            }
+
+            run_deploy() {
+              echo ${{ secrets.VPS_OS_PASSWORD }} | sudo -S dokku git:sync --build ebookfelipelopesadv "$AUTH_REPO" master 2>&1
+            }
+
+            DEPLOY_OUTPUT=$(run_deploy) && DEPLOY_STATUS=0 || DEPLOY_STATUS=$?
+            echo "$DEPLOY_OUTPUT"
+
+            if [ "$DEPLOY_STATUS" -ne 0 ] && detect_lock "$DEPLOY_OUTPUT"; then
+              echo "Deploy lock detectado. Executando dokku apps:unlock e tentando novamente..."
+              echo ${{ secrets.VPS_OS_PASSWORD }} | sudo -S dokku apps:unlock ebookfelipelopesadv 2>&1 || true
+              DEPLOY_OUTPUT=$(run_deploy) && DEPLOY_STATUS=0 || DEPLOY_STATUS=$?
+              echo "$DEPLOY_OUTPUT"
+            fi
+
+            if [ "$DEPLOY_STATUS" -ne 0 ]; then
+              exit "$DEPLOY_STATUS"
+            fi

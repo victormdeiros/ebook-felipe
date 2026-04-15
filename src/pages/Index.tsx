@@ -4,6 +4,7 @@ import StickyHeader from "@/components/StickyHeader";
 import HeroSection from "@/components/HeroSection";
 import PainPointsSection from "@/components/PainPointsSection";
 import EbookPresentationSection from "@/components/EbookPresentationSection";
+import EventSection from "@/components/EventSection";
 import LearningSection from "@/components/LearningSection";
 import TargetAudienceSection from "@/components/TargetAudienceSection";
 import TargetAudienceTextSection from "@/components/TargetAudienceTextSection";
@@ -33,6 +34,7 @@ const Index = () => {
         <HeroSection />
         <PainPointsSection />
         <EbookPresentationSection />
+        <EventSection />
         <LearningSection />
         <TargetAudienceTextSection />
         <TargetAudienceSection />

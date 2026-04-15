@@ -1,7 +1,7 @@
 {
-  "name": "ebook-felipe-api",
+  "name": "ebookfelipelopesadv",
   "scripts": {
-    "postdeploy": "echo 'deployed'"
+    "postdeploy": "node server/dist/migrate.js"
   },
   "formation": {
     "web": {

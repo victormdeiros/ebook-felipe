@@ -1,5 +1,7 @@
 import express from "express";
 import cors from "cors";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { config } from "./config";
 import { pool, closePool } from "./db";
 import leadsRouter from "./routes/leads";
@@ -15,7 +17,8 @@ app.use(express.json({ limit: "64kb" }));
 app.use(
   cors({
     origin: (origin, cb) => {
-      if (!origin) return cb(null, true);
+      if (!origin) return cb(null, true); // same-origin & server-to-server
+      if (!config.corsOrigins.length) return cb(null, true); // no list = allow all
       if (config.corsOrigins.includes(origin)) return cb(null, true);
       return cb(new Error(`CORS: origin not allowed — ${origin}`));
     },
@@ -36,6 +39,24 @@ app.use("/api/leads", leadsRouter);
 app.use("/api/events", eventsRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/mp", mpRouter);
+
+// ── Serve Vite frontend (production) ─────────────────────────
+// When the dist/ folder exists (i.e. after `npm run build`),
+// Express serves the static assets and falls back to index.html
+// for client-side routes — so the React SPA works on direct URL access.
+const staticDir = join(process.cwd(), "dist");
+if (existsSync(staticDir)) {
+  app.use(express.static(staticDir, { index: false }));
+  // SPA fallback: non-API GET requests → index.html
+  app.get(/^\/(?!api)/, (_req, res, next) => {
+    const indexPath = join(staticDir, "index.html");
+    if (existsSync(indexPath)) {
+      res.sendFile(indexPath);
+    } else {
+      next();
+    }
+  });
+}
 
 app.use(notFound);
 app.use(errorHandler);

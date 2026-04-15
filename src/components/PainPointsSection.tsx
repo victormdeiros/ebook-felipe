@@ -13,7 +13,7 @@ const PainPointsSection = () => {
 
   return (
     <section className="py-24 lg:py-32 section-dark">
-      <div className="container mx-auto px-6 lg:px-12 max-w-5xl">
+      <div className="container mx-auto">
         <motion.div
           initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
           whileInView={{ opacity: 1, y: 0 }}
