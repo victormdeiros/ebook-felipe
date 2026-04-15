@@ -49,11 +49,12 @@ CREATE TABLE IF NOT EXISTS ebookfelipelopes.manual_leads (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS manual_leads_email_idx
-  ON ebookfelipelopes.manual_leads (email);
-
-CREATE INDEX IF NOT EXISTS manual_leads_created_at_idx
-  ON ebookfelipelopes.manual_leads (created_at DESC);
+-- Ensure required columns exist (defensive for tables moved from an older schema)
+ALTER TABLE ebookfelipelopes.manual_leads
+  ADD COLUMN IF NOT EXISTS name      TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS email     TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS whatsapp  TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT now();
 
 CREATE TABLE IF NOT EXISTS ebookfelipelopes.manual_events (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -62,8 +63,56 @@ CREATE TABLE IF NOT EXISTS ebookfelipelopes.manual_events (
   occurred_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS manual_events_name_idx
-  ON ebookfelipelopes.manual_events (name);
+-- Ensure required columns exist (defensive for tables moved from an older schema)
+ALTER TABLE ebookfelipelopes.manual_events
+  ADD COLUMN IF NOT EXISTS name        TEXT NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS payload     JSONB,
+  ADD COLUMN IF NOT EXISTS occurred_at TIMESTAMPTZ NOT NULL DEFAULT now();
 
-CREATE INDEX IF NOT EXISTS manual_events_time_idx
-  ON ebookfelipelopes.manual_events (occurred_at DESC);
+-- Indexes — created only if the target column actually exists
+DO $$
+BEGIN
+  -- manual_leads: email index
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'ebookfelipelopes' AND table_name = 'manual_leads' AND column_name = 'email'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname = 'ebookfelipelopes' AND tablename = 'manual_leads' AND indexname = 'manual_leads_email_idx'
+  ) THEN
+    EXECUTE 'CREATE INDEX manual_leads_email_idx ON ebookfelipelopes.manual_leads (email)';
+  END IF;
+
+  -- manual_leads: created_at index
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'ebookfelipelopes' AND table_name = 'manual_leads' AND column_name = 'created_at'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname = 'ebookfelipelopes' AND tablename = 'manual_leads' AND indexname = 'manual_leads_created_at_idx'
+  ) THEN
+    EXECUTE 'CREATE INDEX manual_leads_created_at_idx ON ebookfelipelopes.manual_leads (created_at DESC)';
+  END IF;
+
+  -- manual_events: name index
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'ebookfelipelopes' AND table_name = 'manual_events' AND column_name = 'name'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname = 'ebookfelipelopes' AND tablename = 'manual_events' AND indexname = 'manual_events_name_idx'
+  ) THEN
+    EXECUTE 'CREATE INDEX manual_events_name_idx ON ebookfelipelopes.manual_events (name)';
+  END IF;
+
+  -- manual_events: occurred_at index
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_schema = 'ebookfelipelopes' AND table_name = 'manual_events' AND column_name = 'occurred_at'
+  ) AND NOT EXISTS (
+    SELECT 1 FROM pg_indexes
+    WHERE schemaname = 'ebookfelipelopes' AND tablename = 'manual_events' AND indexname = 'manual_events_time_idx'
+  ) THEN
+    EXECUTE 'CREATE INDEX manual_events_time_idx ON ebookfelipelopes.manual_events (occurred_at DESC)';
+  END IF;
+END $$;

@@ -8,6 +8,8 @@ import leadsRouter from "./routes/leads";
 import eventsRouter from "./routes/events";
 import adminRouter from "./routes/admin";
 import mpRouter from "./routes/mp";
+import contentRouter from "./routes/content";
+import productsRouter from "./routes/products";
 import { errorHandler, notFound } from "./middleware/error";
 
 const app = express();
@@ -39,6 +41,8 @@ app.use("/api/leads", leadsRouter);
 app.use("/api/events", eventsRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/mp", mpRouter);
+app.use("/api/content", contentRouter);
+app.use("/api/products", productsRouter);
 
 // ── Serve Vite frontend (production) ─────────────────────────
 // When the dist/ folder exists (i.e. after `npm run build`),

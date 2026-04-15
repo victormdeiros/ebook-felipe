@@ -21,12 +21,40 @@ router.post("/preference", async (req, res, next) => {
 
     const { product, origin } = preferenceSchema.parse(req.body ?? {});
     const siteUrl = (origin ?? config.SITE_URL ?? "http://localhost:8081").replace(/\/$/, "");
-    const item = config.products[product];
+
+    // Read product info from DB (falls back to config if table not yet migrated)
+    let item: { mp_item_id: string; title: string; description: string; price: number };
+    try {
+      const { rows } = await pool.query<{
+        mp_item_id: string; title: string; description: string; price: string;
+      }>(
+        `SELECT mp_item_id, title, description, price FROM manual_products WHERE id = $1 AND active = true`,
+        [product],
+      );
+      if (rows.length) {
+        item = { ...rows[0], price: Number(rows[0].price) };
+      } else {
+        item = {
+          mp_item_id:  config.products[product].id,
+          title:       config.products[product].title,
+          description: config.products[product].description,
+          price:       config.products[product].price,
+        };
+      }
+    } catch {
+      // DB not yet migrated — use config fallback
+      item = {
+        mp_item_id:  config.products[product].id,
+        title:       config.products[product].title,
+        description: config.products[product].description,
+        price:       config.products[product].price,
+      };
+    }
 
     const preference = {
       items: [
         {
-          id: item.id,
+          id: item.mp_item_id,
           title: item.title,
           description: item.description,
           quantity: 1,
