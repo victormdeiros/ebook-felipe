@@ -1,0 +1,22 @@
+{
+  "name": "ebook-felipe-api",
+  "scripts": {
+    "postdeploy": "echo 'deployed'"
+  },
+  "formation": {
+    "web": {
+      "quantity": 1
+    }
+  },
+  "healthchecks": {
+    "web": [
+      {
+        "type": "startup",
+        "name": "health",
+        "path": "/api/health",
+        "timeout": 30,
+        "uptime": 10
+      }
+    ]
+  }
+}
