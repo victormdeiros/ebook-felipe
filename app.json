@@ -11,11 +11,11 @@
   "healthchecks": {
     "web": [
       {
-        "type": "startup",
+        "type": "path",
         "name": "health",
         "path": "/api/health",
         "timeout": 30,
-        "uptime": 10
+        "retries": 2
       }
     ]
   }
