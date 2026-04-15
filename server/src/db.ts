@@ -8,6 +8,14 @@ export const pool = new Pool({
   connectionTimeoutMillis: 5_000,
 });
 
+// Set schema search path for every new connection so all unqualified table
+// references resolve to ebookfelipelopes (falls back to public for _migrations).
+pool.on("connect", (client) => {
+  client
+    .query("SET search_path TO ebookfelipelopes, public")
+    .catch((err) => console.error("[db] Failed to set search_path:", err));
+});
+
 pool.on("error", (err) => {
   console.error("[db] Unexpected pool error:", err);
 });

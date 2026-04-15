@@ -34,6 +34,19 @@ jobs:
               DEPLOYED_COMMIT_URL=https://github.com/${{ github.repository }}/commit/${{ github.sha }} \
               DEPLOYED_COMMIT_DATE="$COMMIT_DATE"
 
+            # Set required application environment variables from GitHub Secrets
+            echo ${{ secrets.VPS_OS_PASSWORD }} | sudo -S dokku config:set --no-restart ebookfelipelopesadv \
+              DATABASE_URL="${{ secrets.APP_DATABASE_URL }}" \
+              ADMIN_TOKEN="${{ secrets.APP_ADMIN_TOKEN }}" \
+              MP_ACCESS_TOKEN="${{ secrets.APP_MP_ACCESS_TOKEN }}" \
+              MP_PUBLIC_KEY="${{ secrets.APP_MP_PUBLIC_KEY }}" \
+              VITE_ADMIN_TOKEN="${{ secrets.APP_ADMIN_TOKEN }}" \
+              VITE_MP_PUBLIC_KEY="${{ secrets.APP_MP_PUBLIC_KEY }}" \
+              SITE_URL="${{ secrets.APP_SITE_URL }}" \
+              NODE_ENV=production \
+              VITE_API_URL="" \
+              VITE_MP_SANDBOX="false"
+
             AUTH_REPO="https://x-access-token:${{ secrets.GITHUB_DOKKU_TOKEN }}@github.com/${{ github.repository }}.git"
 
             detect_lock() {
