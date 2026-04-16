@@ -2,11 +2,18 @@ import { Router } from "express";
 import { z } from "zod";
 import { pool } from "../db";
 import { requireAdmin } from "../middleware/auth";
+import { config } from "../config";
 
 const router = Router();
 
+/** True when the error is a connection-level failure (DB unreachable). */
+function isDbConnError(err: unknown): boolean {
+  const e = err as { code?: string };
+  return e?.code === "ECONNREFUSED" || e?.code === "ENOTFOUND" || e?.code === "57P01";
+}
+
 // ── GET /api/products ─────────────────────────────────────────────────────────
-router.get("/", async (_req, res, next) => {
+router.get("/", async (_req, res) => {
   try {
     const { rows } = await pool.query(
       `SELECT id, mp_item_id, title, description, price, active
@@ -14,8 +21,17 @@ router.get("/", async (_req, res, next) => {
        ORDER BY id`,
     );
     res.json(rows);
-  } catch (err) {
-    next(err);
+  } catch {
+    // DB unavailable — return config-defined products as read-only fallback
+    const fallback = Object.entries(config.products).map(([id, p]) => ({
+      id,
+      mp_item_id: p.id,
+      title:      p.title,
+      description: p.description,
+      price:      p.price,
+      active:     true,
+    }));
+    res.json(fallback);
   }
 });
 
@@ -40,6 +56,9 @@ router.post("/", requireAdmin, async (req, res, next) => {
     );
     res.status(201).json(rows[0]);
   } catch (err: unknown) {
+    if (isDbConnError(err)) {
+      return res.status(503).json({ error: "Banco de dados não disponível. Inicie o túnel SSH (localhost:5433) e tente novamente." });
+    }
     const pgErr = err as { code?: string };
     if (pgErr?.code === "23505") {
       return res.status(409).json({ error: "ID de produto já existe" });
@@ -80,6 +99,9 @@ router.patch("/:id", requireAdmin, async (req, res, next) => {
     if (!rows.length) return res.status(404).json({ error: "Product not found" });
     res.json(rows[0]);
   } catch (err) {
+    if (isDbConnError(err)) {
+      return res.status(503).json({ error: "Banco de dados não disponível. Inicie o túnel SSH (localhost:5433) e tente novamente." });
+    }
     next(err);
   }
 });
@@ -95,6 +117,9 @@ router.delete("/:id", requireAdmin, async (req, res, next) => {
     if (!rows.length) return res.status(404).json({ error: "Product not found" });
     res.json({ deleted: rows[0].id });
   } catch (err) {
+    if (isDbConnError(err)) {
+      return res.status(503).json({ error: "Banco de dados não disponível. Inicie o túnel SSH (localhost:5433) e tente novamente." });
+    }
     next(err);
   }
 });
