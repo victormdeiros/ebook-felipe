@@ -56,10 +56,14 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
+  getInscricoes,
+  uploadEbookFile,
+  getEbookUrl,
   type Lead,
   type Order,
   type DashboardStats,
   type Product,
+  type Inscricao,
 } from "@/lib/repository";
 import {
   getContent,
@@ -79,7 +83,7 @@ const setAuthed = () => sessionStorage.setItem(AUTH_KEY, "true");
 const clearAuth = () => sessionStorage.removeItem(AUTH_KEY);
 
 // TYPES
-type Tab = "metricas" | "leads" | "pedidos" | "produtos" | "conteudo" | "configuracoes";
+type Tab = "metricas" | "leads" | "pedidos" | "inscricoes" | "ebook" | "produtos" | "conteudo" | "configuracoes";
 
 // HELPERS
 const formatCurrency = (v: number) =>
@@ -299,14 +303,24 @@ const MetricsTab = () => {
 };
 
 // LEADS TAB
+const TAG_LABELS: Record<string, { label: string; color: string }> = {
+  carrinho_abandonado: { label: "Carrinho abandonado", color: "text-orange-400 bg-orange-500/10 border-orange-500/25" },
+  inscricao_evento: { label: "Inscrição evento", color: "text-blue-400 bg-blue-500/10 border-blue-500/25" },
+  entrar_em_contato: { label: "Entrar em contato", color: "text-purple-400 bg-purple-500/10 border-purple-500/25" },
+};
+
 const LeadsTab = () => {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [search, setSearch] = useState("");
+  const [tagFilter, setTagFilter] = useState<string>("all");
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const PER_PAGE = 15;
 
-  useEffect(() => { getLeads().then((data) => { setLeads(data); setLoading(false); }); }, []);
+  useEffect(() => {
+    setLoading(true);
+    getLeads(tagFilter === "all" ? undefined : tagFilter).then((data) => { setLeads(data); setLoading(false); });
+  }, [tagFilter]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -320,12 +334,20 @@ const LeadsTab = () => {
     <div className="space-y-6">
       <div>
         <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground tracking-tight">Gestão de Leads</h2>
-        <p className="text-text-muted font-body text-sm mt-1">{loading ? "Carregando…" : `${leads.length} lead${leads.length !== 1 ? "s" : ""} cadastrado${leads.length !== 1 ? "s" : ""}`}</p>
+        <p className="text-text-muted font-body text-sm mt-1">{loading ? "Carregando…" : `${leads.length} lead${leads.length !== 1 ? "s" : ""}`}</p>
       </div>
       <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
-        <div className="relative w-full sm:w-80">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
-          <input type="search" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Buscar por nome ou e-mail…" className="w-full bg-support border border-white/8 rounded-md pl-9 pr-4 py-2.5 text-foreground font-body text-sm focus:outline-none focus:border-wine/40 transition-colors" />
+        <div className="flex flex-col sm:flex-row gap-2 flex-1">
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
+            <input type="search" value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }} placeholder="Buscar por nome ou e-mail…" className="w-full bg-support border border-white/8 rounded-md pl-9 pr-4 py-2.5 text-foreground font-body text-sm focus:outline-none focus:border-wine/40 transition-colors" />
+          </div>
+          <select value={tagFilter} onChange={(e) => { setTagFilter(e.target.value); setPage(1); }} className="bg-support border border-white/8 rounded-md px-3 py-2.5 text-foreground font-body text-sm focus:outline-none focus:border-wine/40 transition-colors">
+            <option value="all">Todas as tags</option>
+            <option value="carrinho_abandonado">Carrinho abandonado</option>
+            <option value="inscricao_evento">Inscrição evento</option>
+            <option value="entrar_em_contato">Entrar em contato</option>
+          </select>
         </div>
         <button onClick={() => exportCSV(filtered)} disabled={filtered.length === 0} className="flex items-center gap-2 border border-white/8 hover:border-wine/30 text-text-muted hover:text-foreground px-4 py-2.5 rounded-md font-body text-sm transition-all duration-200 disabled:opacity-30 disabled:pointer-events-none">
           <Download className="w-3.5 h-3.5" />Exportar CSV
@@ -347,6 +369,7 @@ const LeadsTab = () => {
                 <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold">Nome</th>
                 <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold">E-mail</th>
                 <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold hidden md:table-cell">WhatsApp</th>
+                <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold hidden lg:table-cell">Tags</th>
                 <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold hidden sm:table-cell">Data</th>
               </tr></thead>
               <tbody>
@@ -355,6 +378,18 @@ const LeadsTab = () => {
                     <td className="px-5 py-3.5 text-white max-w-[140px]"><span className="block truncate">{lead.name || "—"}</span></td>
                     <td className="px-5 py-3.5 text-white/85 max-w-[180px]"><span className="block truncate">{lead.email || "—"}</span></td>
                     <td className="px-5 py-3.5 text-white/85 hidden md:table-cell">{lead.whatsapp || "—"}</td>
+                    <td className="px-5 py-3.5 hidden lg:table-cell">
+                      <div className="flex flex-wrap gap-1">
+                        {(lead.tags ?? []).map((tag) => {
+                          const t = TAG_LABELS[tag];
+                          return (
+                            <span key={tag} className={`inline-flex items-center px-2 py-0.5 rounded border text-[10px] font-semibold uppercase tracking-wide ${t?.color ?? "text-white/40 bg-white/5 border-white/10"}`}>
+                              {t?.label ?? tag}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    </td>
                     <td className="px-5 py-3.5 text-white/60 hidden sm:table-cell whitespace-nowrap">{formatDate(lead.data)}</td>
                   </tr>
                 ))}
@@ -378,6 +413,183 @@ const LeadsTab = () => {
     </div>
   );
 };
+
+// INSCRIÇÕES TAB
+const InscricoesTab = () => {
+  const [items, setItems] = useState<Inscricao[]>([]);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<"all" | "paid" | "unpaid">("all");
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => { getInscricoes().then((data) => { setItems(data); setLoading(false); }); }, []);
+
+  const filtered = useMemo(() => {
+    const q = search.toLowerCase();
+    return items.filter((i) => {
+      const matchQ = i.name?.toLowerCase().includes(q) || i.email?.toLowerCase().includes(q);
+      const matchF = filter === "all" ? true : filter === "paid" ? i.order_status === "approved" : i.order_status !== "approved";
+      return matchQ && matchF;
+    });
+  }, [items, search, filter]);
+
+  const paidCount = items.filter((i) => i.order_status === "approved").length;
+  const unpaidCount = items.length - paidCount;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground tracking-tight">Inscrições — Segurança Jurídica 360</h2>
+        <div className="flex gap-4 mt-2">
+          <p className="text-text-muted font-body text-sm">{loading ? "Carregando…" : `${items.length} total`}</p>
+          <p className="text-green-400 font-body text-sm">{paidCount} pagos</p>
+          <p className="text-orange-400 font-body text-sm">{unpaidCount} não pagos</p>
+        </div>
+      </div>
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
+          <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nome ou e-mail…" className="w-full bg-support border border-white/8 rounded-md pl-9 pr-4 py-2.5 text-foreground font-body text-sm focus:outline-none focus:border-wine/40 transition-colors" />
+        </div>
+        <div className="flex gap-2">
+          {(["all", "paid", "unpaid"] as const).map((f) => (
+            <button key={f} onClick={() => setFilter(f)} className={`px-3 py-2 rounded-md font-body text-xs font-semibold transition-all ${filter === f ? "bg-wine/15 text-wine border border-wine/20" : "border border-white/8 text-text-muted hover:text-foreground"}`}>
+              {f === "all" ? "Todos" : f === "paid" ? "Pagos" : "Não pagos"}
+            </button>
+          ))}
+        </div>
+        <button onClick={() => {
+          if (!filtered.length) return;
+          const headers = ["Nome", "E-mail", "WhatsApp", "Status", "Valor", "Data inscrição"];
+          const rows = filtered.map((i) => [i.name, i.email, i.whatsapp, i.order_status ?? "pendente", i.amount ?? "", i.created_at].map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";"));
+          const csv = [headers.join(";"), ...rows].join("\n");
+          const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a"); a.href = url; a.download = `inscricoes_${new Date().toISOString().split("T")[0]}.csv`; a.click(); URL.revokeObjectURL(url);
+        }} disabled={filtered.length === 0} className="flex items-center gap-2 border border-white/8 hover:border-wine/30 text-text-muted hover:text-foreground px-4 py-2.5 rounded-md font-body text-sm transition-all duration-200 disabled:opacity-30 disabled:pointer-events-none">
+          <Download className="w-3.5 h-3.5" />CSV
+        </button>
+      </div>
+      <div className="surface-card rounded-xl overflow-hidden">
+        {loading ? (
+          <div className="py-16 flex flex-col items-center justify-center gap-3"><Loader2 className="w-6 h-6 text-wine animate-spin" /><p className="text-text-muted font-body text-sm">Carregando…</p></div>
+        ) : filtered.length === 0 ? (
+          <div className="py-20 flex flex-col items-center justify-center text-text-muted font-body text-sm gap-2"><CalendarDays className="w-8 h-8 opacity-30" strokeWidth={1} /><p>Nenhuma inscrição.</p></div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm font-body">
+              <thead><tr className="border-b border-white/5">
+                <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold">Nome</th>
+                <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold">E-mail</th>
+                <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold hidden md:table-cell">WhatsApp</th>
+                <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold">Status pgto</th>
+                <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold hidden sm:table-cell">Data</th>
+              </tr></thead>
+              <tbody>
+                {filtered.map((item, i) => {
+                  const paid = item.order_status === "approved";
+                  return (
+                    <tr key={i} className="border-b border-white/4 hover:bg-white/2 transition-colors last:border-0">
+                      <td className="px-5 py-3.5 text-white max-w-[140px]"><span className="block truncate">{item.name}</span></td>
+                      <td className="px-5 py-3.5 text-white/85 max-w-[180px]"><span className="block truncate">{item.email}</span></td>
+                      <td className="px-5 py-3.5 text-white/85 hidden md:table-cell">{item.whatsapp}</td>
+                      <td className="px-5 py-3.5">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded border text-[10px] font-semibold uppercase tracking-wide ${paid ? "text-green-400 bg-green-500/10 border-green-500/25" : "text-orange-400 bg-orange-500/10 border-orange-500/25"}`}>
+                          {paid ? "Pago" : item.order_status ?? "Pendente"}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 text-white/60 hidden sm:table-cell whitespace-nowrap">{formatDate(item.created_at)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// EBOOK TAB
+const EbookTab = () => {
+  const [currentUrl, setCurrentUrl] = useState("");
+  const [uploading, setUploading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+
+  useEffect(() => { getEbookUrl().then(setCurrentUrl); }, []);
+
+  const handleFile = async (file: File) => {
+    if (!file || file.type !== "application/pdf") { setError("Apenas arquivos PDF são aceitos."); return; }
+    setUploading(true); setError(null); setSuccess(false);
+    try {
+      const url = await uploadEbookFile(file);
+      setCurrentUrl(url);
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 4000);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+      <div>
+        <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground tracking-tight">Gerenciar E-book</h2>
+        <p className="text-text-muted font-body text-sm mt-1">Faça upload do PDF para o MinIO. O link é enviado automaticamente por e-mail após cada compra.</p>
+      </div>
+
+      {/* Current URL */}
+      <div className="surface-card rounded-xl p-5 space-y-3">
+        <p className="text-xs font-body text-text-muted uppercase tracking-[0.1em]">URL atual do e-book</p>
+        {currentUrl ? (
+          <div className="flex items-center gap-3">
+            <p className="flex-1 text-xs text-gold/80 font-mono break-all bg-gold/5 border border-gold/15 rounded-md px-3 py-2">{currentUrl}</p>
+            <a href={currentUrl} target="_blank" rel="noopener noreferrer" className="shrink-0 text-text-muted hover:text-gold transition-colors" title="Abrir PDF"><ExternalLink className="w-4 h-4" /></a>
+          </div>
+        ) : (
+          <p className="text-sm text-text-muted font-body italic">Nenhum e-book publicado ainda.</p>
+        )}
+      </div>
+
+      {/* Upload area */}
+      <div
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) handleFile(f); }}
+        onClick={() => fileRef.current?.click()}
+        className={`surface-card rounded-xl p-10 flex flex-col items-center justify-center gap-4 border-2 border-dashed cursor-pointer transition-all duration-200 ${dragOver ? "border-gold/50 bg-gold/5" : "border-white/10 hover:border-wine/30 hover:bg-white/2"}`}
+      >
+        <input ref={fileRef} type="file" accept="application/pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
+        {uploading ? (
+          <><Loader2 className="w-8 h-8 text-wine animate-spin" /><p className="font-body text-sm text-text-muted">Enviando para o MinIO…</p></>
+        ) : success ? (
+          <><CheckCircle2 className="w-8 h-8 text-green-400" /><p className="font-body text-sm text-green-300">Upload realizado com sucesso!</p></>
+        ) : (
+          <>
+            <BookOpen className="w-8 h-8 text-text-muted" strokeWidth={1.5} />
+            <div className="text-center">
+              <p className="font-body text-sm text-foreground">Arraste o PDF aqui ou <span className="text-gold underline">clique para selecionar</span></p>
+              <p className="font-body text-xs text-text-muted mt-1">Máximo: 50 MB · apenas PDF</p>
+            </div>
+          </>
+        )}
+      </div>
+
+      {error && (
+        <div className="flex items-start gap-2 bg-red-500/10 border border-red-500/25 rounded-lg px-4 py-3">
+          <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
+          <p className="text-sm text-red-300 font-body">{error}</p>
+        </div>
+      )}
+    </div>
+  );
+};
+
 
 // PEDIDOS TAB
 const STATUS_LABELS: Record<Order["status"], { label: string; color: string }> = {
@@ -1054,6 +1266,8 @@ const NAV_ITEMS: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: "metricas", label: "Métricas", icon: BarChart2 },
   { id: "leads", label: "Leads", icon: Users },
   { id: "pedidos", label: "Pedidos", icon: ShoppingCart },
+  { id: "inscricoes", label: "Inscrições", icon: CalendarDays },
+  { id: "ebook", label: "E-book", icon: BookOpen },
   { id: "produtos", label: "Produtos", icon: Package },
   { id: "conteudo", label: "Conteúdo", icon: Edit3 },
   { id: "configuracoes", label: "Configurações", icon: Settings },
@@ -1146,6 +1360,8 @@ const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
             {tab === "metricas" && <MetricsTab />}
             {tab === "leads" && <LeadsTab />}
             {tab === "pedidos" && <PedidosTab />}
+            {tab === "inscricoes" && <InscricoesTab />}
+            {tab === "ebook" && <EbookTab />}
             {tab === "produtos" && <ProdutosTab />}
             {tab === "conteudo" && <ContentTab />}
             {tab === "configuracoes" && <ConfiguracoesTab />}

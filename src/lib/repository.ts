@@ -8,9 +8,11 @@ const API_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 const ADMIN_TOKEN = import.meta.env.VITE_ADMIN_TOKEN ?? "";
 
 export interface Lead {
+  id?: string;
   name: string;
   email: string;
   whatsapp: string;
+  tags?: string[];
   data: string; // ISO timestamp
 }
 
@@ -56,15 +58,16 @@ export const saveLead = async (lead: Lead): Promise<void> => {
   }
 };
 
-export const getLeads = async (): Promise<Lead[]> => {
+export const getLeads = async (tag?: string): Promise<Lead[]> => {
   if (API_URL && ADMIN_TOKEN) {
     try {
-      const res = await fetch(`${API_URL}/api/admin/leads?limit=500`, {
+      const url = `${API_URL}/api/admin/leads?limit=500${tag ? `&tag=${encodeURIComponent(tag)}` : ""}`;
+      const res = await fetch(url, {
         headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
       });
       if (res.ok) {
-        const { items } = await res.json() as { items: { name: string; email: string; whatsapp: string; created_at: string }[] };
-        return items.map((r) => ({ name: r.name, email: r.email, whatsapp: r.whatsapp, data: r.created_at }));
+        const { items } = await res.json() as { items: { id: string; name: string; email: string; whatsapp: string; tags: string[]; created_at: string }[] };
+        return items.map((r) => ({ id: r.id, name: r.name, email: r.email, whatsapp: r.whatsapp, tags: r.tags, data: r.created_at }));
       }
     } catch (err) {
       console.warn("[repo] getLeads API error, using localStorage:", err);
@@ -167,6 +170,64 @@ export const deleteProduct = async (id: string): Promise<void> => {
     throw new Error(err.error ?? "Erro ao deletar produto");
   }
 };
+
+// Inscricoes no evento
+
+export interface Inscricao {
+  id: string;
+  name: string;
+  email: string;
+  whatsapp: string;
+  tags: string[];
+  created_at: string;
+  order_status: string | null;
+  amount: number | null;
+  mp_payment_id: string | null;
+  paid_at: string | null;
+}
+
+export const getInscricoes = async (): Promise<Inscricao[]> => {
+  if (!API_URL || !ADMIN_TOKEN) return [];
+  try {
+    const res = await fetch(`${API_URL}/api/admin/inscricoes?limit=500`, {
+      headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+    });
+    if (!res.ok) return [];
+    const { items } = await res.json() as { items: Inscricao[] };
+    return items;
+  } catch { return []; }
+};
+
+// Ebook upload & URL
+
+export const uploadEbookFile = async (file: File): Promise<string> => {
+  const form = new FormData();
+  form.append("file", file);
+  const res = await fetch(`${API_URL}/api/admin/ebook-upload`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+    body: form,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { error?: string };
+    throw new Error(err.error ?? "Erro ao fazer upload");
+  }
+  const { url } = await res.json() as { url: string };
+  return url;
+};
+
+export const getEbookUrl = async (): Promise<string> => {
+  if (!API_URL || !ADMIN_TOKEN) return "";
+  try {
+    const res = await fetch(`${API_URL}/api/admin/ebook-url`, {
+      headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+    });
+    if (!res.ok) return "";
+    const { url } = await res.json() as { url: string };
+    return url;
+  } catch { return ""; }
+};
+
 
 // Events tracking
 

@@ -10,6 +10,14 @@ const envSchema = z.object({
   MP_ACCESS_TOKEN: z.string().optional(),
   MP_PUBLIC_KEY: z.string().optional(),
   SITE_URL: z.string().url().optional().default("http://localhost:8081"),
+  // Email (Resend)
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().default("Manual do Empregador <noreply@manualempregador.com.br>"),
+  // MinIO / S3
+  MINIO_ENDPOINT: z.string().url().default("http://157.173.118.98:9003"),
+  MINIO_ACCESS_KEY: z.string().default("minio"),
+  MINIO_SECRET_KEY: z.string().default("minio1234"),
+  MINIO_REGION: z.string().default("us-east-1"),
 });
 
 const parsed = envSchema.safeParse(process.env);

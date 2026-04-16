@@ -17,7 +17,7 @@ const StickyHeader = () => {
   const [progress, setProgress] = useState(0);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [cartBounce, setCartBounce] = useState(false);
-  const { cartCount, addToCart, openCart } = useCart();
+  const { cartCount, addToCart, addEventToCart, openCart } = useCart();
 
   const handleAddToCart = () => {
     addToCart();
@@ -50,7 +50,7 @@ const StickyHeader = () => {
     }
   }, [cartCount]);
 
-  const handleGuaranteeAccess = () => handleAddToCart();
+  const handleGuaranteeAccess = () => { addEventToCart(); openCart(); };
 
   return (
     <>

@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { config } from "../config";
 import { pool } from "../db";
+import { sendEbookPurchaseEmail, sendEventConfirmationEmail } from "../email";
 
 const router = Router();
 
@@ -27,12 +28,15 @@ router.post("/preference", async (req, res, next) => {
     const { product, origin, payer } = preferenceSchema.parse(req.body ?? {});
     const siteUrl = (origin ?? config.SITE_URL ?? "http://localhost:8081").replace(/\/$/, "");
 
-    // Save lead for abandoned cart tracking (non-blocking)
+    // Save lead for abandoned cart tracking (non-blocking), tag: carrinho_abandonado
     if (payer) {
       const cleanPhone = payer.phone.replace(/\D/g, "");
+      const tag = product === "event" ? "inscricao_evento" : "carrinho_abandonado";
       pool.query(
-        `INSERT INTO manual_leads (name, email, whatsapp) VALUES ($1, $2, $3)`,
-        [payer.name, payer.email, cleanPhone]
+        `INSERT INTO manual_leads (name, email, whatsapp, tags)
+         VALUES ($1, $2, $3, ARRAY[$4::text])
+         ON CONFLICT DO NOTHING`,
+        [payer.name, payer.email, cleanPhone, tag]
       ).catch(() => { /* non-blocking */ });
     }
 
@@ -93,7 +97,7 @@ router.post("/preference", async (req, res, next) => {
         failure: `${siteUrl}`,
         pending: `${siteUrl}`,
       },
-      auto_return: "approved",
+      ...(siteUrl.includes("localhost") ? {} : { auto_return: "approved" }),
       statement_descriptor: "MANUEL EMPREGADOR",
       ...(config.SITE_URL && !config.SITE_URL.includes("localhost") ? {
         notification_url: `${config.SITE_URL.replace(/\/$/, "")}/api/mp/webhook`,
@@ -171,14 +175,15 @@ router.post("/webhook", async (req, res) => {
       .join(" ") || null;
 
     // Upsert — idempotente (pagamentos podem chegar mais de uma vez)
-    await pool.query(
+    const upsertResult = await pool.query<{ was_new: boolean }>(
       `INSERT INTO manual_orders
          (mp_payment_id, mp_preference_id, product, status, amount, payer_email, payer_name, payment_method, raw_webhook)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        ON CONFLICT (mp_payment_id) DO UPDATE
          SET status = EXCLUDED.status,
              raw_webhook = EXCLUDED.raw_webhook,
-             updated_at = now()`,
+             updated_at = now()
+       RETURNING (xmax = 0) AS was_new`,
       [
         String(payment.id),
         payment.preference_id ?? null,
@@ -193,6 +198,52 @@ router.post("/webhook", async (req, res) => {
     );
 
     console.log(`[mp/webhook] payment ${payment.id} → ${payment.status} (${product})`);
+
+    // Disparar e-mail apenas em aprovação e somente na primeira vez (was_new)
+    const isApproved = payment.status === "approved";
+    const wasNew = upsertResult.rows[0]?.was_new ?? true;
+    const payerEmail = payment.payer?.email;
+
+    if (isApproved && payerEmail && config.RESEND_API_KEY) {
+      const displayName = payerName ?? "Cliente";
+
+      // Remove tag carrinho_abandonado do lead ao confirmar pagamento
+      pool.query(
+        `UPDATE manual_leads
+         SET tags = array_remove(tags, 'carrinho_abandonado')
+         WHERE email = $1`,
+        [payerEmail]
+      ).catch(() => {});
+
+      if (wasNew) {
+        // Busca URL do ebook no banco
+        const { rows: cfgRows } = await pool.query<{ value: string }>(
+          `SELECT value FROM manual_config WHERE key = 'ebook_download_url'`
+        );
+        const ebookUrl = cfgRows[0]?.value ?? "";
+
+        if (product === "ebook") {
+          sendEbookPurchaseEmail(payerEmail, displayName, ebookUrl).catch((e) =>
+            console.error("[email] ebook send error:", e)
+          );
+        } else if (product === "event") {
+          // Verifica se o cliente também comprou o ebook
+          const { rows: ebookOrders } = await pool.query<{ count: string }>(
+            `SELECT COUNT(*)::text AS count FROM manual_orders
+             WHERE payer_email = $1 AND product = 'ebook' AND status = 'approved'`,
+            [payerEmail]
+          );
+          const hasEbook = Number(ebookOrders[0]?.count) > 0;
+          sendEventConfirmationEmail(
+            payerEmail,
+            displayName,
+            hasEbook,
+            hasEbook ? ebookUrl : undefined
+          ).catch((e) => console.error("[email] event send error:", e));
+        }
+      }
+    }
+
     return res.sendStatus(200);
   } catch (err) {
     console.error("[mp/webhook] error:", err);
