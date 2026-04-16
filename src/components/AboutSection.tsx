@@ -71,7 +71,7 @@ const AboutSection = () => {
               </div>
 
               {/* Bio */}
-              <p className="text-off-white/75 font-body text-sm leading-relaxed text-center">
+              <p className="text-off-white/75 font-body text-sm leading-relaxed text-justify">
                 {author.bio}
               </p>
             </motion.div>

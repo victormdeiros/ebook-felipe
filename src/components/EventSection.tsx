@@ -239,10 +239,10 @@ const EventSection = () => {
           </div>
 
           {/* Photos + Map */}
-          <div className="grid lg:grid-cols-2 gap-3" style={{ height: "260px" }}>
+          <div className="grid lg:grid-cols-2 gap-3 lg:h-[260px]">
 
             {/* 2×2 photo grid */}
-            <div className="grid grid-cols-2 grid-rows-2 gap-2 rounded-xl overflow-hidden">
+            <div className="grid grid-cols-2 grid-rows-2 gap-2 rounded-xl overflow-hidden h-52 sm:h-64 lg:h-auto">
               {([
                 { src: "/local_do_evento/auditorio.jpg",       alt: "Auditório",          label: "AUDITÓRIO" },
                 { src: "/local_do_evento/ambiente_coffee.jpg", alt: "Área de networking", label: "NETWORKING" },
@@ -264,7 +264,7 @@ const EventSection = () => {
             </div>
 
             {/* Google Maps embed */}
-            <div className="relative rounded-xl overflow-hidden border border-gold/10 bg-white/[0.02]">
+            <div className="relative rounded-xl overflow-hidden border border-gold/10 bg-white/[0.02] h-56 sm:h-64 lg:h-auto">
               <iframe
                 src="https://maps.google.com/maps?q=Rua+Buenos+Aires,+80,+Espinheiro,+Recife,+PE,+Brasil&t=&z=16&ie=UTF8&iwloc=&output=embed"
                 className="absolute inset-0 w-full h-full"

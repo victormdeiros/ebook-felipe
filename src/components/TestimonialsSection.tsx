@@ -128,9 +128,9 @@ const TestimonialsSection = () => {
           </p>
         </motion.div>
 
-        <div className="mt-10 flex max-h-[740px] justify-center gap-6 overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_18%,black_82%,transparent)]">
+        <div className="mt-10 flex max-h-[740px] justify-center gap-4 sm:gap-6 overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_18%,black_82%,transparent)]">
           <TestimonialsColumn testimonials={firstColumn} duration={15} shouldReduceMotion={shouldReduceMotion} />
-          <TestimonialsColumn testimonials={secondColumn} duration={19} shouldReduceMotion={shouldReduceMotion} className="hidden md:block" />
+          <TestimonialsColumn testimonials={secondColumn} duration={19} shouldReduceMotion={shouldReduceMotion} className="hidden sm:block" />
           <TestimonialsColumn testimonials={thirdColumn} duration={17} shouldReduceMotion={shouldReduceMotion} className="hidden lg:block" />
         </div>
       </div>

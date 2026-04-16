@@ -94,9 +94,6 @@ export function PerspectiveBook({
             className={cn("h-full w-full object-cover", coverClassName)}
           />
 
-          {/* Mask the branding logo at top of cover */}
-          <div className="absolute inset-x-0 top-0 h-[22%] bg-[#2d0c0c]" aria-hidden="true" />
-
           <div className="absolute inset-0 bg-gradient-to-br from-white/16 via-transparent to-black/30" />
           <motion.div className="absolute inset-0 opacity-90 mix-blend-screen" style={{ background: shine }} />
           <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-white/16 to-transparent" />
