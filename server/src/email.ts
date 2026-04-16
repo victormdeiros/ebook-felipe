@@ -3,7 +3,7 @@
  * Dispara e-mails transacionais após pagamento confirmado.
  */
 import { Resend } from "resend";
-import { config } from "../config";
+import { config } from "./config";
 
 let resend: Resend | null = null;
 
