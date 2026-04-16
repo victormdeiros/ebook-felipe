@@ -108,6 +108,66 @@ export const getDashboardStats = async (): Promise<DashboardStats | null> => {
   }
 };
 
+// Products
+
+export interface Product {
+  id: string;
+  mp_item_id: string;
+  title: string;
+  description: string;
+  price: number;
+  active: boolean;
+}
+
+export const getProducts = async (): Promise<Product[]> => {
+  if (!API_URL) throw new Error("VITE_API_URL não definida");
+  const res = await fetch(`${API_URL}/api/products`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json() as Promise<Product[]>;
+};
+
+export const createProduct = async (
+  data: Omit<Product, "active"> & { active?: boolean },
+): Promise<Product> => {
+  const res = await fetch(`${API_URL}/api/products`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${ADMIN_TOKEN}` },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { error?: string };
+    throw new Error(err.error ?? "Erro ao criar produto");
+  }
+  return res.json() as Promise<Product>;
+};
+
+export const updateProduct = async (
+  id: string,
+  data: Partial<Omit<Product, "id">>,
+): Promise<Product> => {
+  const res = await fetch(`${API_URL}/api/products/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${ADMIN_TOKEN}` },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { error?: string };
+    throw new Error(err.error ?? "Erro ao atualizar produto");
+  }
+  return res.json() as Promise<Product>;
+};
+
+export const deleteProduct = async (id: string): Promise<void> => {
+  const res = await fetch(`${API_URL}/api/products/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { error?: string };
+    throw new Error(err.error ?? "Erro ao deletar produto");
+  }
+};
+
 // Events tracking
 
 type EventName = "page_view" | "form_start" | "purchase";

@@ -32,6 +32,10 @@ import {
   ArrowRight,
   ExternalLink,
   Wallet,
+  Plus,
+  Trash2,
+  Pencil,
+  Link2,
 } from "lucide-react";
 import {
   AreaChart,
@@ -48,9 +52,14 @@ import {
   getLeads,
   getOrders,
   getDashboardStats,
+  getProducts,
+  createProduct,
+  updateProduct,
+  deleteProduct,
   type Lead,
   type Order,
   type DashboardStats,
+  type Product,
 } from "@/lib/repository";
 import {
   getContent,
@@ -734,152 +743,307 @@ const ConfiguracoesTab = () => {
 };
 
 // PRODUTOS TAB
-const ProdutosTab = () => {
-  const content = getContent();
-  const [mpStatus, setMpStatus] = useState<{ configured: boolean; public_key: string | null; products: { ebook: { price: number }; event: { price: number } } } | null>(null);
-  const [loadingMp, setLoadingMp] = useState(true);
+type ProductForm = { id: string; title: string; description: string; price: string; mp_item_id: string; active: boolean };
+const EMPTY_FORM: ProductForm = { id: "", title: "", description: "", price: "", mp_item_id: "", active: true };
 
-  useEffect(() => {
-    getMPStatus().then((s) => { setMpStatus(s); setLoadingMp(false); });
+interface ProductFormPanelProps {
+  creating: boolean;
+  editId: string | null;
+  form: ProductForm;
+  saving: boolean;
+  formError: string;
+  onCancel: () => void;
+  onSave: () => void;
+  onChange: (k: keyof ProductForm, v: string | boolean) => void;
+}
+
+const ProductFormPanel = ({ creating, editId, form, saving, formError, onCancel, onSave, onChange }: ProductFormPanelProps) => (
+  <div className="surface-card rounded-xl p-5 border-wine/20 space-y-4">
+    <div className="flex items-center gap-2 pb-3 border-b border-white/5">
+      <div className="w-7 h-7 rounded-md bg-wine/15 border border-wine/20 flex items-center justify-center">
+        {creating ? <Plus className="w-3.5 h-3.5 text-wine" /> : <Pencil className="w-3.5 h-3.5 text-wine" />}
+      </div>
+      <h4 className="font-display text-base font-semibold text-foreground">
+        {creating ? "Novo Produto" : `Editando: ${editId}`}
+      </h4>
+      <button onClick={onCancel} className="ml-auto text-text-muted hover:text-foreground transition-colors p-1 rounded" aria-label="Cancelar">
+        <X className="w-4 h-4" />
+      </button>
+    </div>
+    <div className="grid sm:grid-cols-2 gap-4">
+      {creating && (
+        <div className="space-y-1.5 sm:col-span-2">
+          <label className="block text-white/80 font-body text-xs font-medium uppercase tracking-[0.1em]">ID do Produto <span className="text-text-muted normal-case">(único, ex: "ebook2")</span></label>
+          <input
+            value={form.id}
+            onChange={(e) => onChange("id", e.target.value.toLowerCase().replace(/[^a-z0-9_-]/g, ""))}
+            placeholder="ex: curso-online"
+            className="w-full bg-background border border-white/8 focus:border-wine/40 rounded-md px-3 py-2.5 text-foreground font-mono text-sm focus:outline-none transition-colors"
+          />
+        </div>
+      )}
+      <div className="space-y-1.5 sm:col-span-2">
+        <label className="block text-white/80 font-body text-xs font-medium uppercase tracking-[0.1em]">Título</label>
+        <input value={form.title} onChange={(e) => onChange("title", e.target.value)} placeholder="Nome do produto" className="w-full bg-background border border-white/8 focus:border-wine/40 rounded-md px-3 py-2.5 text-foreground font-body text-sm focus:outline-none transition-colors" />
+      </div>
+      <div className="space-y-1.5 sm:col-span-2">
+        <label className="block text-white/80 font-body text-xs font-medium uppercase tracking-[0.1em]">Descrição <span className="text-text-muted normal-case">(opcional)</span></label>
+        <textarea value={form.description} onChange={(e) => onChange("description", e.target.value)} rows={2} placeholder="Descrição breve…" className="w-full bg-background border border-white/8 focus:border-wine/40 rounded-md px-3 py-2.5 text-foreground font-body text-sm focus:outline-none transition-colors resize-none" />
+      </div>
+      <div className="space-y-1.5">
+        <label className="block text-white/80 font-body text-xs font-medium uppercase tracking-[0.1em]">Preço (R$)</label>
+        <input type="number" min="0.01" step="0.01" value={form.price} onChange={(e) => onChange("price", e.target.value)} placeholder="47.00" className="w-full bg-background border border-white/8 focus:border-wine/40 rounded-md px-3 py-2.5 text-foreground font-body text-sm focus:outline-none transition-colors" />
+      </div>
+      <div className="space-y-1.5">
+        <label className="block text-white/80 font-body text-xs font-medium uppercase tracking-[0.1em] flex items-center gap-1.5">
+          <Link2 className="w-3 h-3" />ID MP <span className="text-text-muted normal-case">(item_id no MP)</span>
+        </label>
+        <input value={form.mp_item_id} onChange={(e) => onChange("mp_item_id", e.target.value)} placeholder="ex: manual-do-empregador" className="w-full bg-background border border-white/8 focus:border-wine/40 rounded-md px-3 py-2.5 text-foreground font-mono text-sm focus:outline-none transition-colors" />
+      </div>
+      <div className="flex items-center gap-3 sm:col-span-2">
+        <button
+          type="button"
+          onClick={() => onChange("active", !form.active)}
+          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${form.active ? "bg-green-500" : "bg-white/15"}`}
+        >
+          <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${form.active ? "translate-x-6" : "translate-x-1"}`} />
+        </button>
+        <span className="font-body text-sm text-text-muted">{form.active ? "Ativo (visível para venda)" : "Inativo (oculto)"}</span>
+      </div>
+    </div>
+    {formError && (
+      <div className="flex items-center gap-2 text-red-400 font-body text-xs">
+        <AlertCircle className="w-3.5 h-3.5 shrink-0" />{formError}
+      </div>
+    )}
+    <div className="flex items-center justify-end gap-2 pt-1">
+      <button onClick={onCancel} className="border border-white/8 hover:border-white/15 text-text-muted hover:text-foreground px-4 py-2 rounded-md font-body text-sm transition-all">Cancelar</button>
+      <button onClick={onSave} disabled={saving} className="flex items-center gap-2 bg-wine hover:bg-wine-light text-background px-5 py-2 rounded-md font-ui text-xs transition-all disabled:opacity-50">
+        {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+        {saving ? "SALVANDO…" : "SALVAR"}
+      </button>
+    </div>
+  </div>
+);
+
+const ProdutosTab = () => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [apiError, setApiError] = useState(false);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [form, setForm] = useState<ProductForm>(EMPTY_FORM);
+  const [formError, setFormError] = useState("");
+
+  const refresh = useCallback(() => {
+    setLoading(true);
+    setApiError(false);
+    getProducts()
+      .then((data) => { setProducts(data); setLoading(false); })
+      .catch(() => { setApiError(true); setLoading(false); });
   }, []);
 
-  const products = [
-    {
-      id: "ebook" as const,
-      name: "Manual do Empregador",
-      badge: "E-book Digital",
-      description: "Guia prático para gestão trabalhista segura — do início ao fim da relação de trabalho.",
-      price: content.price || "47",
-      priceOriginal: content.priceOriginal,
-      backendPrice: mpStatus?.products.ebook.price,
-      checkoutUrl: content.checkoutUrl,
-      downloadUrl: content.ebookDownloadUrl,
-      coverUrl: content.ebookCoverUrl,
-      icon: BookOpen,
-      theme: "wine" as const,
-    },
-    {
-      id: "event" as const,
-      name: "Segurança Jurídica 360",
-      badge: "Evento Presencial",
-      description: "Evento com especialistas em Direito Trabalhista, IA e Marketing para empresários — Segurança jurídica na prática.",
-      price: content.eventPrice || "67",
-      backendPrice: mpStatus?.products.event.price,
-      checkoutUrl: content.eventCheckoutUrl,
-      icon: CalendarDays,
-      theme: "gold" as const,
-    },
-  ];
+  useEffect(() => { refresh(); }, [refresh]);
+
+  const startEdit = (p: Product) => {
+    setCreating(false);
+    setEditId(p.id);
+    setForm({ id: p.id, title: p.title, description: p.description || "", price: String(p.price), mp_item_id: p.mp_item_id || "", active: p.active });
+    setFormError("");
+  };
+
+  const startCreate = () => {
+    setEditId(null);
+    setCreating(true);
+    setForm(EMPTY_FORM);
+    setFormError("");
+  };
+
+  const cancel = () => { setEditId(null); setCreating(false); setFormError(""); };
+
+  const handleChange = useCallback((k: keyof ProductForm, v: string | boolean) => {
+    setForm((prev) => ({ ...prev, [k]: v }));
+  }, []);
+
+  const handleSave = async () => {
+    const price = parseFloat(form.price);
+    if (!form.title.trim()) { setFormError("Título obrigatório."); return; }
+    if (isNaN(price) || price <= 0) { setFormError("Preço deve ser positivo."); return; }
+    if (!form.mp_item_id.trim()) { setFormError("ID MP obrigatório."); return; }
+    if (creating && !form.id.trim()) { setFormError("ID do produto obrigatório."); return; }
+
+    setSaving(true);
+    setFormError("");
+    try {
+      if (creating) {
+        await createProduct({ id: form.id.trim(), title: form.title.trim(), description: form.description.trim(), price, mp_item_id: form.mp_item_id.trim(), active: form.active });
+      } else if (editId) {
+        await updateProduct(editId, { title: form.title.trim(), description: form.description.trim(), price, mp_item_id: form.mp_item_id.trim(), active: form.active });
+      }
+      cancel();
+      refresh();
+    } catch (err) {
+      setFormError(err instanceof Error ? err.message : "Erro ao salvar.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    setSaving(true);
+    try {
+      await deleteProduct(id);
+      setDeleteConfirm(null);
+      refresh();
+    } catch (err) {
+      console.error("[ProdutosTab] delete error:", err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleActive = async (p: Product) => {
+    try {
+      await updateProduct(p.id, { active: !p.active });
+      setProducts((prev) => prev.map((x) => x.id === p.id ? { ...x, active: !p.active } : x));
+    } catch (err) {
+      console.error("[ProdutosTab] toggle error:", err);
+    }
+  };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground tracking-tight">Produtos</h2>
-          <p className="text-text-muted font-body text-sm mt-1">Gerencie os produtos disponíveis para venda.</p>
+          <p className="text-text-muted font-body text-sm mt-1">
+            {loading ? "Carregando…" : `${products.length} produto${products.length !== 1 ? "s" : ""} cadastrado${products.length !== 1 ? "s" : ""}`}
+          </p>
         </div>
-        <span className="inline-flex items-center gap-1.5 text-xs font-body border px-3 py-1.5 rounded-full mt-1 sm:mt-0 self-start">
-          {loadingMp
-            ? <span className="text-text-muted border-white/15 bg-white/5">MP verificando…</span>
-            : mpStatus?.configured
-              ? <span className="text-green-400 border-green-500/25 bg-green-500/8"><span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse inline-block mr-1.5" />MP Ativo</span>
-              : <span className="text-yellow-400 border-yellow-500/25 bg-yellow-500/8">MP sem token</span>
-          }
-        </span>
+        <div className="flex items-center gap-2">
+          <button onClick={refresh} className="flex items-center gap-2 text-text-muted hover:text-foreground font-body text-sm transition-colors border border-white/8 hover:border-white/15 px-3 py-2 rounded-md shrink-0">
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />
+          </button>
+          <button onClick={() => { if (!creating && !editId) startCreate(); }} disabled={creating || !!editId} className="flex items-center gap-2 bg-wine hover:bg-wine-light text-background px-4 py-2 rounded-md font-ui text-xs transition-all disabled:opacity-40">
+            <Plus className="w-3.5 h-3.5" />NOVO PRODUTO
+          </button>
+        </div>
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-6">
-        {products.map((p) => {
-          const isWine = p.theme === "wine";
-          return (
-            <motion.div
-              key={p.id}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.35 }}
-              className={`surface-card rounded-2xl overflow-hidden flex flex-col ${
-                isWine ? "border-wine/20" : "border-gold/20"
-              }`}
-            >
-              {/* Header */}
-              <div className={`px-5 pt-5 pb-4 border-b border-white/5 flex items-start gap-3`}>
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
-                  isWine ? "bg-wine/15 border border-wine/20" : "bg-gold/15 border border-gold/20"
-                }`}>
-                  <p.icon className={`w-5 h-5 ${isWine ? "text-wine" : "text-gold"}`} strokeWidth={1.5} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h3 className="font-display text-lg font-semibold text-foreground leading-tight">{p.name}</h3>
-                    <span className={`text-[0.6rem] font-ui tracking-widest px-2 py-0.5 rounded-full border ${
-                      isWine ? "text-wine border-wine/25 bg-wine/10" : "text-gold border-gold/25 bg-gold/10"
-                    }`}>{p.badge}</span>
+      {creating && <ProductFormPanel creating={creating} editId={editId} form={form} saving={saving} formError={formError} onCancel={cancel} onSave={handleSave} onChange={handleChange} />}
+
+      {loading ? (
+        <div className="py-16 flex flex-col items-center justify-center gap-3">
+          <Loader2 className="w-6 h-6 text-wine animate-spin" />
+          <p className="text-text-muted font-body text-sm">Carregando produtos…</p>
+        </div>
+      ) : apiError ? (
+        <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-5 py-4 font-body text-xs">
+          <p className="text-red-300 font-semibold mb-1.5">Backend não acessível</p>
+          <p className="text-white/50 mb-3">O servidor Express precisa estar rodando com banco de dados conectado.</p>
+          <div className="space-y-1.5 font-mono text-green-300 bg-black/30 rounded px-3 py-2.5 select-all">
+            <p>cd server && npm run migrate</p>
+            <p>cd server && npm run dev</p>
+          </div>
+          <button onClick={refresh} className="mt-3 flex items-center gap-2 border border-white/8 hover:border-white/15 text-text-muted hover:text-foreground px-3 py-1.5 rounded font-body text-xs transition-colors">
+            <RefreshCw className="w-3 h-3" />Tentar novamente
+          </button>
+        </div>
+      ) : products.length === 0 ? (
+        <div className="py-20 flex flex-col items-center justify-center text-text-muted font-body text-sm gap-3">
+          <Package className="w-10 h-10 opacity-20" strokeWidth={1} />
+          <p>Nenhum produto cadastrado.</p>
+          {!creating && (
+            <button onClick={startCreate} className="mt-1 flex items-center gap-2 border border-white/8 hover:border-wine/30 text-text-muted hover:text-wine px-4 py-2 rounded-md font-body text-sm transition-all">
+              <Plus className="w-3.5 h-3.5" />Criar primeiro produto
+            </button>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {products.map((p) => (
+            <div key={p.id}>
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25 }}
+                className={`surface-card rounded-xl overflow-hidden ${!p.active ? "opacity-60" : ""}`}
+              >
+                <div className="flex items-center gap-4 px-5 py-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-display text-base font-semibold text-foreground">{p.title}</span>
+                      <span className={`text-[0.6rem] font-ui tracking-widest px-2 py-0.5 rounded-full border ${p.active ? "text-green-400 border-green-500/25 bg-green-500/8" : "text-text-muted border-white/10 bg-white/4"}`}>
+                        {p.active ? "ATIVO" : "INATIVO"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-4 mt-1 flex-wrap">
+                      <span className="font-mono text-xs text-text-muted">id: {p.id}</span>
+                      <span className="text-text-muted text-xs">·</span>
+                      <span className="font-display text-gold font-semibold text-sm">R$ {Number(p.price).toFixed(2)}</span>
+                      {p.mp_item_id && (
+                        <>
+                          <span className="text-text-muted text-xs">·</span>
+                          <span className="flex items-center gap-1 font-mono text-xs text-text-muted"><Link2 className="w-2.5 h-2.5" />{p.mp_item_id}</span>
+                        </>
+                      )}
+                    </div>
+                    {p.description && <p className="text-text-muted font-body text-xs mt-1 line-clamp-1">{p.description}</p>}
                   </div>
-                  <p className="text-text-muted font-body text-xs mt-1 leading-relaxed">{p.description}</p>
-                </div>
-              </div>
-
-              {/* Pricing */}
-              <div className="px-5 py-4 flex items-end justify-between border-b border-white/5">
-                <div>
-                  <p className="text-text-muted font-body text-[0.65rem] uppercase tracking-[0.12em] mb-1">Preço de venda</p>
-                  <div className="flex items-baseline gap-2">
-                    <span className={`font-display text-3xl font-bold ${isWine ? "text-wine" : "text-gold"}`}>
-                      R$ {p.price}
-                    </span>
-                    {p.priceOriginal && (
-                      <span className="text-text-muted line-through font-body text-sm">R$ {p.priceOriginal}</span>
-                    )}
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => handleToggleActive(p)}
+                      title={p.active ? "Desativar" : "Ativar"}
+                      className={`w-8 h-8 rounded-md flex items-center justify-center transition-colors border ${p.active ? "border-green-500/25 bg-green-500/8 hover:bg-green-500/15 text-green-400" : "border-white/8 bg-white/4 hover:bg-white/8 text-text-muted"}`}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${p.active ? "bg-green-400" : "bg-white/30"}`} />
+                    </button>
+                    <button
+                      onClick={() => editId === p.id ? cancel() : startEdit(p)}
+                      title="Editar"
+                      className={`w-8 h-8 rounded-md flex items-center justify-center transition-colors border ${editId === p.id ? "border-wine/30 bg-wine/15 text-wine" : "border-white/8 hover:border-wine/20 text-text-muted hover:text-wine hover:bg-wine/8"}`}
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setDeleteConfirm(deleteConfirm === p.id ? null : p.id)}
+                      title="Remover"
+                      className={`w-8 h-8 rounded-md flex items-center justify-center transition-colors border ${deleteConfirm === p.id ? "border-red-500/30 bg-red-500/15 text-red-400" : "border-white/8 hover:border-red-500/20 text-text-muted hover:text-red-400 hover:bg-red-500/8"}`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
-                {loadingMp ? (
-                  <div className="h-5 w-20 bg-white/5 rounded animate-pulse" />
-                ) : p.backendPrice !== undefined ? (
-                  <div className="text-right">
-                    <p className="text-text-muted font-body text-[0.6rem] uppercase tracking-[0.12em] mb-0.5">Backend MP</p>
-                    <p className="font-body text-sm font-semibold text-white/70">R$ {p.backendPrice}</p>
-                  </div>
-                ) : (
-                  <span className="text-xs font-body text-text-muted border border-white/10 bg-white/4 px-2.5 py-1 rounded-full">MP offline</span>
+                <AnimatePresence>
+                  {deleteConfirm === p.id && (
+                    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="border-t border-red-500/15 bg-red-500/5 px-5 py-3 flex items-center gap-3">
+                      <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                      <p className="flex-1 text-red-300 font-body text-xs">Remover <strong>"{p.title}"</strong> permanentemente?</p>
+                      <button onClick={() => setDeleteConfirm(null)} className="text-text-muted hover:text-foreground font-body text-xs px-3 py-1.5 rounded border border-white/8 transition-colors">Cancelar</button>
+                      <button onClick={() => handleDelete(p.id)} disabled={saving} className="flex items-center gap-1.5 bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-400 font-body text-xs px-3 py-1.5 rounded transition-colors disabled:opacity-50">
+                        {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}Remover
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+              <AnimatePresence>
+                {editId === p.id && (
+                  <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} transition={{ duration: 0.2 }} className="mt-2">
+                    <ProductFormPanel creating={creating} editId={editId} form={form} saving={saving} formError={formError} onCancel={cancel} onSave={handleSave} onChange={handleChange} />
+                  </motion.div>
                 )}
-              </div>
+              </AnimatePresence>
+            </div>
+          ))}
+        </div>
+      )}
 
-              {/* Links */}
-              <div className="px-5 py-4 space-y-2 flex-1">
-                <p className="text-text-muted font-body text-[0.65rem] uppercase tracking-[0.12em] mb-2">Links</p>
-                {p.checkoutUrl ? (
-                  <a href={p.checkoutUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-body text-white/60 hover:text-white transition-colors group">
-                    <CreditCard className={`w-3.5 h-3.5 shrink-0 ${isWine ? "text-wine/60 group-hover:text-wine" : "text-gold/60 group-hover:text-gold"}`} strokeWidth={1.5} />
-                    <span className="truncate">Checkout: {p.checkoutUrl}</span>
-                    <ExternalLink className="w-3 h-3 shrink-0 opacity-50" />
-                  </a>
-                ) : (
-                  <p className="text-xs font-body text-text-muted italic">Checkout URL não configurada</p>
-                )}
-                {"downloadUrl" in p && p.downloadUrl && (
-                  <a href={p.downloadUrl as string} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-body text-white/60 hover:text-white transition-colors group">
-                    <Download className={`w-3.5 h-3.5 shrink-0 ${isWine ? "text-wine/60 group-hover:text-wine" : "text-gold/60 group-hover:text-gold"}`} strokeWidth={1.5} />
-                    <span className="truncate">Download: {p.downloadUrl as string}</span>
-                    <ExternalLink className="w-3 h-3 shrink-0 opacity-50" />
-                  </a>
-                )}
-              </div>
-
-              {/* Footer hint */}
-              <div className="px-5 pb-4">
-                <p className="text-text-muted font-body text-xs">
-                  Edite preços e links na aba <span className={`font-semibold ${isWine ? "text-wine" : "text-gold"}`}>Conteúdo</span>.
-                </p>
-              </div>
-            </motion.div>
-          );
-        })}
-      </div>
-
-      {/* Info note */}
-      <div className="rounded-xl border border-white/8 bg-white/2 px-5 py-4 font-body text-xs text-text-muted">
-        <p className="text-white/50 text-[0.65rem] uppercase tracking-[0.15em] mb-2">Preços no backend (MP)</p>
-        <p>Os preços cobrados no Mercado Pago são definidos em <code className="bg-white/8 px-1.5 py-0.5 rounded">server/src/config.ts</code> → <code className="bg-white/8 px-1.5 py-0.5 rounded">config.products</code>. Altere lá e reinicie o servidor para que as cobranças reflitam o novo valor.</p>
+      <div className="rounded-xl border border-white/6 bg-white/2 px-5 py-4 font-body text-xs text-text-muted">
+        <p className="text-white/50 text-[0.65rem] uppercase tracking-[0.15em] mb-2">ID MP (mp_item_id)</p>
+        <p>O campo <strong className="text-white/60">ID MP</strong> é enviado ao Mercado Pago como identificador do item na preferência de pagamento. Use o mesmo ID de um produto existente no seu painel MP para vincular, ou crie um novo identificador.</p>
       </div>
     </div>
   );
