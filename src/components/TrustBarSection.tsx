@@ -26,8 +26,8 @@ const TrustBarSection = () => {
               transition={{ duration: 0.4, delay: i * 0.06 }}
               className="flex items-center gap-3 min-h-[44px]"
             >
-              <div className="w-8 h-8 flex items-center justify-center shrink-0 rounded border border-wine/15 bg-wine/5">
-                <item.icon className="w-4 h-4 text-wine" strokeWidth={1.5} />
+              <div className="w-8 h-8 flex items-center justify-center shrink-0 rounded border border-gold/20 bg-gold/[0.06]">
+                <item.icon className="w-4 h-4 text-gold" strokeWidth={1.5} />
               </div>
               <span className="text-off-white/80 text-sm leading-snug font-body">{item.text}</span>
             </motion.div>

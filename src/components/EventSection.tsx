@@ -115,8 +115,8 @@ const EventSection = () => {
         {/* ── Event Header ── */}
         <div className="text-center mb-16 lg:mb-20">
           <motion.div {...fade(0)} className="mb-6">
-            <span className="inline-flex items-center gap-2 rounded-full border border-wine/35 bg-wine/[0.1] px-5 py-2 font-ui text-[0.6rem] tracking-[0.3em] text-wine">
-              <Star className="h-3 w-3 fill-wine shrink-0" />
+            <span className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/[0.08] px-5 py-2 font-ui text-[0.6rem] tracking-[0.3em] text-gold">
+              <Star className="h-3 w-3 fill-gold shrink-0" />
               EVENTO DE LANÇAMENTO EXCLUSIVO
             </span>
           </motion.div>
@@ -132,7 +132,7 @@ const EventSection = () => {
 
           <motion.p
             {...fade(0.14)}
-            className="font-ui text-xs tracking-[0.22em] text-gold/75 mb-7 uppercase"
+            className="font-ui text-xs tracking-[0.22em] text-gold/75 mb-7 uppercase text-center"
           >
             Blindando sua empresa contra riscos trabalhistas
           </motion.p>

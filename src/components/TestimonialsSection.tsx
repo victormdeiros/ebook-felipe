@@ -57,7 +57,7 @@ const thirdColumn = testimonials.slice(6, 9);
 const Stars = () => (
   <div className="mb-4 flex gap-0.5" aria-label="5 de 5 estrelas">
     {Array.from({ length: 5 }).map((_, i) => (
-      <Star key={i} className="h-4 w-4 fill-wine text-wine" />
+      <Star key={i} className="h-4 w-4 fill-gold text-gold" />
     ))}
   </div>
 );

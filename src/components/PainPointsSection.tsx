@@ -47,7 +47,7 @@ const PainPointsSection = () => {
               className="surface-card p-6 rounded-lg flex items-center gap-4 hover:border-wine/20 transition-colors duration-300"
             >
               <div className="bg-background p-3 rounded-full shrink-0">
-                <point.icon className="w-6 h-6 text-wine" strokeWidth={1.5} />
+                <point.icon className="w-6 h-6 text-gold" strokeWidth={1.5} />
               </div>
               <p className="text-off-white font-display text-xl font-semibold">{point.problem}</p>
             </motion.div>

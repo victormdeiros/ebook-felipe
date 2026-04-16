@@ -108,7 +108,7 @@ const PriceSection = () => {
             </button>
 
             <div className="mt-4 flex items-center justify-center gap-1.5">
-              <ShieldCheck className="w-3.5 h-3.5 text-wine/60" />
+              <ShieldCheck className="w-3.5 h-3.5 text-gold/60" />
               <span className="font-body text-[11px] text-text-muted">Compra segura · Mercado Pago</span>
             </div>
           </motion.div>

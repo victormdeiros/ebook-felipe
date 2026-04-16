@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Menu, X, ShoppingCart } from "lucide-react";
+import iconManual from "@/assets/icon- manual do empregador.png";
 import { useCart } from "@/contexts/CartContext";
 import CartDrawer from "@/components/CartDrawer";
 
@@ -9,7 +10,6 @@ const NAV_ITEMS = [
   { label: "Conteúdo", href: "#conteudo" },
   { label: "Autores", href: "#autores" },
   { label: "Depoimentos", href: "#depoimentos" },
-  { label: "Lançamento", href: "#evento", highlight: true },
 ];
 
 const StickyHeader = () => {
@@ -73,16 +73,11 @@ const StickyHeader = () => {
           }`}
         >
           <a href="#" aria-label="Manual do Empregador – Início" className="flex items-center gap-2.5">
-            <div className="w-8 h-8 flex items-center justify-center rounded bg-wine/20 border border-wine/25 shrink-0">
-              <span className="font-display text-wine font-bold text-sm leading-none">ME</span>
-            </div>
-            <span
-              className={`font-display font-semibold text-off-white tracking-wide transition-all duration-300 ${
-                scrolled ? "text-base" : "text-lg"
-              }`}
-            >
-              MANUAL DO EMPREGADOR
-            </span>
+            <img
+              src={iconManual}
+              alt="Manual do Empregador"
+              className={`object-contain shrink-0 transition-all duration-300 ${scrolled ? "h-8" : "h-10"}`}
+            />
           </a>
 
           <nav className="hidden md:flex items-center gap-8" aria-label="Navegação principal">
@@ -90,11 +85,7 @@ const StickyHeader = () => {
               <a
                 key={item.href}
                 href={item.href}
-                className={`font-body text-sm transition-colors duration-200 ${
-                  item.highlight
-                    ? "text-gold hover:text-gold-light font-semibold"
-                    : "text-secondary-light hover:text-wine"
-                }`}
+                className="font-body text-sm text-secondary-light hover:text-gold transition-colors duration-200"
               >
                 {item.label}
               </a>
@@ -105,7 +96,7 @@ const StickyHeader = () => {
             {/* Cart icon */}
             <button
               onClick={openCart}
-              className="relative min-w-[44px] min-h-[44px] flex items-center justify-center text-off-white hover:text-gold transition-colors duration-200 cursor-pointer"
+              className="relative min-w-[44px] min-h-[44px] flex items-center justify-center text-gold/70 hover:text-gold transition-colors duration-200 cursor-pointer"
               aria-label={`Carrinho${cartCount > 0 ? ` — ${cartCount} item` : ""}`}
             >
               <ShoppingCart
@@ -120,9 +111,22 @@ const StickyHeader = () => {
               )}
             </button>
 
+            <a
+              href="#evento"
+              className="hidden md:flex items-center px-4 h-9 rounded font-ui text-[0.65rem] tracking-[0.12em] font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer"
+              style={{ background: 'transparent', color: '#c9a84c', border: '1px solid rgba(201,168,76,0.4)' }}
+              onMouseEnter={e => { (e.currentTarget as HTMLAnchorElement).style.background = '#c9a84c'; (e.currentTarget as HTMLAnchorElement).style.color = '#1a1408'; }}
+              onMouseLeave={e => { (e.currentTarget as HTMLAnchorElement).style.background = 'transparent'; (e.currentTarget as HTMLAnchorElement).style.color = '#c9a84c'; }}
+            >
+              LANÇAMENTO
+            </a>
+
             <button
               onClick={handleGuaranteeAccess}
-              className="font-ui text-xs text-white min-h-[44px] px-5 flex items-center gap-1.5 rounded-md transition-all duration-200 hover:shadow-[0_4px_20px_-4px_rgba(201,168,76,0.55)] cursor-pointer" style={{ background: '#2d7a4f' }} onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background='#c9a84c'} onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background='#2d7a4f'}
+              className="hidden md:flex items-center px-4 h-9 rounded font-ui text-[0.65rem] tracking-[0.12em] font-semibold text-white whitespace-nowrap transition-all duration-200 cursor-pointer"
+              style={{ background: '#2d7a4f' }}
+              onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background='#c9a84c'}
+              onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background='#2d7a4f'}
             >
               GARANTIR MINHA VAGA
             </button>
@@ -149,15 +153,18 @@ const StickyHeader = () => {
                   key={item.href}
                   href={item.href}
                   onClick={() => setMobileOpen(false)}
-                  className={`font-body text-base transition-colors py-3 border-b border-white/5 ${
-                    item.highlight
-                      ? "text-gold hover:text-gold-light font-semibold"
-                      : "text-secondary-light hover:text-wine"
-                  }`}
+                  className="font-body text-base text-secondary-light hover:text-gold transition-colors py-3 border-b border-white/5"
                 >
                   {item.label}
                 </a>
               ))}
+              <a
+                href="#evento"
+                onClick={() => setMobileOpen(false)}
+                className="font-body text-base text-gold font-semibold hover:text-gold-light transition-colors py-3 border-b border-white/5"
+              >
+                Lançamento ✦
+              </a>
             </div>
           </nav>
         )}

@@ -19,7 +19,7 @@ const EbookPresentationSection = () => {
 
         {/* ── Section label ── */}
         <motion.p
-          className="font-ui text-[0.65rem] tracking-[0.26em] text-wine mb-6"
+          className="font-ui text-[0.65rem] tracking-[0.26em] text-gold mb-6"
           initial={shouldReduceMotion ? false : { opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
@@ -91,7 +91,7 @@ const EbookPresentationSection = () => {
                   transition={{ delay: 0.15 + index * 0.1, duration: 0.5 }}
                   className="flex items-start gap-4 border-b border-white/8 py-5 first:pt-0 last:border-0"
                 >
-                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-wine" />
+                  <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-gold" />
                   <p className="text-sm leading-relaxed text-off-white/80">{bullet}</p>
                 </motion.li>
               ))}

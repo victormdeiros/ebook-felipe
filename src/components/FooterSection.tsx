@@ -1,5 +1,6 @@
 import { MessageCircle } from "lucide-react";
 import { CONFIG } from "@/config";
+import iconManual from "@/assets/icon- manual do empregador.png";
 
 const FooterSection = () => {
   return (
@@ -11,12 +12,11 @@ const FooterSection = () => {
           {/* Identity */}
           <div>
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-support border border-wine/20 flex items-center justify-center rounded-sm">
-                <span className="text-wine font-display font-bold text-xl">ME</span>
-              </div>
-              <span className="font-display text-xl text-off-white font-semibold tracking-wide">
-                MANUAL DO EMPREGADOR
-              </span>
+              <img
+                src={iconManual}
+                alt="Manual do Empregador"
+                className="h-12 object-contain"
+              />
             </div>
             <p className="text-text-muted font-body text-sm leading-relaxed mb-6 max-w-sm">
               Material objetivo para consulta rápida na rotina de gestão e Departamento Pessoal.
@@ -26,7 +26,7 @@ const FooterSection = () => {
                 href={`https://wa.me/${CONFIG.WHATSAPP_NUMBER}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-text-muted hover:text-wine transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+                className="text-gold/70 hover:text-gold transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
                 aria-label="WhatsApp"
               >
                 <MessageCircle className="w-5 h-5" />
@@ -62,12 +62,12 @@ const FooterSection = () => {
             <h4 className="font-ui text-xs text-wine tracking-[0.2em] mb-6">CONTATO</h4>
             <ul className="space-y-4">
               <li className="flex items-center gap-3 text-text-muted font-body text-sm">
-                <MessageCircle className="w-5 h-5 shrink-0 text-wine/60" />
+                <MessageCircle className="w-5 h-5 shrink-0 text-gold/60" />
                 <a
                   href={`https://wa.me/${CONFIG.WHATSAPP_NUMBER}?text=${encodeURIComponent("Olá! Quero saber mais sobre o Manual do Empregador.")}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="hover:text-wine transition-colors"
+                  className="hover:text-gold transition-colors"
                 >
                   Fale com um especialista
                 </a>

@@ -51,7 +51,7 @@ const ImportanceSection = () => {
             >
               <div className="mb-6 bg-background p-4 rounded-full">
                 <card.icon
-                  className={`w-7 h-7 ${card.highlight ? "text-wine" : "text-off-white/70"}`}
+                  className={`w-7 h-7 ${card.highlight ? "text-gold" : "text-gold/60"}`}
                   strokeWidth={1.5}
                 />
               </div>

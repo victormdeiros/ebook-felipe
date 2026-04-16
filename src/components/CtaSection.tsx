@@ -87,7 +87,7 @@ const CtaSection = () => {
           transition={{ duration: 0.5 }}
           className="text-center mb-14 max-w-2xl mx-auto"
         >
-          <span className="inline-flex items-center gap-2 rounded-full border border-wine/20 px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-wine/90 mb-5">
+          <span className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/[0.05] px-4 py-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-gold mb-5">
             <BadgeCheck className="h-3.5 w-3.5" />
             Fale com um especialista
           </span>

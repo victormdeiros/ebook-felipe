@@ -41,9 +41,9 @@ const TargetAudienceSection = () => {
             >
               <div className="relative mb-6">
                 <div className="bg-background p-4 rounded-full">
-                  <item.icon className="w-7 h-7 text-wine" strokeWidth={1.5} />
+                  <item.icon className="w-7 h-7 text-gold" strokeWidth={1.5} />
                 </div>
-                <div className="absolute inset-0 border border-wine/20 rounded-full scale-[1.2]" aria-hidden="true" />
+                <div className="absolute inset-0 border border-gold/25 rounded-full scale-[1.2]" aria-hidden="true" />
               </div>
               <span className="text-off-white/85 font-body text-base font-medium leading-snug">{item.text}</span>
             </motion.div>

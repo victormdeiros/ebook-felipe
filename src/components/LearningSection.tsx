@@ -52,8 +52,8 @@ const LearningSection = () => {
               transition={{ duration: 0.35, delay: i * 0.05 }}
               className="flex items-start gap-4 p-5 lg:p-6 surface-card rounded-lg group hover:border-wine/15 transition-colors duration-300"
             >
-              <div className="bg-wine/10 p-1.5 rounded-full shrink-0 mt-0.5">
-                <Check className="w-4 h-4 text-wine" strokeWidth={2.5} />
+              <div className="bg-gold/10 p-1.5 rounded-full shrink-0 mt-0.5">
+                <Check className="w-4 h-4 text-gold" strokeWidth={2.5} />
               </div>
               <span className="text-off-white/85 font-body text-sm sm:text-base leading-relaxed">{point}</span>
             </motion.div>

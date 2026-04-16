@@ -49,7 +49,7 @@ const HeroSection = () => {
 
             <motion.span
               {...fade(0.1)}
-              className="mb-8 inline-flex items-center gap-2 rounded-full border border-wine/25 bg-white/[0.03] px-4 py-2 font-ui text-[0.68rem] tracking-[0.22em] text-wine"
+              className="mb-8 inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/[0.05] px-4 py-2 font-ui text-[0.68rem] tracking-[0.22em] text-gold"
             >
               {content.heroBadge}
             </motion.span>
@@ -81,7 +81,7 @@ const HeroSection = () => {
             <motion.ul {...fade(0.42)} className="mb-9 space-y-4">
               {highlights.map((item) => (
                 <li key={item} className="flex items-start gap-3">
-                  <BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-wine" />
+                  <BadgeCheck className="mt-0.5 h-5 w-5 shrink-0 text-gold" />
                   <span className="text-sm leading-relaxed text-off-white/75">{item}</span>
                 </li>
               ))}
