@@ -15,9 +15,12 @@ dokku buildpacks:set $APP https://github.com/heroku/heroku-buildpack-nodejs
 
 # ── 3. Configure environment variables ───────────────────────────────────────
 # Replace values below with your real credentials before running!
+# Attach to docker_default network so the app can reach the evolution-postgres container
+dokku network:set $APP attach-post-deploy docker_default
+
 dokku config:set $APP \
   NODE_ENV=production \
-  DATABASE_URL="postgresql://postgres:difyai123456@localhost:5432/postgres" \
+  DATABASE_URL="postgresql://postgres:difyai123456@evolution-postgres:5432/postgres" \
   ADMIN_TOKEN="ManualEmpregador@2024" \
   MP_ACCESS_TOKEN="APP_USR-2783696014404921-040913-0ed54f2433d7cfaeeed31575daf942d8-3201432" \
   MP_PUBLIC_KEY="APP_USR-2b067151-d72c-4146-92d2-395d4980e015" \

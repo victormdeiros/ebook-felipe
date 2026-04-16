@@ -48,8 +48,16 @@ const run = async () => {
 };
 
 run()
-  .catch((err) => {
-    console.error("[migrate] failed:", err);
-    process.exitCode = 1;
+  .catch((err: unknown) => {
+    const code = (err as { code?: string })?.code;
+    // DB unreachable (network not ready yet) — warn but don't fail the deploy.
+    // Migrations can be run manually with: node server/dist/migrate.js
+    if (code === "ECONNREFUSED" || code === "ENOTFOUND" || code === "ETIMEDOUT") {
+      console.warn("[migrate] WARNING: DB not reachable — skipping migrations.");
+      console.warn("[migrate] Run manually once DB is available: node server/dist/migrate.js");
+    } else {
+      console.error("[migrate] FAILED:", err);
+      process.exitCode = 1;
+    }
   })
   .finally(() => closePool());
