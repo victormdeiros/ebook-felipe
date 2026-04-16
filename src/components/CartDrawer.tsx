@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingCart, Trash2, ArrowRight, BookOpen, X, ShieldCheck, Zap, Loader2, CalendarDays } from "lucide-react";
+import { ShoppingCart, Trash2, ArrowRight, BookOpen, X, ShieldCheck, Zap, Loader2, CalendarDays, ChevronLeft } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { getContent } from "@/lib/contentStore";
 import { CONFIG } from "@/config";
@@ -13,6 +13,20 @@ const CartDrawer = () => {
   const [isLoadingEbook, setIsLoadingEbook] = useState(false);
   const [isLoadingEvent, setIsLoadingEvent] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [step, setStep] = useState<"cart" | "form">("cart");
+  const [checkoutTarget, setCheckoutTarget] = useState<"ebook" | "event">("ebook");
+  const [form, setForm] = useState({ name: "", email: "", phone: "" });
+  const [formErrors, setFormErrors] = useState<{ name?: string; email?: string; phone?: string }>({});
+
+  // Reset form when drawer closes
+  useEffect(() => {
+    if (!isCartOpen) {
+      setStep("cart");
+      setForm({ name: "", email: "", phone: "" });
+      setFormErrors({});
+      setCheckoutError(null);
+    }
+  }, [isCartOpen]);
 
   const hasEbook = cartItems.some((i) => i.id === "ebook");
   const hasEvent = cartItems.some((i) => i.id === "event");
@@ -25,22 +39,34 @@ const CartDrawer = () => {
     (hasEvent ? Number(eventPrice) : 0)
   ).toFixed(2).replace(".", ",");
 
-  const handleCheckoutEbook = async () => {
+  const goToForm = (product: "ebook" | "event") => {
+    setCheckoutTarget(product);
     setCheckoutError(null);
-    setIsLoadingEbook(true);
+    setFormErrors({});
+    setStep("form");
+  };
+
+  const handleCheckout = async (product: "ebook" | "event", payer: { name: string; email: string; phone: string }) => {
+    const setLoading = product === "ebook" ? setIsLoadingEbook : setIsLoadingEvent;
+    setCheckoutError(null);
+    setLoading(true);
     try {
-      const result = await createMPPreference("ebook");
+      const result = await createMPPreference(product, payer);
       const url = getMPCheckoutUrl(result);
       closeCart();
       window.location.href = url;
     } catch (err) {
       if (err instanceof MPNotConfiguredError) {
-        const url = content.checkoutUrl || CONFIG.PAYMENT_URL;
-        if (url && url !== "#" && !url.includes("example")) {
+        const fallbackUrl = product === "ebook"
+          ? content.checkoutUrl || CONFIG.PAYMENT_URL
+          : content.eventCheckoutUrl || CONFIG.EVENT_PAYMENT_URL;
+        if (fallbackUrl && fallbackUrl !== "#" && !fallbackUrl.includes("example")) {
           closeCart();
-          window.location.href = url;
+          window.location.href = fallbackUrl;
         } else {
-          setCheckoutError("Checkout do e-book não configurado. Contate o suporte.");
+          setCheckoutError(product === "ebook"
+            ? "Checkout do e-book não configurado. Contate o suporte."
+            : "Link de inscrição do evento não configurado. Contate o suporte.");
         }
       } else if (err instanceof TypeError) {
         setCheckoutError("Servidor de pagamento offline. Aguarde um instante e tente novamente.");
@@ -48,35 +74,19 @@ const CartDrawer = () => {
         setCheckoutError((err as Error).message || "Erro ao iniciar pagamento. Tente novamente.");
       }
     } finally {
-      setIsLoadingEbook(false);
+      setLoading(false);
     }
   };
 
-  const handleCheckoutEvent = async () => {
-    setCheckoutError(null);
-    setIsLoadingEvent(true);
-    try {
-      const result = await createMPPreference("event");
-      const url = getMPCheckoutUrl(result);
-      closeCart();
-      window.location.href = url;
-    } catch (err) {
-      if (err instanceof MPNotConfiguredError) {
-        const url = content.eventCheckoutUrl || CONFIG.EVENT_PAYMENT_URL;
-        if (url && url !== "#") {
-          closeCart();
-          window.location.href = url;
-        } else {
-          setCheckoutError("Link de inscrição do evento não configurado. Contate o suporte.");
-        }
-      } else if (err instanceof TypeError) {
-        setCheckoutError("Servidor de pagamento offline. Aguarde um instante e tente novamente.");
-      } else {
-        setCheckoutError((err as Error).message || "Erro ao iniciar pagamento. Tente novamente.");
-      }
-    } finally {
-      setIsLoadingEvent(false);
-    }
+  const handleFormSubmit = async () => {
+    const errors: { name?: string; email?: string; phone?: string } = {};
+    if (!form.name.trim() || form.name.trim().length < 2) errors.name = "Nome obrigatório (mín. 2 caracteres)";
+    if (!form.email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) errors.email = "E-mail inválido";
+    const phone = form.phone.replace(/\D/g, "");
+    if (phone.length < 10) errors.phone = "WhatsApp inválido (com DDD)";
+    if (Object.keys(errors).length) { setFormErrors(errors); return; }
+    setFormErrors({});
+    await handleCheckout(checkoutTarget, { name: form.name.trim(), email: form.email.trim().toLowerCase(), phone });
   };
 
   return (
@@ -155,6 +165,80 @@ const CartDrawer = () => {
                         Adicione o e-book para continuar.
                       </p>
                     </div>
+                  </motion.div>
+                ) : step === "form" ? (
+                  <motion.div
+                    key="form"
+                    initial={{ opacity: 0, x: 16 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -16 }}
+                    transition={{ duration: 0.25 }}
+                    className="space-y-4"
+                  >
+                    {/* Mini order summary */}
+                    <div className="rounded-xl border border-white/8 bg-black/20 px-4 py-3 flex items-center justify-between">
+                      <div>
+                        <p className="text-[0.65rem] font-ui text-text-muted uppercase tracking-[0.1em]">
+                          {checkoutTarget === "ebook" ? "Manual do Empregador · E-book" : "Segurança Jurídica 360 · Evento"}
+                        </p>
+                        <p className="font-display text-sm font-bold text-gold mt-0.5">
+                          R$ {checkoutTarget === "ebook" ? ebookPrice : eventPrice}
+                        </p>
+                      </div>
+                      <span className="text-[0.65rem] font-ui text-text-muted/60 bg-white/[0.03] border border-white/8 rounded px-2 py-1">1×</span>
+                    </div>
+
+                    {/* Name */}
+                    <div>
+                      <label className="block font-ui text-[0.62rem] tracking-[0.1em] text-off-white/60 mb-1.5 uppercase">Nome completo</label>
+                      <input
+                        type="text"
+                        value={form.name}
+                        onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                        onKeyDown={e => e.key === "Enter" && handleFormSubmit()}
+                        placeholder="Ex: João da Silva"
+                        autoComplete="name"
+                        className={`w-full rounded-lg border px-3.5 py-2.5 text-sm text-off-white placeholder:text-text-muted focus:outline-none transition-all duration-200 ${formErrors.name ? "border-red-400/50" : "border-white/10 focus:border-gold/40"}`}
+                        style={{ background: "#1a1114", color: "#f3ece8" }}
+                      />
+                      {formErrors.name && <p className="mt-1 text-[0.62rem] text-red-400">{formErrors.name}</p>}
+                    </div>
+
+                    {/* Email */}
+                    <div>
+                      <label className="block font-ui text-[0.62rem] tracking-[0.1em] text-off-white/60 mb-1.5 uppercase">E-mail</label>
+                      <input
+                        type="email"
+                        value={form.email}
+                        onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
+                        onKeyDown={e => e.key === "Enter" && handleFormSubmit()}
+                        placeholder="joao@email.com"
+                        autoComplete="email"
+                        className={`w-full rounded-lg border px-3.5 py-2.5 text-sm text-off-white placeholder:text-text-muted focus:outline-none transition-all duration-200 ${formErrors.email ? "border-red-400/50" : "border-white/10 focus:border-gold/40"}`}
+                        style={{ background: "#1a1114", color: "#f3ece8" }}
+                      />
+                      {formErrors.email && <p className="mt-1 text-[0.62rem] text-red-400">{formErrors.email}</p>}
+                    </div>
+
+                    {/* Phone */}
+                    <div>
+                      <label className="block font-ui text-[0.62rem] tracking-[0.1em] text-off-white/60 mb-1.5 uppercase">WhatsApp</label>
+                      <input
+                        type="tel"
+                        value={form.phone}
+                        onChange={e => setForm(p => ({ ...p, phone: e.target.value }))}
+                        onKeyDown={e => e.key === "Enter" && handleFormSubmit()}
+                        placeholder="(81) 99999-9999"
+                        autoComplete="tel"
+                        className={`w-full rounded-lg border px-3.5 py-2.5 text-sm text-off-white placeholder:text-text-muted focus:outline-none transition-all duration-200 ${formErrors.phone ? "border-red-400/50" : "border-white/10 focus:border-gold/40"}`}
+                        style={{ background: "#1a1114", color: "#f3ece8" }}
+                      />
+                      {formErrors.phone && <p className="mt-1 text-[0.62rem] text-red-400">{formErrors.phone}</p>}
+                    </div>
+
+                    <p className="text-[0.62rem] text-text-muted font-body leading-relaxed">
+                      Seus dados são usados para confirmar a compra e envio do material. Nunca compartilhamos suas informações.
+                    </p>
                   </motion.div>
                 ) : (
                   <motion.div
@@ -265,46 +349,57 @@ const CartDrawer = () => {
                   </p>
                 )}
 
-                {/* Ebook checkout */}
-                {hasEbook && (
-                <motion.button
-                  whileTap={isLoadingEbook ? {} : { scale: 0.98 }}
-                  onClick={handleCheckoutEbook}
-                  disabled={isLoadingEbook || isLoadingEvent}
-                  aria-busy={isLoadingEbook}
-                  className="relative w-full flex items-center justify-center gap-2 min-h-[48px] rounded-xl font-ui font-bold text-sm text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(201,168,76,0.5)] overflow-hidden group disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none" style={{ background: '#2d7a4f' }} onMouseEnter={e => { if(!(e.currentTarget as HTMLButtonElement).disabled)(e.currentTarget as HTMLButtonElement).style.background='#c9a84c' }} onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background='#2d7a4f'}
-                >
-                  <span className="absolute inset-0 bg-gradient-to-r from-gold/0 via-white/10 to-gold/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-                  {isLoadingEbook ? (
-                    <><Loader2 className="h-4 w-4 animate-spin" />Aguarde...</>
-                  ) : (
-                    <>Finalizar compra do e-book<ArrowRight className="h-4 w-4" /></>
-                  )}
-                </motion.button>
-                )}
+                {step === "form" ? (
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleFormSubmit}
+                    disabled={isLoadingEbook || isLoadingEvent}
+                    aria-busy={isLoadingEbook || isLoadingEvent}
+                    className="relative w-full flex items-center justify-center gap-2 min-h-[48px] rounded-xl font-ui font-bold text-sm text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(201,168,76,0.5)] overflow-hidden group disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none" style={{ background: '#2d7a4f' }} onMouseEnter={e => { if(!(e.currentTarget as HTMLButtonElement).disabled)(e.currentTarget as HTMLButtonElement).style.background='#c9a84c' }} onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background='#2d7a4f'}
+                  >
+                    <span className="absolute inset-0 bg-gradient-to-r from-gold/0 via-white/10 to-gold/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+                    {(isLoadingEbook || isLoadingEvent) ? (
+                      <><Loader2 className="h-4 w-4 animate-spin" />Aguarde...</>
+                    ) : (
+                      <>Ir para pagamento<ArrowRight className="h-4 w-4" /></>
+                    )}
+                  </motion.button>
+                ) : (
+                  <>
+                    {/* Ebook checkout */}
+                    {hasEbook && (
+                    <motion.button
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => goToForm("ebook")}
+                      disabled={isLoadingEbook || isLoadingEvent}
+                      className="relative w-full flex items-center justify-center gap-2 min-h-[48px] rounded-xl font-ui font-bold text-sm text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(201,168,76,0.5)] overflow-hidden group disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none" style={{ background: '#2d7a4f' }} onMouseEnter={e => { if(!(e.currentTarget as HTMLButtonElement).disabled)(e.currentTarget as HTMLButtonElement).style.background='#c9a84c' }} onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background='#2d7a4f'}
+                    >
+                      <span className="absolute inset-0 bg-gradient-to-r from-gold/0 via-white/10 to-gold/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+                      <>Finalizar compra do e-book<ArrowRight className="h-4 w-4" /></>
+                    </motion.button>
+                    )}
 
-                {/* Event checkout */}
-                {hasEvent && (
-                <motion.button
-                  whileTap={isLoadingEvent ? {} : { scale: 0.98 }}
-                  onClick={handleCheckoutEvent}
-                  disabled={isLoadingEbook || isLoadingEvent}
-                  aria-busy={isLoadingEvent}
-                  className="relative w-full flex items-center justify-center gap-2 min-h-[48px] rounded-xl border font-ui font-bold text-sm text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(201,168,76,0.5)] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0" style={{ background: '#2d7a4f', borderColor: '#2d7a4f' }} onMouseEnter={e => { if(!(e.currentTarget as HTMLButtonElement).disabled)(e.currentTarget as HTMLButtonElement).style.background='#c9a84c' }} onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background='#2d7a4f'}
-                >
-                  {isLoadingEvent ? (
-                    <><Loader2 className="h-4 w-4 animate-spin" />Aguarde...</>
-                  ) : (
-                    <><CalendarDays className="h-4 w-4" />Inscrever no Segurança Jurídica 360<ArrowRight className="h-4 w-4" /></>
-                  )}
-                </motion.button>
+                    {/* Event checkout */}
+                    {hasEvent && (
+                    <motion.button
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => goToForm("event")}
+                      disabled={isLoadingEbook || isLoadingEvent}
+                      className="relative w-full flex items-center justify-center gap-2 min-h-[48px] rounded-xl border font-ui font-bold text-sm text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(201,168,76,0.5)] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0" style={{ background: '#2d7a4f', borderColor: '#2d7a4f' }} onMouseEnter={e => { if(!(e.currentTarget as HTMLButtonElement).disabled)(e.currentTarget as HTMLButtonElement).style.background='#c9a84c' }} onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background='#2d7a4f'}
+                    >
+                      <><CalendarDays className="h-4 w-4" />Inscrever no Segurança Jurídica 360<ArrowRight className="h-4 w-4" /></>
+                    </motion.button>
+                    )}
+                  </>
                 )}
 
                 <button
-                  onClick={closeCart}
-                  className="w-full text-center font-body text-xs text-text-muted hover:text-off-white/70 transition-colors py-1"
+                  onClick={step === "form" ? () => setStep("cart") : closeCart}
+                  className="w-full text-center font-body text-xs text-text-muted hover:text-off-white/70 transition-colors py-1 flex items-center justify-center gap-1"
                 >
-                  Continuar navegando
+                  {step === "form"
+                    ? <><ChevronLeft className="w-3 h-3" />Voltar ao carrinho</>
+                    : "Continuar navegando"}
                 </button>
 
                 <div className="flex items-center justify-center gap-1.5 text-[0.6rem] text-text-muted font-body">

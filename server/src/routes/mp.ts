@@ -9,6 +9,11 @@ const router = Router();
 const preferenceSchema = z.object({
   product: z.enum(["ebook", "event"]).default("ebook"),
   origin: z.string().url().optional(),
+  payer: z.object({
+    name: z.string().trim().min(2).max(200),
+    email: z.string().trim().toLowerCase().email(),
+    phone: z.string().trim(),
+  }).optional(),
 });
 
 // ── POST /api/mp/preference ──────────────────────────────────
@@ -19,8 +24,17 @@ router.post("/preference", async (req, res, next) => {
       return res.status(503).json({ error: "Mercado Pago não configurado no servidor." });
     }
 
-    const { product, origin } = preferenceSchema.parse(req.body ?? {});
+    const { product, origin, payer } = preferenceSchema.parse(req.body ?? {});
     const siteUrl = (origin ?? config.SITE_URL ?? "http://localhost:8081").replace(/\/$/, "");
+
+    // Save lead for abandoned cart tracking (non-blocking)
+    if (payer) {
+      const cleanPhone = payer.phone.replace(/\D/g, "");
+      pool.query(
+        `INSERT INTO manual_leads (name, email, whatsapp) VALUES ($1, $2, $3)`,
+        [payer.name, payer.email, cleanPhone]
+      ).catch(() => { /* non-blocking */ });
+    }
 
     // Read product info from DB (falls back to config if table not yet migrated)
     let item: { mp_item_id: string; title: string; description: string; price: number };
@@ -62,6 +76,17 @@ router.post("/preference", async (req, res, next) => {
           unit_price: item.price,
         },
       ],
+      ...(payer ? {
+        payer: {
+          name: payer.name.split(" ")[0],
+          surname: payer.name.split(" ").slice(1).join(" ") || undefined,
+          email: payer.email,
+          phone: {
+            area_code: payer.phone.replace(/\D/g, "").slice(0, 2),
+            number: payer.phone.replace(/\D/g, "").slice(2),
+          },
+        },
+      } : {}),
       metadata: { product },
       back_urls: {
         success: `${siteUrl}/obrigado`,
@@ -70,7 +95,9 @@ router.post("/preference", async (req, res, next) => {
       },
       auto_return: "approved",
       statement_descriptor: "MANUEL EMPREGADOR",
-      notification_url: `${config.SITE_URL?.replace("localhost", "").replace("http://", "https://")}/api/mp/webhook`,
+      ...(config.SITE_URL && !config.SITE_URL.includes("localhost") ? {
+        notification_url: `${config.SITE_URL.replace(/\/$/, "")}/api/mp/webhook`,
+      } : {}),
     };
 
     const mpRes = await fetch("https://api.mercadopago.com/checkout/preferences", {
@@ -86,7 +113,9 @@ router.post("/preference", async (req, res, next) => {
     if (!mpRes.ok) {
       const text = await mpRes.text();
       console.error("[mp] preference error", mpRes.status, text);
-      return res.status(502).json({ error: "Mercado Pago rejeitou a preferência." });
+      let mpMessage = "Mercado Pago rejeitou a preferência.";
+      try { mpMessage = JSON.stringify(JSON.parse(text)); } catch { mpMessage = text; }
+      return res.status(502).json({ error: `MP ${mpRes.status}: ${mpMessage}` });
     }
 
     const { id, init_point, sandbox_init_point } = (await mpRes.json()) as {

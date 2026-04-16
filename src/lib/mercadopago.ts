@@ -34,7 +34,8 @@ export class MPNotConfiguredError extends Error {
  * @throws {Error} para erros da API
  */
 export const createMPPreference = async (
-  product: "ebook" | "event" = "ebook"
+  product: "ebook" | "event" = "ebook",
+  payer?: { name: string; email: string; phone: string }
 ): Promise<MPPreferenceResult> => {
   if (!API_URL) {
     throw new MPNotConfiguredError();
@@ -43,7 +44,7 @@ export const createMPPreference = async (
   const res = await fetch(`${API_URL}/api/mp/preference`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ product, origin: window.location.origin }),
+    body: JSON.stringify({ product, origin: window.location.origin, payer }),
   });
 
   if (!res.ok) {
