@@ -272,7 +272,7 @@ const CartDrawer = () => {
                   onClick={handleCheckoutEbook}
                   disabled={isLoadingEbook || isLoadingEvent}
                   aria-busy={isLoadingEbook}
-                  className="relative w-full flex items-center justify-center gap-2 min-h-[48px] rounded-xl bg-gold hover:bg-gold-light active:bg-gold-dark font-ui font-bold text-sm text-background transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(201,168,76,0.5)] overflow-hidden group disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none"
+                  className="relative w-full flex items-center justify-center gap-2 min-h-[48px] rounded-xl font-ui font-bold text-sm text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(201,168,76,0.5)] overflow-hidden group disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none" style={{ background: '#2d7a4f' }} onMouseEnter={e => { if(!(e.currentTarget as HTMLButtonElement).disabled)(e.currentTarget as HTMLButtonElement).style.background='#c9a84c' }} onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background='#2d7a4f'}
                 >
                   <span className="absolute inset-0 bg-gradient-to-r from-gold/0 via-white/10 to-gold/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
                   {isLoadingEbook ? (
@@ -290,7 +290,7 @@ const CartDrawer = () => {
                   onClick={handleCheckoutEvent}
                   disabled={isLoadingEbook || isLoadingEvent}
                   aria-busy={isLoadingEvent}
-                  className="relative w-full flex items-center justify-center gap-2 min-h-[48px] rounded-xl border border-gold/30 bg-gold/[0.07] hover:bg-gold/[0.14] font-ui font-bold text-sm text-gold transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0"
+                  className="relative w-full flex items-center justify-center gap-2 min-h-[48px] rounded-xl border font-ui font-bold text-sm text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(201,168,76,0.5)] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0" style={{ background: '#2d7a4f', borderColor: '#2d7a4f' }} onMouseEnter={e => { if(!(e.currentTarget as HTMLButtonElement).disabled)(e.currentTarget as HTMLButtonElement).style.background='#c9a84c' }} onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background='#2d7a4f'}
                 >
                   {isLoadingEvent ? (
                     <><Loader2 className="h-4 w-4 animate-spin" />Aguarde...</>

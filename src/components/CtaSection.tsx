@@ -221,7 +221,7 @@ const CtaSection = () => {
                 {/* Submit */}
                 <button
                   type="submit"
-                  className="w-full flex items-center justify-center gap-2 bg-gold hover:bg-gold-light active:bg-gold-dark text-background font-ui text-sm font-bold tracking-[0.04em] rounded-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-8px_rgba(201,168,76,0.45)] cursor-pointer min-h-[52px]"
+                  className="w-full flex items-center justify-center gap-2 text-white font-ui text-sm font-bold tracking-[0.04em] rounded-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-8px_rgba(201,168,76,0.45)] cursor-pointer min-h-[52px]" style={{ background: '#2d7a4f' }} onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background='#c9a84c'} onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background='#2d7a4f'}
                 >
                   <MessageCircle className="w-4 h-4" />
                   Enviar mensagem

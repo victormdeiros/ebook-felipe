@@ -115,7 +115,7 @@ const AddToCartModal = () => {
                   <motion.button
                     whileTap={{ scale: 0.98 }}
                     onClick={handleViewCart}
-                    className="flex w-full items-center justify-center gap-2 min-h-[52px] rounded-xl bg-gold hover:bg-gold-light active:bg-gold-dark font-ui font-bold text-sm text-background transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(201,168,76,0.45)]"
+                    className="flex w-full items-center justify-center gap-2 min-h-[52px] rounded-xl font-ui font-bold text-sm text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(201,168,76,0.45)]" style={{ background: '#2d7a4f' }} onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background='#c9a84c'} onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background='#2d7a4f'}
                   >
                     <ShoppingCart className="h-4 w-4" />
                     Ver carrinho

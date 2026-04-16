@@ -122,7 +122,7 @@ const StickyHeader = () => {
 
             <button
               onClick={handleGuaranteeAccess}
-              className="font-ui text-xs bg-gold hover:bg-gold-light active:bg-gold-dark text-background min-h-[44px] px-5 flex items-center gap-1.5 rounded-md transition-all duration-200 hover:shadow-[0_4px_20px_-4px_rgba(201,168,76,0.5)] cursor-pointer"
+              className="font-ui text-xs text-white min-h-[44px] px-5 flex items-center gap-1.5 rounded-md transition-all duration-200 hover:shadow-[0_4px_20px_-4px_rgba(201,168,76,0.55)] cursor-pointer" style={{ background: '#2d7a4f' }} onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background='#c9a84c'} onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background='#2d7a4f'}
             >
               GARANTIR MINHA VAGA
             </button>

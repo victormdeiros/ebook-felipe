@@ -367,7 +367,7 @@ const EventSection = () => {
             <div className="px-7 pb-7">
               <button
                 onClick={handleRegister}
-                className="relative w-full flex items-center justify-center gap-2.5 min-h-[54px] rounded-xl bg-gold hover:bg-gold-light active:bg-gold-dark font-ui font-bold text-sm text-background transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_44px_-10px_rgba(201,168,76,0.6)] overflow-hidden group"
+                className="relative w-full flex items-center justify-center gap-2.5 min-h-[54px] rounded-xl font-ui font-bold text-sm text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_44px_-10px_rgba(201,168,76,0.55)] overflow-hidden group" style={{ background: '#2d7a4f' }} onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background='#c9a84c'} onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background='#2d7a4f'}
               >
                 <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/12 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
                 GARANTIR MINHA VAGA

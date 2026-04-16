@@ -99,8 +99,10 @@ const PriceSection = () => {
 
             <button
               onClick={handleAddToCart}
-              className="w-full flex items-center justify-center gap-2 bg-gold hover:bg-gold-light active:bg-gold-dark text-background font-ui text-sm font-bold tracking-[0.04em] cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-8px_rgba(201,168,76,0.5)]"
-              style={{ borderRadius: "40px", padding: "1rem 2rem", border: "none", fontSize: "15px" }}
+              className="w-full flex items-center justify-center gap-2 text-white font-ui text-sm font-bold tracking-[0.04em] cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-8px_rgba(201,168,76,0.5)]"
+              style={{ borderRadius: "40px", padding: "1rem 2rem", border: "none", fontSize: "15px", background: "#2d7a4f" }}
+              onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background='#c9a84c'}
+              onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background='#2d7a4f'}
             >
               GARANTIR MEU ACESSO
             </button>
@@ -150,8 +152,8 @@ const PriceSection = () => {
 
             <button
               onClick={handleAddEvent}
-              className="w-full flex items-center justify-center gap-2 bg-gold hover:bg-gold-light active:bg-gold-dark text-background font-ui text-sm font-bold tracking-[0.04em] cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-8px_rgba(201,168,76,0.5)]"
-              style={{ borderRadius: "40px", padding: "1rem 2rem", border: "none", fontSize: "15px" }}
+              className="w-full flex items-center justify-center gap-2 text-white font-ui text-sm font-bold tracking-[0.04em] cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_12px_28px_-8px_rgba(45,122,79,0.55)]"
+              style={{ borderRadius: "40px", padding: "1rem 2rem", border: "none", fontSize: "15px", background: "#2d7a4f" }}
             >
               GARANTIR MINHA VAGA
               <ArrowRight className="h-4 w-4" />
