@@ -7,8 +7,8 @@ import { Resend } from "resend";
 import { pool } from "./db";
 import { config } from "./config";
 
-// Event date: 29/04/2026 14:00 BRT (UTC-3)
-const EVENT_DATE = new Date("2026-04-29T17:00:00.000Z"); // 14h BRT = 17h UTC
+// Event date: 29/04/2026 16:00 BRT (UTC-3)
+const EVENT_DATE = new Date("2026-04-29T19:00:00.000Z"); // 16h BRT = 19h UTC
 
 function getResend(): Resend | null {
   if (!config.RESEND_API_KEY) return null;
@@ -131,7 +131,7 @@ function event1dHtml(firstName: string): string {
     <div style="background:rgba(201,168,76,0.06);border:2px dashed rgba(201,168,76,0.3);border-radius:12px;padding:24px;margin:0 0 28px;text-align:center;">
       <p style="margin:0 0 6px;font-size:10px;letter-spacing:0.2em;color:#c9a84c;text-transform:uppercase;font-weight:700;">📅 DATA E HORÁRIO</p>
       <p style="margin:0 0 4px;font-size:24px;font-weight:700;color:#fff;">29 de Abril de 2026</p>
-      <p style="margin:0 0 12px;font-size:16px;color:#c9a84c;font-weight:600;">14h às 18h</p>
+      <p style="margin:0 0 12px;font-size:16px;color:#c9a84c;font-weight:600;">16h às 18h</p>
       <p style="margin:0;font-size:13px;color:#a79797;">📍 Rua Buenos Aires, 80 · Espinheiro · Recife/PE</p>
     </div>
     <p style="margin:0 0 20px;font-size:15px;color:#c8bfbf;line-height:1.7;">
@@ -156,7 +156,7 @@ function event3hHtml(firstName: string): string {
     <p style="margin:0 0 8px;font-size:26px;font-weight:700;color:#fff;line-height:1.2;">Começa em 3 horas!</p>
     <p style="margin:0 0 28px;font-size:14px;color:#c9a84c;">O Segurança Jurídica 360 está prestes a começar</p>
     <div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:8px;padding:20px;margin:0 0 24px;text-align:center;">
-      <p style="margin:0 0 8px;font-size:28px;font-weight:700;color:#c9a84c;">⏱ 14h às 18h</p>
+      <p style="margin:0 0 8px;font-size:28px;font-weight:700;color:#c9a84c;">⏱ 16h às 18h</p>
       <p style="margin:0;font-size:13px;color:#a79797;">📍 Rua Buenos Aires, 80 · Espinheiro · Recife/PE</p>
     </div>
     <p style="margin:0 0 20px;font-size:15px;color:#c8bfbf;line-height:1.7;">
@@ -166,7 +166,7 @@ function event3hHtml(firstName: string): string {
       ✅ Traga documento com foto<br>
       🎫 Este e-mail serve como ingresso<br>
       🅿️ Há estacionamento próximo ao local<br>
-      ⌚ Abertura dos portões: 13h30
+      ⌚ Abertura dos portões: 15h30
     </p>
     <p style="margin:0;font-size:13px;color:#a79797;line-height:1.6;">
       Nos vemos em breve!<br><strong style="color:#f3ece8;">Equipe Segurança Jurídica 360</strong>
@@ -180,12 +180,12 @@ function event1hHtml(firstName: string): string {
     <p style="margin:0 0 8px;font-size:24px;font-weight:700;color:#fff;text-align:center;line-height:1.2;">Começa em 1 hora!</p>
     <p style="margin:0 0 28px;font-size:14px;color:#c9a84c;text-align:center;">Segurança Jurídica 360 · ${firstName}, chegou a hora!</p>
     <p style="margin:0 0 24px;font-size:15px;color:#c8bfbf;line-height:1.7;text-align:center;">
-      O evento começa às <strong style="color:#fff;">14h</strong>.<br>
+      O evento começa às <strong style="color:#fff;">16h</strong>.<br>
       Se ainda não saiu, agora é a hora!
     </p>
     <div style="background:rgba(138,34,48,0.12);border:1px solid rgba(138,34,48,0.25);border-radius:8px;padding:16px 20px;margin:0 0 28px;text-align:center;">
       <p style="margin:0;font-size:14px;color:#e8a0a8;font-weight:600;">📍 Rua Buenos Aires, 80 · Espinheiro · Recife/PE</p>
-      <p style="margin:8px 0 0;font-size:12px;color:#a79797;">Portões abertos desde 13h30</p>
+      <p style="margin:8px 0 0;font-size:12px;color:#a79797;">Portões abertos desde 15h30</p>
     </div>
     <p style="margin:0;font-size:13px;color:#a79797;line-height:1.6;text-align:center;">
       Estamos te esperando com muito conteúdo!<br>

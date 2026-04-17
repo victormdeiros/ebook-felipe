@@ -156,7 +156,7 @@ const EventSection = () => {
               {/* Time */}
               <div className="flex flex-col items-center justify-center gap-0.5 bg-white/[0.03] px-8 sm:px-10 py-5 border-b sm:border-b-0 sm:border-r border-white/6">
                 <p className="font-ui text-[0.45rem] tracking-[0.3em] text-gold/50 uppercase mb-1">Horário</p>
-                <p className="font-display text-3xl sm:text-4xl font-bold text-off-white leading-none tracking-tight">14h — 18h</p>
+                <p className="font-display text-3xl sm:text-4xl font-bold text-off-white leading-none tracking-tight">16h — 18h</p>
                 <p className="font-ui text-[0.5rem] tracking-[0.12em] text-gold/50 mt-1">HORÁRIO DE BRASÍLIA</p>
               </div>
               {/* Location */}

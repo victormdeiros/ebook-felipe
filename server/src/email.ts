@@ -75,12 +75,12 @@ function ebookEmailHtml(name: string, downloadUrl: string) {
 function eventEmailHtml(name: string, hasEbook: boolean, downloadUrl?: string) {
   const firstName = name.split(" ")[0];
 
-  // Calendar links — event: 2026-04-29 14:00-18:00 BRT = 17:00-21:00 UTC
+  // Calendar links — event: 2026-04-29 16:00-18:00 BRT = 19:00-21:00 UTC
   const evTitle = encodeURIComponent("Segurança Jurídica 360");
   const evDesc  = encodeURIComponent("Evento de lançamento exclusivo | Manual do Empregador");
   const evLoc   = encodeURIComponent("Recife, Pernambuco, PE");
-  const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${evTitle}&dates=20260429T170000Z%2F20260429T210000Z&details=${evDesc}&location=${evLoc}`;
-  const outlookUrl = `https://outlook.live.com/calendar/0/action/compose?rru=addevent&startdt=2026-04-29T17%3A00%3A00Z&enddt=2026-04-29T21%3A00%3A00Z&subject=${evTitle}&location=${evLoc}&body=${evDesc}`;
+  const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${evTitle}&dates=20260429T190000Z%2F20260429T210000Z&details=${evDesc}&location=${evLoc}`;
+  const outlookUrl = `https://outlook.live.com/calendar/0/action/compose?rru=addevent&startdt=2026-04-29T19%3A00%3A00Z&enddt=2026-04-29T21%3A00%3A00Z&subject=${evTitle}&location=${evLoc}&body=${evDesc}`;
 
   return `
 <!DOCTYPE html>
@@ -119,7 +119,7 @@ function eventEmailHtml(name: string, hasEbook: boolean, downloadUrl?: string) {
           <!-- Salvar na agenda -->
           <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:20px 24px;margin:0 0 28px;text-align:center;">
             <p style="margin:0 0 6px;font-size:10px;letter-spacing:0.2em;color:#c9a84c;text-transform:uppercase;font-weight:700;">📅 SALVAR NA AGENDA</p>
-            <p style="margin:0 0 16px;font-size:13px;color:#c8bfbf;">29 de Abril de 2026 · 14h às 18h · Recife, PE</p>
+            <p style="margin:0 0 16px;font-size:13px;color:#c8bfbf;">29 de Abril de 2026 · 16h às 18h · Recife, PE</p>
             <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
               <tr>
                 <td style="padding:0 6px;">
