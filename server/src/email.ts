@@ -29,7 +29,7 @@ function ebookEmailHtml(name: string, downloadUrl: string) {
         <!-- Header -->
         <tr><td style="background:linear-gradient(135deg,#1e0e10 0%,#2a0f13 100%);padding:32px 40px;text-align:center;border-bottom:1px solid rgba(201,168,76,0.2);">
           <p style="margin:0 0 8px;font-size:11px;letter-spacing:0.15em;color:#c9a84c;text-transform:uppercase;font-weight:600;">Manual do Empregador</p>
-          <h1 style="margin:0;font-size:26px;font-weight:700;color:#ffffff;line-height:1.2;">Compra confirmada! 🎉</h1>
+          <h1 style="margin:0;font-size:26px;font-weight:700;color:#ffffff;line-height:1.2;">Compra confirmada</h1>
         </td></tr>
         <!-- Body -->
         <tr><td style="padding:36px 40px;">
@@ -44,7 +44,7 @@ function ebookEmailHtml(name: string, downloadUrl: string) {
           <table cellpadding="0" cellspacing="0" style="margin:0 auto 32px;">
             <tr><td style="background:#2d7a4f;border-radius:8px;text-align:center;">
               <a href="${downloadUrl}" target="_blank" style="display:inline-block;padding:14px 36px;font-size:15px;font-weight:700;color:#ffffff;text-decoration:none;letter-spacing:0.04em;">
-                📥 BAIXAR E-BOOK
+                BAIXAR E-BOOK
               </a>
             </td></tr>
           </table>
@@ -93,7 +93,7 @@ function eventEmailHtml(name: string, hasEbook: boolean, downloadUrl?: string) {
         <!-- Header -->
         <tr><td style="background:linear-gradient(135deg,#1e0e10 0%,#2a0f13 100%);padding:32px 40px;text-align:center;border-bottom:1px solid rgba(201,168,76,0.2);">
           <p style="margin:0 0 8px;font-size:11px;letter-spacing:0.15em;color:#c9a84c;text-transform:uppercase;font-weight:600;">Segurança Jurídica 360</p>
-          <h1 style="margin:0;font-size:26px;font-weight:700;color:#ffffff;line-height:1.2;">Inscrição confirmada! 🎉</h1>
+          <h1 style="margin:0;font-size:26px;font-weight:700;color:#ffffff;line-height:1.2;">Inscrição confirmada</h1>
         </td></tr>
         <!-- Body -->
         <tr><td style="padding:36px 40px;">
@@ -103,11 +103,11 @@ function eventEmailHtml(name: string, hasEbook: boolean, downloadUrl?: string) {
           </p>
           <!-- Ingresso digital -->
           <div style="background:rgba(201,168,76,0.06);border:2px dashed rgba(201,168,76,0.3);border-radius:12px;padding:24px;margin:0 0 28px;text-align:center;">
-            <p style="margin:0 0 6px;font-size:10px;letter-spacing:0.2em;color:#c9a84c;text-transform:uppercase;font-weight:700;">🎫 INGRESSO DIGITAL</p>
+            <p style="margin:0 0 6px;font-size:10px;letter-spacing:0.2em;color:#c9a84c;text-transform:uppercase;font-weight:700;">INGRESSO DIGITAL</p>
             <p style="margin:0 0 4px;font-size:22px;font-weight:700;color:#ffffff;">${name}</p>
             <p style="margin:0 0 16px;font-size:12px;color:#a79797;">Segurança Jurídica 360 · Evento</p>
             <div style="border-top:1px dashed rgba(201,168,76,0.2);padding-top:14px;">
-              <p style="margin:0;font-size:12px;color:#c8bfbf;font-style:italic;">📱 Apresente este e-mail na entrada do evento</p>
+              <p style="margin:0;font-size:12px;color:#c8bfbf;font-style:italic;">Apresente este e-mail na entrada do evento</p>
             </div>
           </div>
           <div style="background:rgba(201,168,76,0.07);border:1px solid rgba(201,168,76,0.2);border-radius:8px;padding:20px 24px;margin:0 0 28px;">
@@ -118,18 +118,18 @@ function eventEmailHtml(name: string, hasEbook: boolean, downloadUrl?: string) {
           </div>
           <!-- Salvar na agenda -->
           <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:20px 24px;margin:0 0 28px;text-align:center;">
-            <p style="margin:0 0 6px;font-size:10px;letter-spacing:0.2em;color:#c9a84c;text-transform:uppercase;font-weight:700;">📅 SALVAR NA AGENDA</p>
+            <p style="margin:0 0 6px;font-size:10px;letter-spacing:0.2em;color:#c9a84c;text-transform:uppercase;font-weight:700;">SALVAR NA AGENDA</p>
             <p style="margin:0 0 16px;font-size:13px;color:#c8bfbf;">29 de Abril de 2026 · 16h às 18h · Recife, PE</p>
             <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
               <tr>
                 <td style="padding:0 6px;">
                   <a href="${gcalUrl}" target="_blank" style="display:inline-block;background:#1a73e8;border-radius:6px;padding:10px 18px;font-size:12px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:0.03em;">
-                    📅 Google Calendar
+                    Google Calendar
                   </a>
                 </td>
                 <td style="padding:0 6px;">
                   <a href="${outlookUrl}" target="_blank" style="display:inline-block;background:#0078d4;border-radius:6px;padding:10px 18px;font-size:12px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:0.03em;">
-                    📅 Outlook / Hotmail
+                    Outlook / Hotmail
                   </a>
                 </td>
               </tr>
@@ -176,7 +176,7 @@ export async function sendEbookPurchaseEmail(
   await r.emails.send({
     from: config.EMAIL_FROM,
     to,
-    subject: "📚 Seu Manual do Empregador está pronto para download!",
+    subject: "Seu Manual do Empregador está pronto para download",
     html: ebookEmailHtml(name, downloadUrl),
   });
 }
@@ -191,7 +191,7 @@ export async function sendEventConfirmationEmail(
   await r.emails.send({
     from: config.EMAIL_FROM,
     to,
-    subject: "✅ Inscrição confirmada — Segurança Jurídica 360",
+    subject: "Inscrição confirmada — Segurança Jurídica 360",
     html: eventEmailHtml(name, hasEbook, downloadUrl),
   });
 }

@@ -56,21 +56,21 @@ const CHECKOUT_URL = (config.SITE_URL ?? "https://manualdoempregador.com.br") + 
 
 function cartImmediateHtml(firstName: string): string {
   return baseLayout(`
-    <p style="margin:0 0 20px;font-size:16px;color:#e8dcd8;line-height:1.6;">Olá, <strong style="color:#fff;">${firstName}</strong>! 👋</p>
+    <p style="margin:0 0 20px;font-size:16px;color:#e8dcd8;line-height:1.6;">Olá, <strong style="color:#fff;">${firstName}</strong>.</p>
     <p style="margin:0 0 20px;font-size:15px;color:#c8bfbf;line-height:1.7;">
       Notamos que você iniciou o checkout do <strong style="color:#f3ece8;">Manual do Empregador</strong> mas não concluiu a compra.
     </p>
     <p style="margin:0 0 28px;font-size:15px;color:#c8bfbf;line-height:1.7;">
       Não se preocupe — seu acesso ainda está disponível. Finalize agora em menos de 2 minutos:
     </p>
-    ${btnHtml(CHECKOUT_URL, "✅ CONCLUIR MINHA COMPRA")}
+    ${btnHtml(CHECKOUT_URL, "CONCLUIR MINHA COMPRA")}
     <div style="background:rgba(201,168,76,0.06);border-left:3px solid #c9a84c;border-radius:4px;padding:16px 20px;margin:0 0 24px;">
       <p style="margin:0;font-size:14px;color:#c8bfbf;line-height:1.7;">
         <strong style="color:#c9a84c;">O que você vai ter:</strong><br>
-        ✔ Guia completo de contratação, gestão e rescisão<br>
-        ✔ Modelos de documentos prontos para usar<br>
-        ✔ Proteção jurídica com linguagem simples<br>
-        ✔ Acesso vitalício e atualizações gratuitas
+        Guia completo de contratação, gestão e rescisão<br>
+        Modelos de documentos prontos para usar<br>
+        Proteção jurídica com linguagem simples<br>
+        Acesso vitalício e atualizações gratuitas
       </p>
     </div>
     <hr style="border:none;border-top:1px solid rgba(255,255,255,0.07);margin:24px 0;">
@@ -83,7 +83,7 @@ function cartImmediateHtml(firstName: string): string {
 
 function cart1hHtml(firstName: string): string {
   return baseLayout(`
-    <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#fff;line-height:1.2;">⏳ Ainda dá tempo, ${firstName}!</p>
+    <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#fff;line-height:1.2;">Ainda dá tempo, ${firstName}</p>
     <p style="margin:0 0 24px;font-size:13px;color:#a79797;">Seu acesso está reservado</p>
     <p style="margin:0 0 20px;font-size:15px;color:#c8bfbf;line-height:1.7;">
       Faz uma hora que você quase finalizou a compra do <strong style="color:#f3ece8;">Manual do Empregador</strong>.
@@ -93,7 +93,7 @@ function cart1hHtml(firstName: string): string {
       Uma autuação trabalhista pode custar <strong style="color:#fff;">R$ 10.000 ou mais</strong>.
       O Manual custa muito menos — e te protege <em>agora</em>.
     </p>
-    ${btnHtml(CHECKOUT_URL, "🔐 GARANTIR MEU ACESSO AGORA", "#8a2230")}
+    ${btnHtml(CHECKOUT_URL, "GARANTIR MEU ACESSO AGORA", "#8a2230")}
     <p style="margin:0;font-size:13px;color:#a79797;line-height:1.6;">
       Atenciosamente,<br><strong style="color:#f3ece8;">Felipe Lopes — Advogado Trabalhista</strong>
     </p>
@@ -102,7 +102,7 @@ function cart1hHtml(firstName: string): string {
 
 function cart1dHtml(firstName: string): string {
   return baseLayout(`
-    <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#fff;line-height:1.2;">🔒 Última chance, ${firstName}</p>
+    <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#fff;line-height:1.2;">Última chance, ${firstName}</p>
     <p style="margin:0 0 24px;font-size:13px;color:#c9a84c;letter-spacing:0.05em;">PROTEJA SUA EMPRESA HOJE</p>
     <p style="margin:0 0 20px;font-size:15px;color:#c8bfbf;line-height:1.7;">
       Faz 24 horas que você visitou o <strong style="color:#f3ece8;">Manual do Empregador</strong>.
@@ -111,12 +111,12 @@ function cart1dHtml(firstName: string): string {
     <div style="background:rgba(138,34,48,0.12);border:1px solid rgba(138,34,48,0.3);border-radius:8px;padding:20px;margin:0 0 28px;">
       <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#e8a0a8;text-transform:uppercase;letter-spacing:0.1em;">O risco real sem proteção:</p>
       <p style="margin:0;font-size:14px;color:#c8bfbf;line-height:1.8;">
-        ❌ Rescisão feita errada → multa de até 40% do FGTS<br>
-        ❌ Contrato verbal → risco de vínculo empregatício não declarado<br>
-        ❌ Falta de registro correto → processo trabalhista sem defesa
+        Rescisão realizada incorretamente: multa de até 40% do FGTS<br>
+        Contrato verbal: risco de vínculo empregatício não declarado<br>
+        Ausência de registro correto: processo trabalhista sem defesa
       </p>
     </div>
-    ${btnHtml(CHECKOUT_URL, "📖 QUERO ME PROTEGER AGORA")}
+    ${btnHtml(CHECKOUT_URL, "QUERO ME PROTEGER AGORA")}
     <p style="margin:0;font-size:12px;color:#6b5c5c;">
       Se não quiser receber mais e-mails, simplesmente ignore esta mensagem.
     </p>
@@ -125,14 +125,14 @@ function cart1dHtml(firstName: string): string {
 
 function event1dHtml(firstName: string): string {
   return baseLayout(`
-    <p style="margin:0 0 20px;font-size:16px;color:#e8dcd8;line-height:1.6;">Olá, <strong style="color:#fff;">${firstName}</strong>! 🗓️</p>
+    <p style="margin:0 0 20px;font-size:16px;color:#e8dcd8;line-height:1.6;">Olá, <strong style="color:#fff;">${firstName}</strong>.</p>
     <p style="margin:0 0 8px;font-size:22px;font-weight:700;color:#fff;line-height:1.2;">Amanhã é o grande dia!</p>
     <p style="margin:0 0 28px;font-size:13px;color:#c9a84c;letter-spacing:0.05em;">SEGURANÇA JURÍDICA 360 — SEU INGRESSO ESTÁ CONFIRMADO</p>
     <div style="background:rgba(201,168,76,0.06);border:2px dashed rgba(201,168,76,0.3);border-radius:12px;padding:24px;margin:0 0 28px;text-align:center;">
-      <p style="margin:0 0 6px;font-size:10px;letter-spacing:0.2em;color:#c9a84c;text-transform:uppercase;font-weight:700;">📅 DATA E HORÁRIO</p>
+      <p style="margin:0 0 6px;font-size:10px;letter-spacing:0.2em;color:#c9a84c;text-transform:uppercase;font-weight:700;">DATA E HORÁRIO</p>
       <p style="margin:0 0 4px;font-size:24px;font-weight:700;color:#fff;">29 de Abril de 2026</p>
       <p style="margin:0 0 12px;font-size:16px;color:#c9a84c;font-weight:600;">16h às 18h</p>
-      <p style="margin:0;font-size:13px;color:#a79797;">📍 Rua Buenos Aires, 80 · Espinheiro · Recife/PE</p>
+      <p style="margin:0;font-size:13px;color:#a79797;">Rua Buenos Aires, 80 · Espinheiro · Recife/PE</p>
     </div>
     <p style="margin:0 0 20px;font-size:15px;color:#c8bfbf;line-height:1.7;">
       Prepare-se para um evento cheio de conteúdo prático sobre <strong style="color:#f3ece8;">proteção trabalhista, IA e gestão de pessoas</strong>.
@@ -140,9 +140,9 @@ function event1dHtml(firstName: string): string {
     </p>
     <p style="margin:0 0 28px;font-size:14px;color:#c8bfbf;line-height:1.7;">
       <strong style="color:#fff;">Lembretes:</strong><br>
-      🎫 Apresente este e-mail como ingresso na entrada<br>
-      ☕ Coffee break incluído — chegue com antecedência<br>
-      🔗 Networking com empresários e gestores
+      Apresente este e-mail como ingresso na entrada<br>
+      Coffee break incluído — chegue com antecedência<br>
+      Networking com empresários e gestores
     </p>
     <p style="margin:0;font-size:13px;color:#a79797;line-height:1.6;">
       Até amanhã!<br><strong style="color:#f3ece8;">Equipe Segurança Jurídica 360</strong>
@@ -152,21 +152,21 @@ function event1dHtml(firstName: string): string {
 
 function event3hHtml(firstName: string): string {
   return baseLayout(`
-    <p style="margin:0 0 20px;font-size:16px;color:#e8dcd8;line-height:1.6;">Olá, <strong style="color:#fff;">${firstName}</strong>! 🚀</p>
+    <p style="margin:0 0 20px;font-size:16px;color:#e8dcd8;line-height:1.6;">Olá, <strong style="color:#fff;">${firstName}</strong>.</p>
     <p style="margin:0 0 8px;font-size:26px;font-weight:700;color:#fff;line-height:1.2;">Começa em 3 horas!</p>
     <p style="margin:0 0 28px;font-size:14px;color:#c9a84c;">O Segurança Jurídica 360 está prestes a começar</p>
     <div style="background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.2);border-radius:8px;padding:20px;margin:0 0 24px;text-align:center;">
-      <p style="margin:0 0 8px;font-size:28px;font-weight:700;color:#c9a84c;">⏱ 16h às 18h</p>
-      <p style="margin:0;font-size:13px;color:#a79797;">📍 Rua Buenos Aires, 80 · Espinheiro · Recife/PE</p>
+      <p style="margin:0 0 8px;font-size:28px;font-weight:700;color:#c9a84c;">16h às 18h</p>
+      <p style="margin:0;font-size:13px;color:#a79797;">Rua Buenos Aires, 80 · Espinheiro · Recife/PE</p>
     </div>
     <p style="margin:0 0 20px;font-size:15px;color:#c8bfbf;line-height:1.7;">
       Estamos te esperando! Aqui vai um lembrete rápido antes de você sair:
     </p>
     <p style="margin:0 0 28px;font-size:14px;color:#c8bfbf;line-height:1.8;">
-      ✅ Traga documento com foto<br>
-      🎫 Este e-mail serve como ingresso<br>
-      🅿️ Há estacionamento próximo ao local<br>
-      ⌚ Abertura dos portões: 15h30
+      Traga documento com foto<br>
+      Este e-mail serve como ingresso<br>
+      Há estacionamento próximo ao local<br>
+      Abertura dos portões: 15h30
     </p>
     <p style="margin:0;font-size:13px;color:#a79797;line-height:1.6;">
       Nos vemos em breve!<br><strong style="color:#f3ece8;">Equipe Segurança Jurídica 360</strong>
@@ -176,15 +176,14 @@ function event3hHtml(firstName: string): string {
 
 function event1hHtml(firstName: string): string {
   return baseLayout(`
-    <p style="margin:0 0 8px;font-size:32px;font-weight:700;color:#fff;text-align:center;">🎯</p>
-    <p style="margin:0 0 8px;font-size:24px;font-weight:700;color:#fff;text-align:center;line-height:1.2;">Começa em 1 hora!</p>
+    <p style="margin:0 0 8px;font-size:24px;font-weight:700;color:#fff;text-align:center;line-height:1.2;">Começa em 1 hora</p>
     <p style="margin:0 0 28px;font-size:14px;color:#c9a84c;text-align:center;">Segurança Jurídica 360 · ${firstName}, chegou a hora!</p>
     <p style="margin:0 0 24px;font-size:15px;color:#c8bfbf;line-height:1.7;text-align:center;">
       O evento começa às <strong style="color:#fff;">16h</strong>.<br>
       Se ainda não saiu, agora é a hora!
     </p>
     <div style="background:rgba(138,34,48,0.12);border:1px solid rgba(138,34,48,0.25);border-radius:8px;padding:16px 20px;margin:0 0 28px;text-align:center;">
-      <p style="margin:0;font-size:14px;color:#e8a0a8;font-weight:600;">📍 Rua Buenos Aires, 80 · Espinheiro · Recife/PE</p>
+      <p style="margin:0;font-size:14px;color:#e8a0a8;font-weight:600;">Rua Buenos Aires, 80 · Espinheiro · Recife/PE</p>
       <p style="margin:8px 0 0;font-size:12px;color:#a79797;">Portões abertos desde 15h30</p>
     </div>
     <p style="margin:0;font-size:13px;color:#a79797;line-height:1.6;text-align:center;">
