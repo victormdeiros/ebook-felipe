@@ -10,10 +10,10 @@ import { useCart } from "@/contexts/CartContext";
 const HeroSection = () => {
   const shouldReduceMotion = useReducedMotion();
   const content = getContent();
-  const { addToCart, openCart } = useCart();
+  const { addEventToCart, openCart } = useCart();
 
-  const handleAddToCart = () => {
-    addToCart();
+  const handleAddEventToCart = () => {
+    addEventToCart();
     openCart();
   };
   const whatsappNumber = content.whatsappNumber || CONFIG.WHATSAPP_NUMBER;
@@ -93,10 +93,10 @@ const HeroSection = () => {
               className="mb-6 flex flex-col gap-3 sm:flex-row"
             >
               <button
-                onClick={handleAddToCart}
+                onClick={handleAddEventToCart}
                 className="flex min-h-[52px] items-center justify-center gap-2 rounded-md px-7 text-center font-ui text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(201,168,76,0.45)] whitespace-nowrap cursor-pointer" style={{ background: '#2d7a4f' }} onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background='#c9a84c'} onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background='#2d7a4f'}
               >
-                GARANTIR MEU ACESSO
+                GARANTIR MINHA VAGA
               </button>
               <a
                 href={whatsappUrl}
