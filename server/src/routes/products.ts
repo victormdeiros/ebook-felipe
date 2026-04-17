@@ -16,7 +16,7 @@ function isDbConnError(err: unknown): boolean {
 router.get("/", async (_req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT id, mp_item_id, title, description, price, active
+      `SELECT id, mp_item_id, title, description, price::float AS price, active, checkout_type
        FROM manual_products
        ORDER BY id`,
     );
@@ -30,6 +30,7 @@ router.get("/", async (_req, res) => {
       description: p.description,
       price:      p.price,
       active:     true,
+      checkout_type: id === "event" ? "event" : "ebook",
     }));
     res.json(fallback);
   }
@@ -37,22 +38,23 @@ router.get("/", async (_req, res) => {
 
 // ── POST /api/products (admin) ────────────────────────────────────────────────
 const productCreateSchema = z.object({
-  id:          z.string().min(1).max(100).regex(/^[a-z0-9_-]+$/, "ID deve ser alfanumérico (a-z, 0-9, _ -)"),
-  title:       z.string().min(1).max(200),
-  description: z.string().max(500).optional().default(""),
-  price:       z.number().positive(),
-  mp_item_id:  z.string().min(1).max(200),
-  active:      z.boolean().optional().default(true),
+  id:            z.string().min(1).max(100).regex(/^[a-z0-9_-]+$/, "ID deve ser alfanumérico (a-z, 0-9, _ -)"),
+  title:         z.string().min(1).max(200),
+  description:   z.string().max(500).optional().default(""),
+  price:         z.number().positive(),
+  mp_item_id:    z.string().min(1).max(200),
+  active:        z.boolean().optional().default(true),
+  checkout_type: z.enum(["ebook", "event", "event_ebook"]).optional().default("ebook"),
 });
 
 router.post("/", requireAdmin, async (req, res, next) => {
   try {
     const data = productCreateSchema.parse(req.body);
     const { rows } = await pool.query(
-      `INSERT INTO manual_products (id, mp_item_id, title, description, price, active)
-       VALUES ($1, $2, $3, $4, $5, $6)
+      `INSERT INTO manual_products (id, mp_item_id, title, description, price, active, checkout_type)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
        RETURNING *`,
-      [data.id, data.mp_item_id, data.title, data.description, data.price, data.active],
+      [data.id, data.mp_item_id, data.title, data.description, data.price, data.active, data.checkout_type],
     );
     res.status(201).json(rows[0]);
   } catch (err: unknown) {
@@ -69,11 +71,12 @@ router.post("/", requireAdmin, async (req, res, next) => {
 
 // ── PATCH /api/products/:id (admin) ───────────────────────────────────────────
 const productUpdateSchema = z.object({
-  title:       z.string().min(1).max(200).optional(),
-  description: z.string().max(500).optional(),
-  price:       z.number().positive().optional(),
-  active:      z.boolean().optional(),
-  mp_item_id:  z.string().min(1).max(200).optional(),
+  title:         z.string().min(1).max(200).optional(),
+  description:   z.string().max(500).optional(),
+  price:         z.number().positive().optional(),
+  active:        z.boolean().optional(),
+  mp_item_id:    z.string().min(1).max(200).optional(),
+  checkout_type: z.enum(["ebook", "event", "event_ebook"]).optional(),
 });
 
 router.patch("/:id", requireAdmin, async (req, res, next) => {
@@ -97,6 +100,34 @@ router.patch("/:id", requireAdmin, async (req, res, next) => {
     );
 
     if (!rows.length) return res.status(404).json({ error: "Product not found" });
+
+    // Sync display price to manual_content so the landing page reflects the change
+    if (data.price !== undefined) {
+      const product = rows[0] as { id: string; checkout_type?: string; price: string };
+      const effectiveType = product.checkout_type ?? (product.id === "event" ? "event" : "ebook");
+      try {
+        if (effectiveType === "ebook") {
+          await pool.query(
+            `UPDATE manual_content SET price_display = $1 WHERE id = 'default'`,
+            [String(data.price)],
+          );
+        } else if (effectiveType === "event") {
+          await pool.query(
+            `UPDATE manual_content SET event_price_display = $1 WHERE id = 'default'`,
+            [String(data.price)],
+          );
+        } else if (effectiveType === "event_ebook") {
+          await pool.query(
+            `UPDATE manual_content SET price_display = $1, event_price_display = $1 WHERE id = 'default'`,
+            [String(data.price)],
+          );
+        }
+      } catch (syncErr) {
+        // Non-fatal: manual_content sync failed, log but don't break the response
+        console.warn("[products] content price sync failed:", syncErr);
+      }
+    }
+
     res.json(rows[0]);
   } catch (err) {
     if (isDbConnError(err)) {

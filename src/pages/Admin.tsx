@@ -36,6 +36,13 @@ import {
   Trash2,
   Pencil,
   Link2,
+  Mail,
+  ToggleLeft,
+  ToggleRight,
+  SendHorizonal,
+  Clock,
+  ChevronDown,
+  MousePointer2,
 } from "lucide-react";
 import {
   AreaChart,
@@ -59,11 +66,22 @@ import {
   getInscricoes,
   uploadEbookFile,
   getEbookUrl,
+  markAttended,
+  getEmailTemplates,
+  updateEmailTemplate,
+  getEmailQueue,
+  processEmailQueue,
+  testSendCartEmails,
+  getCTAConfig,
+  saveCTAConfig,
   type Lead,
   type Order,
   type DashboardStats,
   type Product,
   type Inscricao,
+  type EmailTemplate,
+  type EmailQueueItem,
+  type CTAConfig,
 } from "@/lib/repository";
 import {
   getContent,
@@ -83,7 +101,7 @@ const setAuthed = () => sessionStorage.setItem(AUTH_KEY, "true");
 const clearAuth = () => sessionStorage.removeItem(AUTH_KEY);
 
 // TYPES
-type Tab = "metricas" | "leads" | "pedidos" | "inscricoes" | "ebook" | "produtos" | "conteudo" | "configuracoes";
+type Tab = "metricas" | "leads" | "pedidos" | "inscricoes" | "ebook" | "produtos" | "ctas" | "conteudo" | "emails" | "configuracoes";
 
 // HELPERS
 const formatCurrency = (v: number) =>
@@ -183,6 +201,15 @@ const KpiCard = ({ label, value, icon: Icon, accent, sub, loading }: KpiCardProp
 );
 
 // METRICS TAB
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  credit_card: "Cartão de Crédito",
+  debit_card: "Cartão de Débito",
+  ticket: "Boleto",
+  bank_transfer: "PIX",
+  account_money: "Saldo MP",
+  unknown: "Outros",
+};
+
 const MetricsTab = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -196,7 +223,18 @@ const MetricsTab = () => {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  const customTooltip = ({ active, payload, label }: { active?: boolean; payload?: { value: number; name: string }[]; label?: string; }) => {
+  const conversionRate = stats && stats.total_leads > 0
+    ? ((stats.total_orders / stats.total_leads) * 100).toFixed(1)
+    : "0.0";
+
+  const abandonedCount = stats?.leads_by_tag?.find(t => t.tag === "carrinho_abandonado")?.count ?? 0;
+  const inscricoesCount = stats?.leads_by_tag?.find(t => t.tag === "inscricao_evento")?.count ?? 0;
+
+  const emailPending = stats?.email_stats?.pending ?? 0;
+  const emailSent = stats?.email_stats?.sent ?? 0;
+  const emailFailed = stats?.email_stats?.failed ?? 0;
+
+  const customTooltip = ({ active, payload, label }: { active?: boolean; payload?: { value: number; name: string }[]; label?: string }) => {
     if (active && payload?.length) {
       return (
         <div className="bg-support border border-white/8 rounded-md px-3 py-2 text-xs font-body space-y-1">
@@ -214,6 +252,7 @@ const MetricsTab = () => {
 
   return (
     <div className="space-y-8">
+      {/* Header */}
       <div className="flex flex-wrap items-start sm:items-center justify-between gap-3">
         <div>
           <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground tracking-tight">Métricas de Performance</h2>
@@ -234,27 +273,41 @@ const MetricsTab = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
-        <KpiCard label="Total Leads" value={stats?.total_leads ?? "—"} icon={Users} accent="wine" loading={loading} />
-        <KpiCard label="Leads (30d)" value={stats?.leads_last_30d ?? "—"} icon={TrendingUp} loading={loading} />
-        <KpiCard label="Pedidos Aprovados" value={stats?.total_orders ?? "—"} icon={ShoppingCart} accent="gold" loading={loading} />
-        <KpiCard label="E-books" value={stats?.ebook_orders ?? "—"} icon={BookOpen} loading={loading} sub="aprovados" />
-        <KpiCard label="Eventos" value={stats?.event_orders ?? "—"} icon={CalendarDays} loading={loading} sub="aprovados" />
-        <KpiCard label="Receita Total" value={stats ? formatCurrency(Number(stats.total_revenue)) : "—"} icon={Wallet} accent="gold" loading={loading} />
+      {/* KPI Cards — Row 1: Leads & Conversão */}
+      <div>
+        <p className="text-[0.65rem] uppercase tracking-[0.15em] text-text-muted font-ui mb-3">Leads & Conversão</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <KpiCard label="Total Leads" value={stats?.total_leads ?? "—"} icon={Users} accent="wine" loading={loading} />
+          <KpiCard label="Leads (30d)" value={stats?.leads_last_30d ?? "—"} icon={TrendingUp} loading={loading} />
+          <KpiCard label="Carrinhos Abandonados" value={abandonedCount || "—"} icon={ShoppingCart} loading={loading} sub="com tag" />
+          <KpiCard label="Taxa de Conversão" value={stats ? `${conversionRate}%` : "—"} icon={TrendingUp} accent="gold" loading={loading} sub="leads → pedidos" />
+        </div>
       </div>
 
+      {/* KPI Cards — Row 2: Vendas & Receita */}
+      <div>
+        <p className="text-[0.65rem] uppercase tracking-[0.15em] text-text-muted font-ui mb-3">Vendas & Receita</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <KpiCard label="Pedidos Aprovados" value={stats?.total_orders ?? "—"} icon={ShoppingCart} accent="gold" loading={loading} />
+          <KpiCard label="Pedidos (30d)" value={stats?.orders_last_30d ?? "—"} icon={TrendingUp} loading={loading} />
+          <KpiCard label="Receita Total" value={stats ? formatCurrency(Number(stats.total_revenue)) : "—"} icon={Wallet} accent="gold" loading={loading} />
+          <KpiCard label="Receita (30d)" value={stats ? formatCurrency(Number(stats.revenue_last_30d ?? 0)) : "—"} icon={Wallet} loading={loading} />
+        </div>
+      </div>
+
+      {/* Charts */}
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="surface-card rounded-xl p-4 sm:p-6">
-          <div className="flex items-center gap-2 mb-4 sm:mb-6">
+          <div className="flex items-center gap-2 mb-5">
             <Users className="w-4 h-4 text-wine" strokeWidth={1.5} />
             <h3 className="font-display text-base font-semibold text-foreground">Leads — últimos 30 dias</h3>
           </div>
           {!stats?.leads_by_day?.length ? (
-            <div className="h-40 flex flex-col items-center justify-center text-text-muted font-body text-xs gap-2">
+            <div className="h-44 flex flex-col items-center justify-center text-text-muted font-body text-xs gap-2">
               <BarChart2 className="w-7 h-7 opacity-30" strokeWidth={1} /><p>Nenhum dado ainda.</p>
             </div>
           ) : (
-            <div className="h-40">
+            <div className="h-44">
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={stats.leads_by_day} margin={{ top: 4, right: 4, bottom: 0, left: -24 }}>
                   <defs>
@@ -275,16 +328,16 @@ const MetricsTab = () => {
         </div>
 
         <div className="surface-card rounded-xl p-4 sm:p-6">
-          <div className="flex items-center gap-2 mb-4 sm:mb-6">
+          <div className="flex items-center gap-2 mb-5">
             <Wallet className="w-4 h-4 text-gold" strokeWidth={1.5} />
             <h3 className="font-display text-base font-semibold text-foreground">Receita — últimos 30 dias</h3>
           </div>
           {!stats?.orders_by_day?.length ? (
-            <div className="h-40 flex flex-col items-center justify-center text-text-muted font-body text-xs gap-2">
+            <div className="h-44 flex flex-col items-center justify-center text-text-muted font-body text-xs gap-2">
               <BarChart2 className="w-7 h-7 opacity-30" strokeWidth={1} /><p>Nenhum pedido aprovado ainda.</p>
             </div>
           ) : (
-            <div className="h-40">
+            <div className="h-44">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stats.orders_by_day} margin={{ top: 4, right: 4, bottom: 0, left: -8 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
@@ -298,9 +351,131 @@ const MetricsTab = () => {
           )}
         </div>
       </div>
+
+      {/* Bottom row: 3 cards */}
+      <div className="grid sm:grid-cols-3 gap-6">
+
+        {/* Funil de conversão */}
+        <div className="surface-card rounded-xl p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="w-4 h-4 text-wine" strokeWidth={1.5} />
+            <h3 className="font-display text-sm font-semibold text-foreground">Funil de Conversão</h3>
+          </div>
+          {loading ? (
+            <div className="space-y-3">{[1,2,3].map(i => <div key={i} className="h-8 rounded bg-white/5 animate-pulse" />)}</div>
+          ) : (
+            <div className="space-y-2 font-body text-xs">
+              {[
+                { label: "Total Leads", value: stats?.total_leads ?? 0, color: "bg-wine/60", pct: 100 },
+                { label: "Inscrições Evento", value: inscricoesCount, color: "bg-blue-500/60", pct: stats?.total_leads ? (inscricoesCount / stats.total_leads) * 100 : 0 },
+                { label: "Pedidos Aprovados", value: stats?.total_orders ?? 0, color: "bg-gold/60", pct: stats?.total_leads ? ((stats.total_orders ?? 0) / stats.total_leads) * 100 : 0 },
+              ].map(({ label, value, color, pct }) => (
+                <div key={label}>
+                  <div className="flex justify-between mb-1">
+                    <span className="text-text-muted">{label}</span>
+                    <span className="text-foreground font-semibold tabular-nums">{value}</span>
+                  </div>
+                  <div className="h-1.5 w-full rounded-full bg-white/5">
+                    <div className={`h-1.5 rounded-full ${color} transition-all duration-700`} style={{ width: `${Math.min(pct, 100)}%` }} />
+                  </div>
+                </div>
+              ))}
+              <div className="pt-1 border-t border-white/5 flex justify-between">
+                <span className="text-text-muted">Conversão geral</span>
+                <span className="text-gold font-bold">{conversionRate}%</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Vendas por produto */}
+        <div className="surface-card rounded-xl p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <BookOpen className="w-4 h-4 text-gold" strokeWidth={1.5} />
+            <h3 className="font-display text-sm font-semibold text-foreground">Vendas por Produto</h3>
+          </div>
+          {loading ? (
+            <div className="space-y-3">{[1,2].map(i => <div key={i} className="h-10 rounded bg-white/5 animate-pulse" />)}</div>
+          ) : !stats?.product_breakdown?.length ? (
+            <p className="text-text-muted text-xs font-body py-4 text-center">Nenhuma venda ainda.</p>
+          ) : (
+            <div className="space-y-3 font-body text-xs">
+              {stats.product_breakdown.map(({ product, count, revenue }) => {
+                const total = stats.total_orders || 1;
+                const pct = (count / total) * 100;
+                const isEvent = product === "event";
+                return (
+                  <div key={product}>
+                    <div className="flex justify-between mb-1">
+                      <span className="flex items-center gap-1.5">
+                        {isEvent ? <CalendarDays className="w-3 h-3 text-blue-400" strokeWidth={1.5} /> : <BookOpen className="w-3 h-3 text-gold" strokeWidth={1.5} />}
+                        <span className="text-text-muted">{isEvent ? "Evento" : "E-book"}</span>
+                      </span>
+                      <span className="text-foreground font-semibold">{count} · {formatCurrency(revenue)}</span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-white/5">
+                      <div className={`h-1.5 rounded-full ${isEvent ? "bg-blue-500/60" : "bg-gold/60"} transition-all duration-700`} style={{ width: `${pct}%` }} />
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="pt-1 border-t border-white/5 space-y-1">
+                <div className="flex justify-between">
+                  <span className="text-text-muted">E-books aprovados</span>
+                  <span className="text-foreground tabular-nums">{stats.ebook_orders}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-text-muted">Eventos aprovados</span>
+                  <span className="text-foreground tabular-nums">{stats.event_orders}</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* E-mails automáticos */}
+        <div className="surface-card rounded-xl p-5 space-y-4">
+          <div className="flex items-center gap-2">
+            <Mail className="w-4 h-4 text-text-muted" strokeWidth={1.5} />
+            <h3 className="font-display text-sm font-semibold text-foreground">Fila de E-mails</h3>
+          </div>
+          {loading ? (
+            <div className="space-y-3">{[1,2,3,4].map(i => <div key={i} className="h-7 rounded bg-white/5 animate-pulse" />)}</div>
+          ) : (
+            <div className="space-y-2 font-body text-xs">
+              {[
+                { label: "Enviados", value: emailSent, color: "text-green-400", dot: "bg-green-400" },
+                { label: "Pendentes", value: emailPending, color: "text-amber-400", dot: "bg-amber-400" },
+                { label: "Falhas", value: emailFailed, color: "text-red-400", dot: "bg-red-400" },
+                { label: "Cancelados", value: stats?.email_stats?.cancelled ?? 0, color: "text-text-muted", dot: "bg-white/20" },
+              ].map(({ label, value, color, dot }) => (
+                <div key={label} className="flex items-center justify-between py-1.5 border-b border-white/[0.04] last:border-0">
+                  <span className="flex items-center gap-2 text-text-muted">
+                    <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+                    {label}
+                  </span>
+                  <span className={`font-semibold tabular-nums ${color}`}>{value}</span>
+                </div>
+              ))}
+              {stats?.payment_methods && stats.payment_methods.length > 0 && (
+                <>
+                  <p className="text-[0.6rem] uppercase tracking-[0.12em] text-text-muted pt-2">Métodos de pagamento</p>
+                  {stats.payment_methods.map(({ method, count }) => (
+                    <div key={method} className="flex items-center justify-between py-1 border-b border-white/[0.04] last:border-0">
+                      <span className="text-text-muted">{PAYMENT_METHOD_LABELS[method] ?? method}</span>
+                      <span className="text-foreground font-semibold tabular-nums">{count}</span>
+                    </div>
+                  ))}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
+
 
 // LEADS TAB
 const TAG_LABELS: Record<string, { label: string; color: string }> = {
@@ -420,8 +595,30 @@ const InscricoesTab = () => {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "paid" | "unpaid">("all");
   const [loading, setLoading] = useState(true);
+  const [attendingIds, setAttendingIds] = useState<Set<string>>(new Set());
 
-  useEffect(() => { getInscricoes().then((data) => { setItems(data); setLoading(false); }); }, []);
+  const refresh = useCallback(() => {
+    setLoading(true);
+    getInscricoes().then((data) => { setItems(data); setLoading(false); });
+  }, []);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  const toggleAttended = async (item: Inscricao) => {
+    if (!item.order_id) return;
+    const newVal = !item.attended;
+    // Optimistic update
+    setItems((prev) => prev.map((i) => i.order_id === item.order_id ? { ...i, attended: newVal } : i));
+    setAttendingIds((s) => { const ns = new Set(s); ns.add(item.order_id!); return ns; });
+    try {
+      await markAttended(item.order_id, newVal);
+    } catch {
+      // Revert
+      setItems((prev) => prev.map((i) => i.order_id === item.order_id ? { ...i, attended: !newVal } : i));
+    } finally {
+      setAttendingIds((s) => { const ns = new Set(s); ns.delete(item.order_id!); return ns; });
+    }
+  };
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase();
@@ -483,6 +680,7 @@ const InscricoesTab = () => {
                 <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold hidden md:table-cell">WhatsApp</th>
                 <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold">Status pgto</th>
                 <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold hidden sm:table-cell">Data</th>
+                <th className="text-center px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold">Presença</th>
               </tr></thead>
               <tbody>
                 {filtered.map((item, i) => {
@@ -498,6 +696,28 @@ const InscricoesTab = () => {
                         </span>
                       </td>
                       <td className="px-5 py-3.5 text-white/60 hidden sm:table-cell whitespace-nowrap">{formatDate(item.created_at)}</td>
+                      <td className="px-5 py-3.5 text-center">
+                        {item.order_id ? (
+                          <button
+                            onClick={() => toggleAttended(item)}
+                            disabled={attendingIds.has(item.order_id!)}
+                            title={item.attended ? "Marcar como ausente" : "Confirmar presença"}
+                            className={`inline-flex items-center justify-center w-8 h-8 rounded-full border transition-all duration-200 disabled:opacity-40 ${
+                              item.attended
+                                ? "bg-green-500/15 border-green-500/40 text-green-400 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400"
+                                : "bg-white/[0.04] border-white/10 text-text-muted hover:bg-green-500/10 hover:border-green-500/30 hover:text-green-400"
+                            }`}
+                          >
+                            {attendingIds.has(item.order_id!) ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Check className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+                        ) : (
+                          <span className="text-white/20 text-xs">—</span>
+                        )}
+                      </td>
                     </tr>
                   );
                 })}
@@ -808,6 +1028,326 @@ const ContentTab = () => {
   );
 };
 
+// EMAILS TAB
+const TEMPLATE_META: Record<string, { group: string; icon: React.ElementType; color: string }> = {
+  cart_immediate: { group: "Carrinho abandonado", icon: ShoppingCart, color: "text-amber-400" },
+  cart_1h:        { group: "Carrinho abandonado", icon: ShoppingCart, color: "text-amber-400" },
+  cart_1d:        { group: "Carrinho abandonado", icon: ShoppingCart, color: "text-amber-400" },
+  event_1d:       { group: "Lembrete do evento",  icon: CalendarDays, color: "text-blue-400" },
+  event_3h:       { group: "Lembrete do evento",  icon: CalendarDays, color: "text-blue-400" },
+  event_1h:       { group: "Lembrete do evento",  icon: CalendarDays, color: "text-blue-400" },
+};
+
+const TEMPLATE_DELAY: Record<string, string> = {
+  cart_immediate: "Imediato",
+  cart_1h:        "1 hora depois",
+  cart_1d:        "24 horas depois",
+  event_1d:       "24h antes do evento",
+  event_3h:       "3h antes do evento",
+  event_1h:       "1h antes do evento",
+};
+
+const EmailsTab = () => {
+  const [templates, setTemplates] = useState<EmailTemplate[]>([]);
+  const [queue, setQueue] = useState<EmailQueueItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editSubject, setEditSubject] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [saveOk, setSaveOk] = useState<string | null>(null);
+  const [processing, setProcessing] = useState(false);
+  const [processMsg, setProcessMsg] = useState("");
+  const [testEmail, setTestEmail] = useState("");
+  const [testName, setTestName] = useState("");
+  const [testSending, setTestSending] = useState(false);
+  const [testMsg, setTestMsg] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const [tpls, q] = await Promise.all([getEmailTemplates(), getEmailQueue(30)]);
+    setTemplates(tpls);
+    setQueue(q);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const startEdit = (t: EmailTemplate) => { setEditing(t.id); setEditSubject(t.subject); setSaveOk(null); };
+  const cancelEdit = () => setEditing(null);
+
+  const saveEdit = async (id: string) => {
+    setSaving(true);
+    try {
+      const updated = await updateEmailTemplate(id, { subject: editSubject });
+      setTemplates((prev) => prev.map((t) => t.id === id ? { ...t, ...updated } : t));
+      setSaveOk(id);
+      setEditing(null);
+      setTimeout(() => setSaveOk(null), 3000);
+    } catch { /* keep editing open */ }
+    setSaving(false);
+  };
+
+  const toggleActive = async (t: EmailTemplate) => {
+    try {
+      const updated = await updateEmailTemplate(t.id, { active: !t.active });
+      setTemplates((prev) => prev.map((x) => x.id === t.id ? { ...x, ...updated } : x));
+    } catch { /* ignore */ }
+  };
+
+  const handleProcess = async () => {
+    setProcessing(true); setProcessMsg("");
+    try {
+      await processEmailQueue();
+      setProcessMsg("✅ Fila processada com sucesso!");
+      await load();
+    } catch (e) {
+      setProcessMsg(`❌ ${e instanceof Error ? e.message : "Erro ao processar fila."}`);
+    }
+    setProcessing(false);
+    setTimeout(() => setProcessMsg(""), 6000);
+  };
+
+  const handleTestSend = async () => {
+    if (!testEmail) return;
+    setTestSending(true); setTestMsg("");
+    try {
+      const result = await testSendCartEmails(testEmail, testName || "Teste");
+      if (result.sent > 0) {
+        setTestMsg(`✅ ${result.sent} e-mail(s) disparados para ${testEmail}!`);
+      } else if (result.failed > 0) {
+        setTestMsg(`⚠️ E-mails agendados mas ${result.failed} falha(s) ao enviar. Veja a fila para detalhes.`);
+      } else {
+        setTestMsg(`⚠️ Nenhum e-mail foi enviado. Verifique os logs do servidor.`);
+      }
+      await load();
+    } catch (e) {
+      setTestMsg(`❌ ${e instanceof Error ? e.message : "Erro"}`);
+    }
+    setTestSending(false);
+    setTimeout(() => setTestMsg(""), 8000);
+  };
+
+  const statusColors: Record<string, string> = {
+    pending:   "text-amber-400 border-amber-400/20 bg-amber-400/5",
+    sent:      "text-green-400 border-green-500/20 bg-green-500/5",
+    failed:    "text-red-400 border-red-500/20 bg-red-500/5",
+    cancelled: "text-white/30 border-white/10 bg-white/3",
+  };
+
+  const groups = ["Carrinho abandonado", "Lembrete do evento"];
+
+  return (
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground tracking-tight">E-mails automáticos</h2>
+          <p className="text-text-muted font-body text-sm mt-1">Configure os e-mails enviados automaticamente. Edite o assunto e ative/desative cada tipo.</p>
+        </div>
+        <button onClick={load} disabled={loading} className="flex items-center gap-1.5 border border-white/8 hover:border-white/20 text-text-muted hover:text-foreground px-3 py-2 rounded-md font-body text-xs transition-all disabled:opacity-50">
+          <RefreshCw className={`w-3 h-3 ${loading ? "animate-spin" : ""}`} />Atualizar
+        </button>
+      </div>
+
+      {/* ── Ferramentas de teste ── */}
+      <div className="surface-card rounded-xl p-5 space-y-4">
+        <div className="flex items-center gap-2 mb-1">
+          <Zap className="w-4 h-4 text-gold" />
+          <h3 className="font-display text-base font-semibold text-foreground">Ferramentas</h3>
+        </div>
+
+        {/* Processar fila agora */}
+        <div className="flex items-center gap-3 flex-wrap">
+          <button
+            onClick={handleProcess}
+            disabled={processing}
+            className="flex items-center gap-2 bg-wine/15 hover:bg-wine/25 border border-wine/25 text-wine px-4 py-2.5 rounded-md font-ui text-xs transition-all disabled:opacity-50"
+          >
+            {processing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <SendHorizonal className="w-3.5 h-3.5" />}
+            Processar fila agora
+          </button>
+          {processMsg && <span className="font-body text-xs text-text-muted">{processMsg}</span>}
+        </div>
+        <p className="text-text-muted font-body text-[0.65rem]">Força o processamento imediato da fila (normalmente ocorre a cada 5 min).</p>
+
+        <div className="border-t border-white/5 pt-4">
+          <p className="font-body text-xs text-text-muted mb-3">Envio de teste — carrinho abandonado (ignora deduplicação):</p>
+          <div className="flex gap-2 flex-wrap items-end">
+            <div className="flex flex-col gap-1">
+              <label className="text-[0.6rem] text-text-muted font-body uppercase tracking-[0.12em]">E-mail</label>
+              <input
+                value={testEmail}
+                onChange={(e) => setTestEmail(e.target.value)}
+                placeholder="email@exemplo.com"
+                className="bg-background border border-white/10 focus:border-wine/40 rounded-md px-3 py-2 font-body text-sm text-foreground focus:outline-none w-56 transition-colors"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[0.6rem] text-text-muted font-body uppercase tracking-[0.12em]">Nome</label>
+              <input
+                value={testName}
+                onChange={(e) => setTestName(e.target.value)}
+                placeholder="Nome Sobrenome"
+                className="bg-background border border-white/10 focus:border-wine/40 rounded-md px-3 py-2 font-body text-sm text-foreground focus:outline-none w-44 transition-colors"
+              />
+            </div>
+            <button
+              onClick={handleTestSend}
+              disabled={testSending || !testEmail}
+              className="flex items-center gap-1.5 border border-gold/20 bg-gold/[0.07] hover:bg-gold/[0.14] text-gold px-4 py-2 rounded-md font-body text-xs transition-all disabled:opacity-40"
+            >
+              {testSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <SendHorizonal className="w-3.5 h-3.5" />}
+              Enviar teste
+            </button>
+          </div>
+          {testMsg && <p className="mt-2 font-body text-xs text-text-muted">{testMsg}</p>}
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16 text-text-muted">
+          <Loader2 className="w-5 h-5 animate-spin mr-2" /><span className="font-body text-sm">Carregando…</span>
+        </div>
+      ) : (
+        <div className="space-y-10">
+          {groups.map((group) => {
+            const groupTemplates = templates.filter((t) => TEMPLATE_META[t.id]?.group === group);
+            if (!groupTemplates.length) return null;
+            const GroupIcon = TEMPLATE_META[groupTemplates[0].id]?.icon ?? Mail;
+            const groupColor = TEMPLATE_META[groupTemplates[0].id]?.color ?? "text-white/60";
+            return (
+              <div key={group}>
+                <div className="flex items-center gap-2.5 mb-4">
+                  <GroupIcon className={`w-4 h-4 ${groupColor}`} />
+                  <h3 className="font-display text-base font-semibold text-foreground">{group}</h3>
+                  {group === "Carrinho abandonado" && (
+                    <span className="ml-auto text-[0.6rem] font-body text-amber-400/60 border border-amber-400/15 bg-amber-400/5 px-2 py-0.5 rounded-full">Sequência de 3 e-mails</span>
+                  )}
+                  {group === "Lembrete do evento" && (
+                    <span className="ml-auto text-[0.6rem] font-body text-blue-400/60 border border-blue-400/15 bg-blue-400/5 px-2 py-0.5 rounded-full">29/04/2026 · 14h</span>
+                  )}
+                </div>
+                <div className="space-y-3">
+                  {groupTemplates.map((t) => {
+                    const meta = TEMPLATE_META[t.id];
+                    const isEditing = editing === t.id;
+                    return (
+                      <div key={t.id} className={`surface-card rounded-xl p-5 border transition-all duration-200 ${t.active ? "border-white/5" : "border-white/[0.03] opacity-60"}`}>
+                        <div className="flex items-start gap-3">
+                          <button onClick={() => toggleActive(t)} className="mt-0.5 shrink-0" title={t.active ? "Desativar" : "Ativar"}>
+                            {t.active ? <ToggleRight className={`w-7 h-7 ${meta?.color ?? "text-white/60"}`} /> : <ToggleLeft className="w-7 h-7 text-white/20" />}
+                          </button>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                              <p className="font-body text-sm font-semibold text-foreground">{t.name}</p>
+                              {saveOk === t.id && <span className="text-[0.6rem] font-body text-green-400 border border-green-400/20 bg-green-400/5 px-2 py-0.5 rounded-full flex items-center gap-1"><Check className="w-2.5 h-2.5" />Salvo</span>}
+                            </div>
+                            <p className="font-body text-xs text-text-muted mb-3 leading-relaxed">{t.trigger_desc}</p>
+                            <div className="flex items-center gap-2 mb-3 flex-wrap">
+                              <span className="inline-flex items-center gap-1.5 text-[0.6rem] font-body border border-white/8 bg-white/4 text-white/50 px-2.5 py-1 rounded-full">
+                                <Clock className="w-2.5 h-2.5" />{TEMPLATE_DELAY[t.id] ?? "—"}
+                              </span>
+                              <span className="inline-flex items-center gap-1.5 text-[0.6rem] font-body border border-white/8 bg-white/4 text-white/50 px-2.5 py-1 rounded-full">
+                                <SendHorizonal className="w-2.5 h-2.5 text-green-400" />{t.sent_count} enviados
+                              </span>
+                              {t.pending_count > 0 && (
+                                <span className="inline-flex items-center gap-1.5 text-[0.6rem] font-body border border-amber-400/20 bg-amber-400/5 text-amber-400 px-2.5 py-1 rounded-full">
+                                  <Clock className="w-2.5 h-2.5" />{t.pending_count} pendentes
+                                </span>
+                              )}
+                              {t.failed_count > 0 && (
+                                <span className="inline-flex items-center gap-1.5 text-[0.6rem] font-body border border-red-400/20 bg-red-400/5 text-red-400 px-2.5 py-1 rounded-full">
+                                  <XCircle className="w-2.5 h-2.5" />{t.failed_count} erros
+                                </span>
+                              )}
+                            </div>
+                            {isEditing ? (
+                              <div className="space-y-2">
+                                <label className="text-[0.6rem] font-body text-text-muted uppercase tracking-[0.15em]">Assunto do e-mail</label>
+                                <input value={editSubject} onChange={(e) => setEditSubject(e.target.value)} className="w-full bg-background border border-white/10 focus:border-wine/40 rounded-md px-3 py-2.5 font-body text-sm text-foreground focus:outline-none transition-colors" placeholder="Assunto do e-mail…" />
+                                <p className="text-[0.6rem] text-text-muted font-body">Use <code className="bg-white/5 px-1 rounded text-white/60">{"{{firstName}}"}</code> para o primeiro nome.</p>
+                                <div className="flex gap-2 pt-1">
+                                  <button onClick={() => saveEdit(t.id)} disabled={saving} className="flex items-center gap-1.5 bg-wine hover:bg-wine-light text-background px-4 py-2 rounded-md font-ui text-xs transition-all disabled:opacity-50">
+                                    {saving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}Salvar
+                                  </button>
+                                  <button onClick={cancelEdit} className="border border-white/8 hover:border-white/15 text-text-muted hover:text-foreground px-4 py-2 rounded-md font-body text-xs transition-all">Cancelar</button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <div className="flex-1 rounded-md bg-background border border-white/5 px-3 py-2 font-body text-xs text-white/70 truncate">
+                                  <span className="text-text-muted text-[0.6rem] mr-1.5">Assunto:</span>{t.subject}
+                                </div>
+                                <button onClick={() => startEdit(t)} className="shrink-0 flex items-center gap-1 border border-white/8 hover:border-wine/30 text-text-muted hover:text-wine px-3 py-2 rounded-md font-body text-xs transition-all">
+                                  <Pencil className="w-3 h-3" />Editar
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* ── Últimas entradas da fila ── */}
+          <div>
+            <div className="flex items-center gap-2.5 mb-4">
+              <Activity className="w-4 h-4 text-white/40" />
+              <h3 className="font-display text-base font-semibold text-foreground">Últimos 30 registros da fila</h3>
+            </div>
+            {queue.length === 0 ? (
+              <div className="text-center py-8 text-text-muted font-body text-sm border border-white/5 rounded-xl">Nenhum item na fila ainda.</div>
+            ) : (
+              <div className="rounded-xl border border-white/5 overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full font-body text-xs">
+                    <thead>
+                      <tr className="border-b border-white/5 bg-white/[0.02]">
+                        <th className="text-left px-4 py-3 text-text-muted font-body text-[0.6rem] uppercase tracking-[0.12em]">Status</th>
+                        <th className="text-left px-4 py-3 text-text-muted font-body text-[0.6rem] uppercase tracking-[0.12em]">E-mail</th>
+                        <th className="text-left px-4 py-3 text-text-muted font-body text-[0.6rem] uppercase tracking-[0.12em]">Template</th>
+                        <th className="text-left px-4 py-3 text-text-muted font-body text-[0.6rem] uppercase tracking-[0.12em]">Agendado p/</th>
+                        <th className="text-left px-4 py-3 text-text-muted font-body text-[0.6rem] uppercase tracking-[0.12em]">Enviado em</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {queue.map((item) => (
+                        <tr key={item.id} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
+                          <td className="px-4 py-3">
+                            <span className={`inline-flex items-center text-[0.6rem] font-body border px-2 py-0.5 rounded-full ${statusColors[item.status]}`}>
+                              {item.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-white/70 max-w-[160px] truncate">{item.email}</td>
+                          <td className="px-4 py-3 text-white/50 max-w-[150px] truncate">{item.template_name}</td>
+                          <td className="px-4 py-3 text-white/40 whitespace-nowrap">{formatDate(item.scheduled_at)}</td>
+                          <td className="px-4 py-3 text-white/40 whitespace-nowrap">{item.sent_at ? formatDate(item.sent_at) : "—"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Info box */}
+          <div className="rounded-xl border border-white/5 bg-white/[0.02] p-5 font-body text-xs text-text-muted space-y-2">
+            <p className="text-white/50 text-[0.65rem] uppercase tracking-[0.15em] mb-2">Como funciona</p>
+            <p>🛒 <strong className="text-white/60">Carrinho abandonado:</strong> agendado quando o lead preenche o formulário mas não finaliza o pagamento. Cancelado se ele converter.</p>
+            <p>📅 <strong className="text-white/60">Lembretes do evento:</strong> agendados quando o pagamento é aprovado. Disparados antes de 29/04/2026 14h.</p>
+            <p>⏱ O servidor processa a fila a cada 5 minutos. Use "Processar fila agora" para forçar.</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // CONFIGURAÇÕES TAB
 const ConfiguracoesTab = () => {
   const [backendStatus, setBackendStatus] = useState<"idle" | "checking" | "ok" | "error">("idle");
@@ -955,8 +1495,8 @@ const ConfiguracoesTab = () => {
 };
 
 // PRODUTOS TAB
-type ProductForm = { id: string; title: string; description: string; price: string; mp_item_id: string; active: boolean };
-const EMPTY_FORM: ProductForm = { id: "", title: "", description: "", price: "", mp_item_id: "", active: true };
+type ProductForm = { id: string; title: string; description: string; price: string; mp_item_id: string; active: boolean; checkout_type: string };
+const EMPTY_FORM: ProductForm = { id: "", title: "", description: "", price: "", mp_item_id: "", active: true, checkout_type: "ebook" };
 
 interface ProductFormPanelProps {
   creating: boolean;
@@ -1012,6 +1552,18 @@ const ProductFormPanel = ({ creating, editId, form, saving, formError, onCancel,
         </label>
         <input value={form.mp_item_id} onChange={(e) => onChange("mp_item_id", e.target.value)} placeholder="ex: manual-do-empregador" className="w-full bg-background border border-white/8 focus:border-wine/40 rounded-md px-3 py-2.5 text-foreground font-mono text-sm focus:outline-none transition-colors" />
       </div>
+      <div className="space-y-1.5 sm:col-span-2">
+        <label className="block text-white/80 font-body text-xs font-medium uppercase tracking-[0.1em]">Tipo de Checkout</label>
+        <select
+          value={form.checkout_type}
+          onChange={(e) => onChange("checkout_type", e.target.value)}
+          className="w-full bg-background border border-white/8 focus:border-wine/40 rounded-md px-3 py-2.5 text-foreground font-body text-sm focus:outline-none transition-colors"
+        >
+          <option value="ebook">📘 E-book — envia link de download por e-mail</option>
+          <option value="event">🎫 Evento — envia ingresso digital por e-mail + inscreve no evento</option>
+          <option value="event_ebook">🎫📘 Evento + E-book — ingresso digital + link de download + inscreve no evento</option>
+        </select>
+      </div>
       <div className="flex items-center gap-3 sm:col-span-2">
         <button
           type="button"
@@ -1062,7 +1614,7 @@ const ProdutosTab = () => {
   const startEdit = (p: Product) => {
     setCreating(false);
     setEditId(p.id);
-    setForm({ id: p.id, title: p.title, description: p.description || "", price: String(p.price), mp_item_id: p.mp_item_id || "", active: p.active });
+    setForm({ id: p.id, title: p.title, description: p.description || "", price: String(p.price), mp_item_id: p.mp_item_id || "", active: p.active, checkout_type: p.checkout_type || "ebook" });
     setFormError("");
   };
 
@@ -1090,9 +1642,9 @@ const ProdutosTab = () => {
     setFormError("");
     try {
       if (creating) {
-        await createProduct({ id: form.id.trim(), title: form.title.trim(), description: form.description.trim(), price, mp_item_id: form.mp_item_id.trim(), active: form.active });
+        await createProduct({ id: form.id.trim(), title: form.title.trim(), description: form.description.trim(), price, mp_item_id: form.mp_item_id.trim(), active: form.active, checkout_type: form.checkout_type as "ebook" | "event" | "event_ebook" });
       } else if (editId) {
-        await updateProduct(editId, { title: form.title.trim(), description: form.description.trim(), price, mp_item_id: form.mp_item_id.trim(), active: form.active });
+        await updateProduct(editId, { title: form.title.trim(), description: form.description.trim(), price, mp_item_id: form.mp_item_id.trim(), active: form.active, checkout_type: form.checkout_type as "ebook" | "event" | "event_ebook" });
       }
       cancel();
       refresh();
@@ -1201,6 +1753,14 @@ const ProdutosTab = () => {
                           <span className="flex items-center gap-1 font-mono text-xs text-text-muted"><Link2 className="w-2.5 h-2.5" />{p.mp_item_id}</span>
                         </>
                       )}
+                      {p.checkout_type && (
+                        <>
+                          <span className="text-text-muted text-xs">·</span>
+                          <span className="text-[0.6rem] font-ui tracking-widest px-2 py-0.5 rounded-full border border-white/10 bg-white/4 text-text-muted">
+                            {p.checkout_type === "event_ebook" ? "evento+ebook" : p.checkout_type}
+                          </span>
+                        </>
+                      )}
                     </div>
                     {p.description && <p className="text-text-muted font-body text-xs mt-1 line-clamp-1">{p.description}</p>}
                   </div>
@@ -1261,25 +1821,187 @@ const ProdutosTab = () => {
   );
 };
 
-// NAV
-const NAV_ITEMS: { id: Tab; label: string; icon: React.ElementType }[] = [
-  { id: "metricas", label: "Métricas", icon: BarChart2 },
-  { id: "leads", label: "Leads", icon: Users },
-  { id: "pedidos", label: "Pedidos", icon: ShoppingCart },
-  { id: "inscricoes", label: "Inscrições", icon: CalendarDays },
-  { id: "ebook", label: "E-book", icon: BookOpen },
-  { id: "produtos", label: "Produtos", icon: Package },
-  { id: "conteudo", label: "Conteúdo", icon: Edit3 },
-  { id: "configuracoes", label: "Configurações", icon: Settings },
+// CTAS TAB
+const CtasTab = () => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [config, setConfig] = useState<CTAConfig>({ ctaAcessoProductId: "ebook", ctaVagaProductId: "event" });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState<"acesso" | "vaga" | null>(null);
+  const [savedMsg, setSavedMsg] = useState<"acesso" | "vaga" | null>(null);
+
+  useEffect(() => {
+    Promise.all([getProducts(), getCTAConfig()]).then(([prods, cfg]) => {
+      setProducts(prods.filter((p) => p.active));
+      setConfig(cfg);
+      setLoading(false);
+    }).catch(() => setLoading(false));
+  }, []);
+
+  const save = async (field: "acesso" | "vaga", productId: string) => {
+    setSaving(field);
+    try {
+      const patch = field === "acesso" ? { ctaAcessoProductId: productId } : { ctaVagaProductId: productId };
+      await saveCTAConfig(patch);
+      setConfig((prev) => ({ ...prev, ...patch }));
+      setSavedMsg(field);
+      setTimeout(() => setSavedMsg(null), 3000);
+    } catch { /* ignore */ }
+    setSaving(null);
+  };
+
+  const ctas = [
+    {
+      key: "acesso" as const,
+      label: "Garantir meu acesso",
+      description: "Botão de compra do e-book. Aparece no Hero, na seção de conteúdo e na página de preços.",
+      productId: config.ctaAcessoProductId,
+      icon: BookOpen,
+      color: "text-wine",
+      badge: "EBOOK",
+    },
+    {
+      key: "vaga" as const,
+      label: "Garantir minha vaga",
+      description: "Botão de inscrição no evento. Aparece na seção do evento, na página de preços e no header fixo.",
+      productId: config.ctaVagaProductId,
+      icon: CalendarDays,
+      color: "text-gold",
+      badge: "EVENTO",
+    },
+  ];
+
+  const product = (id: string) => products.find((p) => p.id === id);
+
+  return (
+    <div className="space-y-8">
+      <div>
+        <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground tracking-tight">CTAs do Site</h2>
+        <p className="text-text-muted font-body text-sm mt-1">
+          Associe cada botão de compra a um produto cadastrado. A mudança reflete imediatamente no carrinho.
+        </p>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16 text-text-muted">
+          <Loader2 className="w-5 h-5 animate-spin mr-2" /><span className="font-body text-sm">Carregando…</span>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {ctas.map(({ key, label, description, productId, icon: Icon, color, badge }) => {
+            const linked = product(productId);
+            return (
+              <div key={key} className="surface-card rounded-xl p-5 border border-white/5">
+                <div className="flex items-start gap-4">
+                  {/* CTA preview */}
+                  <div className="shrink-0 mt-0.5">
+                    <div className={`w-10 h-10 rounded-lg border border-white/8 bg-white/[0.03] flex items-center justify-center`}>
+                      <Icon className={`w-5 h-5 ${color}`} />
+                    </div>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                      <p className="font-display text-sm font-semibold text-foreground">{label}</p>
+                      <span className={`text-[0.55rem] font-ui tracking-[0.18em] px-2 py-0.5 rounded-full border ${key === "acesso" ? "text-wine/80 border-wine/20 bg-wine/8" : "text-gold/80 border-gold/20 bg-gold/8"}`}>{badge}</span>
+                      {savedMsg === key && (
+                        <span className="text-[0.6rem] font-body text-green-400 border border-green-400/20 bg-green-400/5 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Check className="w-2.5 h-2.5" />Salvo
+                        </span>
+                      )}
+                    </div>
+                    <p className="font-body text-xs text-text-muted mb-4 leading-relaxed">{description}</p>
+
+                    {/* Current product */}
+                    {linked ? (
+                      <div className="mb-3 rounded-lg border border-white/6 bg-white/[0.02] px-4 py-3 flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-body text-xs text-foreground font-semibold">{linked.title}</p>
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                            <span className="font-mono text-[0.6rem] text-text-muted">id: {linked.id}</span>
+                            <span className="text-text-muted text-[0.6rem]">·</span>
+                            <span className="font-display text-xs text-gold font-semibold">R$ {Number(linked.price).toFixed(2)}</span>
+                            <span className="text-text-muted text-[0.6rem]">·</span>
+                            <span className="text-[0.6rem] font-ui tracking-wide text-text-muted border border-white/8 bg-white/4 px-1.5 py-0.5 rounded">{linked.checkout_type}</span>
+                          </div>
+                        </div>
+                        <span className="shrink-0 text-[0.6rem] font-body text-green-400 border border-green-400/20 bg-green-400/5 px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Check className="w-2.5 h-2.5" />vinculado
+                        </span>
+                      </div>
+                    ) : (
+                      <div className="mb-3 rounded-lg border border-amber-400/15 bg-amber-400/5 px-4 py-3">
+                        <p className="font-body text-xs text-amber-400">Produto <code className="font-mono bg-amber-400/10 px-1 rounded">{productId}</code> não encontrado nos produtos ativos.</p>
+                      </div>
+                    )}
+
+                    {/* Product selector */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <label className="text-[0.6rem] font-body text-text-muted uppercase tracking-[0.12em] shrink-0">Vincular a:</label>
+                      <select
+                        value={productId}
+                        onChange={(e) => save(key, e.target.value)}
+                        disabled={saving === key}
+                        className="bg-background border border-white/10 focus:border-wine/40 rounded-md px-3 py-2 font-body text-xs text-foreground focus:outline-none transition-colors disabled:opacity-50 cursor-pointer"
+                      >
+                        {products.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.title} (id: {p.id}) — R$ {Number(p.price).toFixed(2)}
+                          </option>
+                        ))}
+                        {products.length === 0 && <option value={productId}>{productId}</option>}
+                      </select>
+                      {saving === key && <Loader2 className="w-3.5 h-3.5 animate-spin text-wine" />}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <div className="rounded-xl border border-white/5 bg-white/[0.02] p-5 font-body text-xs text-text-muted space-y-2">
+        <p className="text-white/50 text-[0.65rem] uppercase tracking-[0.15em] mb-2">Como funciona</p>
+        <p>Quando o usuário clica em um CTA de compra, o produto selecionado aqui é adicionado ao carrinho. O tipo de checkout (<code className="bg-white/5 px-1 rounded text-white/50">ebook</code>, <code className="bg-white/5 px-1 rounded text-white/50">event</code> ou <code className="bg-white/5 px-1 rounded text-white/50">event_ebook</code>) é determinado pelo produto escolhido.</p>
+        <p>Para criar ou editar produtos, acesse <strong className="text-white/60">Vendas → Produtos</strong>.</p>
+      </div>
+    </div>
+  );
+};
+
+// NAV — grouped structure
+type NavItem = { id: Tab; label: string; icon: React.ElementType };
+type NavGroup = { kind: "single"; id: Tab; label: string; icon: React.ElementType }
+              | { kind: "group"; id: string; label: string; icon: React.ElementType; items: NavItem[] };
+
+const NAV_GROUPS: NavGroup[] = [
+  { kind: "single", id: "metricas", label: "Métricas", icon: BarChart2 },
+  { kind: "group", id: "pessoas", label: "Pessoas", icon: Users, items: [
+    { id: "leads", label: "Leads", icon: Users },
+    { id: "inscricoes", label: "Inscrições", icon: CalendarDays },
+  ]},
+  { kind: "group", id: "vendas", label: "Vendas", icon: ShoppingCart, items: [
+    { id: "pedidos", label: "Pedidos", icon: ShoppingCart },
+    { id: "produtos", label: "Produtos", icon: Package },
+    { id: "ctas", label: "CTAs do Site", icon: MousePointer2 },
+  ]},
+  { kind: "group", id: "conteudo_grp", label: "Conteúdo", icon: Edit3, items: [
+    { id: "ebook", label: "E-book", icon: BookOpen },
+    { id: "conteudo", label: "Textos", icon: Edit3 },
+  ]},
+  { kind: "single", id: "emails", label: "E-mails", icon: Mail },
+  { kind: "single", id: "configuracoes", label: "Configurações", icon: Settings },
 ];
 
 // DASHBOARD
 const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
   const [tab, setTab] = useState<Tab>("metricas");
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [serverOnline, setServerOnline] = useState<boolean | null>(null);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const handleLogout = () => { clearAuth(); onLogout(); };
+
+  const selectTab = (id: Tab) => { setTab(id); setOpenGroup(null); setMobileOpen(false); };
 
   const apiUrl = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
   useEffect(() => {
@@ -1289,6 +2011,17 @@ const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
       .then((j) => setServerOnline(j.ok === true))
       .catch(() => setServerOnline(false));
   }, [apiUrl]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    if (!openGroup) return;
+    const close = () => setOpenGroup(null);
+    document.addEventListener("click", close, { capture: true });
+    return () => document.removeEventListener("click", close, { capture: true });
+  }, [openGroup]);
+
+  const isGroupActive = (g: NavGroup) =>
+    g.kind === "group" && g.items.some((i) => i.id === tab);
 
   const showOfflineBanner = serverOnline === false && !bannerDismissed;
 
@@ -1306,28 +2039,102 @@ const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
             <span className="font-body text-white/60 text-sm hidden sm:block">Manual do Empregador</span>
           </div>
         </div>
-        <nav className="hidden md:flex items-center gap-1" aria-label="Navegação admin">
-          {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
-            <button key={id} onClick={() => setTab(id)} className={`flex items-center gap-2 px-4 py-2 rounded-md font-body text-sm transition-all duration-200 ${tab === id ? "bg-wine/10 text-wine border border-wine/15" : "text-text-muted hover:text-foreground hover:bg-white/4"}`}>
-              <Icon className="w-3.5 h-3.5" strokeWidth={1.5} />{label}
-            </button>
-          ))}
+        {/* Desktop nav with grouped dropdowns */}
+        <nav className="hidden md:flex items-center gap-0.5" aria-label="Navegação admin">
+          {NAV_GROUPS.map((g) => {
+            if (g.kind === "single") {
+              return (
+                <button key={g.id} onClick={() => selectTab(g.id)} className={`flex items-center gap-1.5 px-3 py-2 rounded-md font-body text-[0.78rem] transition-all duration-200 ${tab === g.id ? "bg-wine/10 text-wine border border-wine/15" : "text-text-muted hover:text-foreground hover:bg-white/4"}`}>
+                  <g.icon className="w-3.5 h-3.5" strokeWidth={1.5} />{g.label}
+                </button>
+              );
+            }
+            const active = isGroupActive(g);
+            return (
+              <div key={g.id} className="relative">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setOpenGroup(openGroup === g.id ? null : g.id); }}
+                  className={`flex items-center gap-1.5 px-3 py-2 rounded-md font-body text-[0.78rem] transition-all duration-200 ${active ? "bg-wine/10 text-wine border border-wine/15" : "text-text-muted hover:text-foreground hover:bg-white/4"}`}
+                >
+                  <g.icon className="w-3.5 h-3.5" strokeWidth={1.5} />{g.label}
+                  <ChevronDown className={`w-3 h-3 ml-0.5 transition-transform duration-200 ${openGroup === g.id ? "rotate-180" : ""}`} />
+                </button>
+                <AnimatePresence>
+                  {openGroup === g.id && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -4, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -4, scale: 0.97 }}
+                      transition={{ duration: 0.12 }}
+                      className="absolute top-full left-0 mt-1 min-w-[160px] bg-support border border-white/10 rounded-xl shadow-[0_8px_32px_-8px_rgba(0,0,0,0.6)] py-1 z-50"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {g.items.map((item) => (
+                        <button
+                          key={item.id}
+                          onClick={() => selectTab(item.id)}
+                          className={`flex items-center gap-2 w-full px-3 py-2 font-body text-xs transition-colors ${tab === item.id ? "text-wine bg-wine/8" : "text-text-muted hover:text-foreground hover:bg-white/4"}`}
+                        >
+                          <item.icon className="w-3.5 h-3.5" strokeWidth={1.5} />{item.label}
+                        </button>
+                      ))}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
         </nav>
         <button onClick={handleLogout} className="flex items-center gap-2 text-text-muted hover:text-foreground font-body text-sm transition-colors border border-white/8 hover:border-white/15 px-3 py-2 rounded-md" aria-label="Sair">
           <LogOut className="w-3.5 h-3.5" /><span className="hidden sm:inline">Sair</span>
         </button>
       </header>
+
+      {/* Mobile nav — accordion groups */}
       <AnimatePresence>
         {mobileOpen && (
-          <motion.nav initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.15 }} className="fixed top-[56px] left-0 right-0 z-40 bg-support border-b border-white/5 px-4 py-3 md:hidden">
-            {NAV_ITEMS.map(({ id, label, icon: Icon }) => (
-              <button key={id} onClick={() => { setTab(id); setMobileOpen(false); }} className={`flex items-center gap-3 w-full px-4 py-3 rounded-md font-body text-sm transition-colors ${tab === id ? "bg-wine/10 text-wine" : "text-text-muted hover:text-foreground"}`}>
-                <Icon className="w-4 h-4" strokeWidth={1.5} />{label}
-              </button>
-            ))}
+          <motion.nav initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.15 }} className="fixed top-[56px] left-0 right-0 z-40 bg-support border-b border-white/5 px-3 py-2 md:hidden max-h-[80vh] overflow-y-auto">
+            {NAV_GROUPS.map((g) => {
+              if (g.kind === "single") {
+                return (
+                  <button key={g.id} onClick={() => selectTab(g.id)} className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-md font-body text-sm transition-colors ${tab === g.id ? "bg-wine/10 text-wine" : "text-text-muted hover:text-foreground"}`}>
+                    <g.icon className="w-4 h-4 shrink-0" strokeWidth={1.5} />{g.label}
+                  </button>
+                );
+              }
+              const gActive = isGroupActive(g);
+              return (
+                <div key={g.id} className="mb-1">
+                  <button
+                    onClick={() => setOpenGroup(openGroup === g.id ? null : g.id)}
+                    className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-md font-body text-sm transition-colors ${gActive ? "text-wine" : "text-text-muted hover:text-foreground"}`}
+                  >
+                    <g.icon className="w-4 h-4 shrink-0" strokeWidth={1.5} />
+                    <span className="flex-1 text-left">{g.label}</span>
+                    <ChevronDown className={`w-3.5 h-3.5 transition-transform ${openGroup === g.id ? "rotate-180" : ""}`} />
+                  </button>
+                  <AnimatePresence>
+                    {openGroup === g.id && (
+                      <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.15 }} className="overflow-hidden pl-4 border-l border-white/6 ml-4">
+                        {g.items.map((item) => (
+                          <button
+                            key={item.id}
+                            onClick={() => selectTab(item.id)}
+                            className={`flex items-center gap-2.5 w-full px-3 py-2.5 rounded-md font-body text-sm transition-colors ${tab === item.id ? "bg-wine/8 text-wine" : "text-text-muted hover:text-foreground"}`}
+                          >
+                            <item.icon className="w-3.5 h-3.5 shrink-0" strokeWidth={1.5} />{item.label}
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              );
+            })}
           </motion.nav>
         )}
       </AnimatePresence>
+
       <AnimatePresence>
         {showOfflineBanner && (
           <motion.div
@@ -1363,7 +2170,9 @@ const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
             {tab === "inscricoes" && <InscricoesTab />}
             {tab === "ebook" && <EbookTab />}
             {tab === "produtos" && <ProdutosTab />}
+            {tab === "ctas" && <CtasTab />}
             {tab === "conteudo" && <ContentTab />}
+            {tab === "emails" && <EmailsTab />}
             {tab === "configuracoes" && <ConfiguracoesTab />}
           </motion.div>
         </AnimatePresence>

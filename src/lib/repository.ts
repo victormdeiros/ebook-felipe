@@ -32,12 +32,17 @@ export interface DashboardStats {
   total_leads: number;
   total_orders: number;
   total_revenue: number;
+  revenue_last_30d: number;
   ebook_orders: number;
   event_orders: number;
   leads_last_30d: number;
   orders_last_30d: number;
   leads_by_day: { date: string; count: number }[];
   orders_by_day: { date: string; count: number; revenue: number }[];
+  payment_methods: { method: string; count: number; revenue: number }[];
+  product_breakdown: { product: string; count: number; revenue: number }[];
+  leads_by_tag: { tag: string; count: number }[];
+  email_stats: Record<string, number>;
 }
 
 // Leads
@@ -120,6 +125,7 @@ export interface Product {
   description: string;
   price: number;
   active: boolean;
+  checkout_type: "ebook" | "event" | "event_ebook";
 }
 
 export const getProducts = async (): Promise<Product[]> => {
@@ -184,6 +190,8 @@ export interface Inscricao {
   amount: number | null;
   mp_payment_id: string | null;
   paid_at: string | null;
+  attended: boolean;
+  order_id: string | null;
 }
 
 export const getInscricoes = async (): Promise<Inscricao[]> => {
@@ -193,9 +201,18 @@ export const getInscricoes = async (): Promise<Inscricao[]> => {
       headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
     });
     if (!res.ok) return [];
-    const { items } = await res.json() as { items: Inscricao[] };
-    return items;
+    const { items } = await res.json() as { items: (Inscricao & { order_id?: string })[] };
+    return items.map((i) => ({ ...i, attended: i.attended ?? false, order_id: i.order_id ?? null }));
   } catch { return []; }
+};
+
+export const markAttended = async (orderId: string, attended: boolean): Promise<void> => {
+  if (!API_URL || !ADMIN_TOKEN) return;
+  await fetch(`${API_URL}/api/admin/inscricoes/${encodeURIComponent(orderId)}/attended`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${ADMIN_TOKEN}` },
+    body: JSON.stringify({ attended }),
+  });
 };
 
 // Ebook upload & URL
@@ -241,3 +258,123 @@ export const trackEvent = (name: EventName, payload?: Record<string, unknown>): 
     body: JSON.stringify({ name, payload: payload ?? null }),
   }).catch(() => { /* fire-and-forget */ });
 };
+
+// Email templates
+
+export interface EmailTemplate {
+  id: string;
+  name: string;
+  trigger_desc: string;
+  subject: string;
+  active: boolean;
+  updated_at: string;
+  pending_count: number;
+  sent_count: number;
+  failed_count: number;
+  cancelled_count: number;
+}
+
+export const getEmailTemplates = async (): Promise<EmailTemplate[]> => {
+  if (!API_URL || !ADMIN_TOKEN) return [];
+  try {
+    const res = await fetch(`${API_URL}/api/admin/email-templates`, {
+      headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+    });
+    if (!res.ok) return [];
+    return res.json() as Promise<EmailTemplate[]>;
+  } catch { return []; }
+};
+
+export const updateEmailTemplate = async (
+  id: string,
+  data: { subject?: string; active?: boolean },
+): Promise<EmailTemplate> => {
+  const res = await fetch(`${API_URL}/api/admin/email-templates/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${ADMIN_TOKEN}` },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { error?: string };
+    throw new Error(err.error ?? "Erro ao atualizar template");
+  }
+  return res.json() as Promise<EmailTemplate>;
+};
+
+export interface EmailQueueItem {
+  id: string;
+  email: string;
+  lead_name: string;
+  template_id: string;
+  template_name: string;
+  scheduled_at: string;
+  sent_at: string | null;
+  status: "pending" | "sent" | "failed" | "cancelled";
+  error: string | null;
+  created_at: string;
+}
+
+export const getEmailQueue = async (limit = 20): Promise<EmailQueueItem[]> => {
+  if (!API_URL || !ADMIN_TOKEN) return [];
+  try {
+    const res = await fetch(`${API_URL}/api/admin/email-queue?limit=${limit}`, {
+      headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+    });
+    if (!res.ok) return [];
+    const data = await res.json() as { items: EmailQueueItem[] };
+    return data.items;
+  } catch { return []; }
+};
+
+export const processEmailQueue = async (): Promise<void> => {
+  await fetch(`${API_URL}/api/admin/email-queue/process`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+  });
+};
+
+export const testSendCartEmails = async (email: string, name: string): Promise<{ sent: number; failed: number }> => {
+  const res = await fetch(`${API_URL}/api/admin/email-queue/test-send`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${ADMIN_TOKEN}` },
+    body: JSON.stringify({ email, name }),
+  });
+  const data = await res.json().catch(() => ({})) as { ok?: boolean; error?: string; sent?: number; failed?: number };
+  if (!res.ok || !data.ok) {
+    throw new Error(data.error ?? "Erro ao disparar e-mail de teste");
+  }
+  return { sent: data.sent ?? 0, failed: data.failed ?? 0 };
+};
+
+export interface CTAConfig {
+  ctaAcessoProductId: string;
+  ctaVagaProductId: string;
+}
+
+export const getCTAConfig = async (): Promise<CTAConfig> => {
+  if (!API_URL || !ADMIN_TOKEN) return { ctaAcessoProductId: "ebook", ctaVagaProductId: "event" };
+  try {
+    const res = await fetch(`${API_URL}/api/admin/cta-config`, {
+      headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+    });
+    if (!res.ok) return { ctaAcessoProductId: "ebook", ctaVagaProductId: "event" };
+    const data = await res.json() as { cta_acesso_product_id: string; cta_vaga_product_id: string };
+    return {
+      ctaAcessoProductId: data.cta_acesso_product_id || "ebook",
+      ctaVagaProductId: data.cta_vaga_product_id || "event",
+    };
+  } catch { return { ctaAcessoProductId: "ebook", ctaVagaProductId: "event" }; }
+};
+
+export const saveCTAConfig = async (config: Partial<CTAConfig>): Promise<void> => {
+  const res = await fetch(`${API_URL}/api/admin/cta-config`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${ADMIN_TOKEN}` },
+    body: JSON.stringify({
+      cta_acesso_product_id: config.ctaAcessoProductId,
+      cta_vaga_product_id: config.ctaVagaProductId,
+    }),
+  });
+  if (!res.ok) throw new Error("Erro ao salvar configuração de CTAs");
+};
+

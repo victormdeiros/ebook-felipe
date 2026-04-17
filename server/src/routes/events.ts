@@ -6,7 +6,7 @@ const router = Router();
 
 const eventSchema = z.object({
   name: z.string().trim().min(1).max(80),
-  payload: z.record(z.unknown()).optional(),
+  payload: z.record(z.unknown()).nullable().optional(),
 });
 
 router.post("/", async (req, res, next) => {
@@ -14,7 +14,7 @@ router.post("/", async (req, res, next) => {
     const data = eventSchema.parse(req.body);
 
     await pool.query(
-      `INSERT INTO manual_events (name, payload) VALUES ($1, $2)`,
+      `INSERT INTO manual_events (name, event_name, payload) VALUES ($1, $1, $2)`,
       [data.name, data.payload ? JSON.stringify(data.payload) : null],
     );
 

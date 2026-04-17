@@ -1,7 +1,9 @@
+import { useState, useEffect } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { BadgeCheck, ShieldCheck, CalendarDays, Coffee, MapPin, ArrowRight } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
-import { getContent } from "@/lib/contentStore";
+import { getContent, fetchContent } from "@/lib/contentStore";
+import { getProducts } from "@/lib/repository";
 import { CONFIG } from "@/config";
 
 const ebookBenefits = [
@@ -19,9 +21,26 @@ const eventBenefits = [
 const PriceSection = () => {
   const shouldReduceMotion = useReducedMotion();
   const { addToCart, addEventToCart, openCart } = useCart();
-  const content = getContent();
+  const [content, setContent] = useState(getContent());
+  const [productPrices, setProductPrices] = useState<Record<string, number>>({});
 
-  const eventPrice = content.eventPrice || String(CONFIG.EVENT_PRICE);
+  useEffect(() => {
+    fetchContent().then(setContent).catch(() => {});
+    // Fetch product prices directly from DB (source of truth)
+    getProducts().then((products) => {
+      const map: Record<string, number> = {};
+      for (const p of products) map[p.id] = p.price;
+      setProductPrices(map);
+    }).catch(() => {});
+  }, []);
+
+  // Product prices from DB take priority over manual_content cache
+  const ebookPriceNum = productPrices["ebook"] ?? null;
+  const eventPriceNum = productPrices["event"] ?? null;
+
+  const eventPrice = eventPriceNum != null ? String(eventPriceNum) : (content.eventPrice || String(CONFIG.EVENT_PRICE));
+  const ebookPrice = ebookPriceNum != null ? String(ebookPriceNum) : (content.price || String(CONFIG.PRODUCT_PRICE));
+  const ebookPriceOriginal = content.priceOriginal || String(CONFIG.PRODUCT_PRICE_ORIGINAL);
 
   const handleAddToCart = () => {
     addToCart();
@@ -76,11 +95,11 @@ const PriceSection = () => {
             </span>
 
             <p className="font-body" style={{ fontSize: "15px", color: "#6b6060", textDecoration: "line-through", marginBottom: "4px" }}>
-              de R$ 97,00
+              de R$ {ebookPriceOriginal},00
             </p>
             <p className="text-wine" style={{ fontSize: "20px", margin: "4px 0" }} aria-hidden="true">↓</p>
             <p className="font-display text-off-white" style={{ fontSize: "62px", lineHeight: 1, marginBottom: "4px" }}>
-              R$ 47,00
+              R$ {ebookPrice},00
             </p>
             <p className="font-body mb-6" style={{ fontSize: "13px", color: "#a79797" }}>
               Manual do Empregador — PDF

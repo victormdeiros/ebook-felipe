@@ -130,7 +130,7 @@ CREATE TABLE IF NOT EXISTS ebookfelipelopes.manual_content (
   ebook_download_url   TEXT        NOT NULL DEFAULT '/manual-do-empregador.pdf',
   price_display        TEXT        NOT NULL DEFAULT '49',
   price_original       TEXT        NOT NULL DEFAULT '97',
-  whatsapp_number      TEXT        NOT NULL DEFAULT '5581985900139',
+  whatsapp_number      TEXT        NOT NULL DEFAULT '558198590139',
   whatsapp_msg         TEXT        NOT NULL DEFAULT 'Olá! Tenho interesse no Manual do Empregador.',
   event_price_display  TEXT        NOT NULL DEFAULT '67',
   event_checkout_url   TEXT        NOT NULL DEFAULT '',

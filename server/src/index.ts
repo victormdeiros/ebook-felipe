@@ -11,6 +11,7 @@ import mpRouter from "./routes/mp";
 import contentRouter from "./routes/content";
 import productsRouter from "./routes/products";
 import { errorHandler, notFound } from "./middleware/error";
+import { startScheduler } from "./emailScheduler";
 
 const app = express();
 
@@ -67,6 +68,7 @@ app.use(errorHandler);
 
 const server = app.listen(config.PORT, () => {
   console.log(`[server] listening on :${config.PORT} (${config.NODE_ENV})`);
+  startScheduler();
 });
 
 const shutdown = (signal: string) => {

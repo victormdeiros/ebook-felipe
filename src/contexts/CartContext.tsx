@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { getContent } from "@/lib/contentStore";
 
-export type CartItemId = "ebook" | "event";
+export type CartItemId = string;
 
 export interface CartItem {
   id: CartItemId;
@@ -31,18 +32,20 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const addToCart = useCallback(() => {
+    const id = getContent().ctaAcessoProductId || "ebook";
     setCartItems((prev) =>
-      prev.find((i) => i.id === "ebook")
+      prev.find((i) => i.id === id)
         ? prev
-        : [...prev, { id: "ebook", name: "Manual do Empregador", price: "" }]
+        : [...prev, { id, name: "Manual do Empregador", price: "" }]
     );
   }, []);
 
   const addEventToCart = useCallback(() => {
+    const id = getContent().ctaVagaProductId || "event";
     setCartItems((prev) =>
-      prev.find((i) => i.id === "event")
+      prev.find((i) => i.id === id)
         ? prev
-        : [...prev, { id: "event", name: "Segurança Jurídica 360", price: "" }]
+        : [...prev, { id, name: "Segurança Jurídica 360", price: "" }]
     );
   }, []);
 

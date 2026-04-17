@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from "framer-motion";
-import { ShieldCheck, Cpu, Users, ArrowRight, Coffee, MapPin, Star, Zap, ExternalLink } from "lucide-react";
+import { ShieldCheck, Cpu, Users, ArrowRight, Coffee, MapPin, Star, Zap, ExternalLink, CalendarDays, Clock } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { getContent } from "@/lib/contentStore";
 import { CONFIG } from "@/config";
@@ -136,6 +136,39 @@ const EventSection = () => {
           >
             Blindando sua empresa contra riscos trabalhistas
           </motion.p>
+
+          {/* ── Save the Date ── */}
+          <motion.div {...fade(0.2)} className="mb-10 flex flex-col items-center gap-3">
+            <span className="inline-flex items-center gap-2 rounded-full bg-gold/10 border border-gold/30 px-5 py-1.5 font-ui text-[0.55rem] tracking-[0.35em] text-gold uppercase">
+              <CalendarDays className="w-3 h-3" />
+              SAVE THE DATE
+            </span>
+            <div
+              className="inline-flex flex-col sm:flex-row items-stretch rounded-2xl overflow-hidden border border-gold/25 shadow-[0_0_60px_-16px_rgba(201,168,76,0.45)]"
+              style={{ background: "rgba(201,168,76,0.04)" }}
+            >
+              {/* Date */}
+              <div className="flex flex-col items-center justify-center gap-0.5 bg-gold/[0.10] px-8 sm:px-10 py-5 border-b sm:border-b-0 sm:border-r border-gold/15">
+                <p className="font-ui text-[0.45rem] tracking-[0.3em] text-gold/50 uppercase mb-1">Data</p>
+                <p className="font-display text-3xl sm:text-4xl font-bold text-off-white leading-none tracking-tight">29 Abr</p>
+                <p className="font-display text-lg font-semibold text-gold leading-none mt-1">2026</p>
+              </div>
+              {/* Time */}
+              <div className="flex flex-col items-center justify-center gap-0.5 bg-white/[0.03] px-8 sm:px-10 py-5 border-b sm:border-b-0 sm:border-r border-white/6">
+                <p className="font-ui text-[0.45rem] tracking-[0.3em] text-gold/50 uppercase mb-1">Horário</p>
+                <p className="font-display text-3xl sm:text-4xl font-bold text-off-white leading-none tracking-tight">14h — 18h</p>
+                <p className="font-ui text-[0.5rem] tracking-[0.12em] text-gold/50 mt-1">HORÁRIO DE BRASÍLIA</p>
+              </div>
+              {/* Location */}
+              <div className="flex flex-col items-center justify-center gap-0.5 bg-white/[0.02] px-8 sm:px-10 py-5">
+                <p className="font-ui text-[0.45rem] tracking-[0.3em] text-gold/50 uppercase mb-1">Local</p>
+                <p className="font-display text-3xl sm:text-4xl font-bold text-off-white leading-none tracking-tight">Recife</p>
+                <p className="font-ui text-[0.5rem] tracking-[0.12em] text-gold/50 mt-1 flex items-center gap-1">
+                  <MapPin className="w-2.5 h-2.5" />PERNAMBUCO · PE
+                </p>
+              </div>
+            </div>
+          </motion.div>
 
           <motion.p
             {...fade(0.18)}

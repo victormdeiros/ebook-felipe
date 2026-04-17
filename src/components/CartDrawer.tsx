@@ -1,22 +1,68 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingCart, Trash2, ArrowRight, BookOpen, X, ShieldCheck, Zap, Loader2, CalendarDays, ChevronLeft } from "lucide-react";
+import { ShoppingCart, Trash2, ArrowRight, BookOpen, X, ShieldCheck, Zap, Loader2, CalendarDays, ChevronLeft, CheckCircle2, Download } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { getContent } from "@/lib/contentStore";
+import { getProducts } from "@/lib/repository";
 import { CONFIG } from "@/config";
 import ebookMockup from "@/assets/ebook-mockup.png";
 import { createMPPreference, getMPCheckoutUrl, MPNotConfiguredError } from "@/lib/mercadopago";
 
+// ── MercadoPago SDK types ────────────────────────────────────
+declare global {
+  interface Window {
+    MercadoPago: new (
+      publicKey: string,
+      options?: { locale?: string }
+    ) => {
+      bricks(): {
+        create(
+          type: string,
+          containerId: string,
+          settings: {
+            initialization: { amount: number; preferenceId?: string; payer?: { email?: string; firstName?: string; lastName?: string } };
+            customization?: { visual?: { style?: { theme?: string }; hideFormTitle?: boolean }; paymentMethods?: Record<string, unknown> };
+            callbacks: {
+              onReady?: () => void;
+              onSubmit?: (data: { formData: Record<string, unknown> }) => Promise<void>;
+              onError?: (error: unknown) => void;
+            };
+          }
+        ): Promise<{ unmount: () => void }>;
+      };
+    };
+  }
+}
+
+function loadMPScript(): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if ((window as unknown as { MercadoPago?: unknown }).MercadoPago) { resolve(); return; }
+    const existing = document.getElementById("mp-sdk-v2");
+    if (existing) { existing.addEventListener("load", () => resolve()); return; }
+    const script = document.createElement("script");
+    script.id = "mp-sdk-v2";
+    script.src = "https://sdk.mercadopago.com/js/v2";
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error("Falha ao carregar SDK do Mercado Pago."));
+    document.head.appendChild(script);
+  });
+}
+
 const CartDrawer = () => {
   const { isCartOpen, closeCart, cartCount, cartItems, removeItem } = useCart();
   const content = getContent();
+  const [productPrices, setProductPrices] = useState<Record<string, number>>({});
   const [isLoadingEbook, setIsLoadingEbook] = useState(false);
   const [isLoadingEvent, setIsLoadingEvent] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  const [step, setStep] = useState<"cart" | "form">("cart");
-  const [checkoutTarget, setCheckoutTarget] = useState<"ebook" | "event">("ebook");
+  const [step, setStep] = useState<"cart" | "form" | "payment" | "success">("cart");
+  const [checkoutTarget, setCheckoutTarget] = useState<string>("ebook");
   const [form, setForm] = useState({ name: "", email: "", phone: "" });
   const [formErrors, setFormErrors] = useState<{ name?: string; email?: string; phone?: string }>({});
+  const [prefId, setPrefId] = useState<string | null>(null);
+  const [brickLoading, setBrickLoading] = useState(true);
+  const [paymentResult, setPaymentResult] = useState<{ status: string; product?: string; ebookUrl?: string } | null>(null);
+  const brickControllerRef = useRef<{ unmount: () => void } | null>(null);
 
   // Reset form when drawer closes
   useEffect(() => {
@@ -25,57 +71,136 @@ const CartDrawer = () => {
       setForm({ name: "", email: "", phone: "" });
       setFormErrors({});
       setCheckoutError(null);
+      setPrefId(null);
+      setBrickLoading(true);
+      setPaymentResult(null);
     }
   }, [isCartOpen]);
 
-  const hasEbook = cartItems.some((i) => i.id === "ebook");
-  const hasEvent = cartItems.some((i) => i.id === "event");
+  // Load product prices from API (source of truth)
+  useEffect(() => {
+    getProducts().then((products) => {
+      const map: Record<string, number> = {};
+      for (const p of products) map[p.id] = p.price;
+      setProductPrices(map);
+    }).catch(() => {});
+  }, []);
 
-  const ebookPrice = content.price || String(CONFIG.PRODUCT_PRICE);
-  const eventPrice = content.eventPrice || String(CONFIG.EVENT_PRICE);
+  // Destroy brick when leaving payment step
+  useEffect(() => {
+    if (step !== "payment") {
+      brickControllerRef.current?.unmount();
+      brickControllerRef.current = null;
+    }
+  }, [step]);
+
+  // Initialize MP Payment Brick when entering payment step
+  useEffect(() => {
+    if (step !== "payment" || !prefId) return;
+    const publicKey = import.meta.env.VITE_MP_PUBLIC_KEY;
+    if (!publicKey) return;
+    const capturedForm = { ...form };
+    const capturedTarget = checkoutTarget;
+    const capturedAmount = Number(productPrices[capturedTarget] ?? (capturedTarget === ctaVagaId ? Number(eventPrice) : Number(ebookPrice)));
+    const apiUrl = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
+    let cancelled = false;
+
+    const init = async () => {
+      setBrickLoading(true);
+      try {
+        await loadMPScript();
+        if (cancelled) return;
+        // Wait for AnimatePresence to finish exit animation and render the container
+        let retries = 0;
+        while (!document.getElementById("mp-payment-brick") && retries < 30) {
+          await new Promise(r => setTimeout(r, 50));
+          retries++;
+        }
+        if (cancelled) return;
+        if (!document.getElementById("mp-payment-brick")) throw new Error("container_not_found");
+        const mp = new window.MercadoPago(publicKey, { locale: "pt-BR" });
+        const controller = await mp.bricks().create("payment", "mp-payment-brick", {
+          initialization: {
+            amount: capturedAmount,
+            preferenceId: prefId,
+          },
+          customization: {
+            visual: { style: { theme: "dark" }, hideFormTitle: true },
+            paymentMethods: {
+              creditCard: "all",
+              debitCard: "all",
+              mercadoPago: "all",
+              maxInstallments: 12,
+              ...(capturedAmount >= 5 ? { ticket: "all" } : {})
+            },
+          },
+          callbacks: {
+            onReady: () => setBrickLoading(false),
+            onSubmit: ({ formData }) =>
+              new Promise<void>(async (resolve, reject) => {
+                try {
+                  const res = await fetch(`${apiUrl}/api/mp/process-payment`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ ...formData, metadata: { product: capturedTarget } }),
+                  });
+                  const data = await res.json() as { status: string; product?: string; ebookUrl?: string; error?: string };
+                  if (!res.ok) { setCheckoutError(data.error ?? "Erro ao processar pagamento."); reject(new Error(data.error)); return; }
+                  if (data.status === "approved" || data.status === "pending") {
+                    setPaymentResult(data);
+                    setStep("success");
+                    resolve();
+                  } else {
+                    setCheckoutError("Pagamento não aprovado. Tente outro método.");
+                    reject(new Error("not_approved"));
+                  }
+                } catch (e) {
+                  setCheckoutError("Erro de conexão. Verifique sua internet e tente novamente.");
+                  reject(e);
+                }
+              }),
+            onError: (e) => console.error("[mp brick]", e),
+          },
+        });
+        if (!cancelled) brickControllerRef.current = controller;
+        else controller.unmount();
+      } catch (e) {
+        if (!cancelled) {
+          console.error("[mp brick init]", e);
+          setBrickLoading(false);
+          setCheckoutError("Erro ao carregar checkout. Tentando redirecionar…");
+          // fallback: redirect to init_point
+          setTimeout(() => {
+            if (!cancelled) { setStep("form"); setCheckoutError("Não foi possível carregar o checkout. Tente novamente."); }
+          }, 2000);
+        }
+      }
+    };
+
+    init();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, prefId]);
+
+  const ctaAcessoId = content.ctaAcessoProductId || "ebook";
+  const ctaVagaId   = content.ctaVagaProductId   || "event";
+
+  const hasEbook = cartItems.some((i) => i.id === ctaAcessoId);
+  const hasEvent = cartItems.some((i) => i.id === ctaVagaId);
+
+  const ebookPrice = productPrices[ctaAcessoId] != null ? String(productPrices[ctaAcessoId]) : (content.price || String(CONFIG.PRODUCT_PRICE));
+  const eventPrice = productPrices[ctaVagaId]   != null ? String(productPrices[ctaVagaId])   : (content.eventPrice || String(CONFIG.EVENT_PRICE));
 
   const totalPrice = (
     (hasEbook ? Number(ebookPrice) : 0) +
     (hasEvent ? Number(eventPrice) : 0)
   ).toFixed(2).replace(".", ",");
 
-  const goToForm = (product: "ebook" | "event") => {
+  const goToForm = (product: string) => {
     setCheckoutTarget(product);
     setCheckoutError(null);
     setFormErrors({});
     setStep("form");
-  };
-
-  const handleCheckout = async (product: "ebook" | "event", payer: { name: string; email: string; phone: string }) => {
-    const setLoading = product === "ebook" ? setIsLoadingEbook : setIsLoadingEvent;
-    setCheckoutError(null);
-    setLoading(true);
-    try {
-      const result = await createMPPreference(product, payer);
-      const url = getMPCheckoutUrl(result);
-      closeCart();
-      window.location.href = url;
-    } catch (err) {
-      if (err instanceof MPNotConfiguredError) {
-        const fallbackUrl = product === "ebook"
-          ? content.checkoutUrl || CONFIG.PAYMENT_URL
-          : content.eventCheckoutUrl || CONFIG.EVENT_PAYMENT_URL;
-        if (fallbackUrl && fallbackUrl !== "#" && !fallbackUrl.includes("example")) {
-          closeCart();
-          window.location.href = fallbackUrl;
-        } else {
-          setCheckoutError(product === "ebook"
-            ? "Checkout do e-book não configurado. Contate o suporte."
-            : "Link de inscrição do evento não configurado. Contate o suporte.");
-        }
-      } else if (err instanceof TypeError) {
-        setCheckoutError("Servidor de pagamento offline. Aguarde um instante e tente novamente.");
-      } else {
-        setCheckoutError((err as Error).message || "Erro ao iniciar pagamento. Tente novamente.");
-      }
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleFormSubmit = async () => {
@@ -86,7 +211,54 @@ const CartDrawer = () => {
     if (phone.length < 10) errors.phone = "WhatsApp inválido (com DDD)";
     if (Object.keys(errors).length) { setFormErrors(errors); return; }
     setFormErrors({});
-    await handleCheckout(checkoutTarget, { name: form.name.trim(), email: form.email.trim().toLowerCase(), phone });
+    setCheckoutError(null);
+
+    const payer = { name: form.name.trim(), email: form.email.trim().toLowerCase(), phone };
+    const setLoading = checkoutTarget === "ebook" ? setIsLoadingEbook : setIsLoadingEvent;
+    setLoading(true);
+
+    // Save lead immediately so it appears in admin regardless of payment outcome
+    const apiUrl = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
+    const isEventCheckout = checkoutTarget === ctaVagaId;
+    fetch(`${apiUrl}/api/leads`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: payer.name,
+        email: payer.email,
+        whatsapp: payer.phone,
+        tags: isEventCheckout ? ["inscricao_evento"] : ["carrinho_abandonado"],
+      }),
+    }).catch(() => {});
+
+    try {
+      const result = await createMPPreference(checkoutTarget, payer);
+      if (import.meta.env.VITE_MP_PUBLIC_KEY) {
+        setPrefId(result.preference_id);
+        setStep("payment");
+      } else {
+        closeCart();
+        window.location.href = getMPCheckoutUrl(result);
+      }
+    } catch (err) {
+      if (err instanceof MPNotConfiguredError) {
+        const fallbackUrl = checkoutTarget === "ebook"
+          ? content.checkoutUrl || CONFIG.PAYMENT_URL
+          : content.eventCheckoutUrl || CONFIG.EVENT_PAYMENT_URL;
+        if (fallbackUrl && fallbackUrl !== "#" && !fallbackUrl.includes("example")) {
+          closeCart();
+          window.location.href = fallbackUrl;
+        } else {
+          setCheckoutError(checkoutTarget === "ebook"
+            ? "Checkout do e-book não configurado. Contate o suporte."
+            : "Link de inscrição do evento não configurado. Contate o suporte.");
+        }
+      } else {
+        setCheckoutError((err as Error).message || "Erro ao iniciar pagamento. Tente novamente.");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -166,6 +338,98 @@ const CartDrawer = () => {
                       </p>
                     </div>
                   </motion.div>
+                ) : step === "success" ? (
+                  <motion.div
+                    key="success"
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                    className="flex flex-col items-center gap-6 py-10 text-center px-2"
+                  >
+                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10 border border-green-500/25">
+                      <CheckCircle2 className="w-8 h-8 text-green-400" />
+                    </div>
+                    {paymentResult?.status === "approved" ? (
+                      <>
+                        <div>
+                          <p className="font-display text-lg font-semibold text-off-white">Pagamento aprovado! 🎉</p>
+                          <p className="mt-1 text-sm text-text-muted font-body">
+                            {paymentResult.product === "event"
+                              ? "Sua inscrição está confirmada. Verifique seu e-mail — ele é o seu ingresso."
+                              : "Verifique seu e-mail para baixar o e-book."}
+                          </p>
+                        </div>
+                        {paymentResult.product === "ebook" && paymentResult.ebookUrl && (
+                          <a
+                            href={paymentResult.ebookUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-2 min-h-[48px] px-6 rounded-xl font-ui font-bold text-sm text-white w-full justify-center"
+                            style={{ background: "#2d7a4f" }}
+                          >
+                            <Download className="h-4 w-4" />
+                            Baixar E-book agora
+                          </a>
+                        )}
+                        {paymentResult.product === "event" && (
+                          <div className="w-full rounded-xl border border-gold/20 bg-gold/5 px-5 py-4 text-left">
+                            <p className="text-[0.65rem] font-ui text-gold uppercase tracking-[0.12em] mb-1">🎫 Ingresso digital</p>
+                            <p className="text-sm text-off-white font-body">E-mail de confirmação enviado. Apresente-o na entrada do evento.</p>
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <p className="font-display text-lg font-semibold text-off-white">Pagamento em análise</p>
+                          <p className="mt-1 text-sm text-text-muted font-body">
+                            Assim que confirmado, você receberá um e-mail com as instruções.
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </motion.div>
+                ) : step === "payment" ? (
+                  <motion.div
+                    key="payment"
+                    initial={{ opacity: 0, x: 16 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -16 }}
+                    transition={{ duration: 0.25 }}
+                    className="space-y-4"
+                  >
+                    {/* Order mini-summary */}
+                    <div className="rounded-xl border border-white/8 bg-black/20 px-4 py-3 flex items-center justify-between">
+                      <div>
+                        <p className="text-[0.65rem] font-ui text-text-muted uppercase tracking-[0.1em]">
+                          {checkoutTarget === "ebook" ? "Manual do Empregador · E-book" : "Segurança Jurídica 360 · Evento"}
+                        </p>
+                        <p className="font-display text-sm font-bold text-gold mt-0.5">
+                          R$ {Number(checkoutTarget === "ebook" ? ebookPrice : eventPrice).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                      <span className="text-[0.65rem] font-ui text-text-muted/60 bg-white/[0.03] border border-white/8 rounded px-2 py-1">1×</span>
+                    </div>
+                    {/* Brick container */}
+                    <div className="relative min-h-[200px]">
+                      {brickLoading && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-10 rounded-xl bg-[#0c0709]">
+                          <Loader2 className="w-6 h-6 text-gold animate-spin" />
+                          <p className="text-sm text-text-muted font-body">Carregando checkout…</p>
+                        </div>
+                      )}
+                      <div id="mp-payment-brick" />
+                    </div>
+                    {/* MP security badge */}
+                    <div className="flex items-center justify-center gap-2 rounded-xl border border-[#009ee3]/15 bg-[#009ee3]/[0.06] px-4 py-2.5">
+                      <ShieldCheck className="w-4 h-4 text-[#009ee3] shrink-0" />
+                      <p className="text-[0.65rem] font-body text-[#009ee3]/80 leading-tight">
+                        Pagamento 100% seguro e criptografado, processado pelo{" "}
+                        <span className="font-semibold text-[#009ee3]">Mercado Pago</span>
+                      </p>
+                    </div>
+                  </motion.div>
                 ) : step === "form" ? (
                   <motion.div
                     key="form"
@@ -182,7 +446,7 @@ const CartDrawer = () => {
                           {checkoutTarget === "ebook" ? "Manual do Empregador · E-book" : "Segurança Jurídica 360 · Evento"}
                         </p>
                         <p className="font-display text-sm font-bold text-gold mt-0.5">
-                          R$ {checkoutTarget === "ebook" ? ebookPrice : eventPrice}
+                          R$ {Number(checkoutTarget === "ebook" ? ebookPrice : eventPrice).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </p>
                       </div>
                       <span className="text-[0.65rem] font-ui text-text-muted/60 bg-white/[0.03] border border-white/8 rounded px-2 py-1">1×</span>
@@ -262,7 +526,7 @@ const CartDrawer = () => {
                           <p className="mt-1 font-ui text-[0.6rem] tracking-[0.18em] text-text-muted uppercase">E-book digital</p>
                           <div className="mt-3 flex items-center justify-between">
                             <span className="font-display text-lg font-bold text-gold">R$ {ebookPrice}</span>
-                            <button onClick={() => removeItem("ebook")} className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/8 bg-white/[0.03] text-white/30 hover:border-red-400/30 hover:text-red-400 hover:bg-red-400/10 transition-all duration-200" aria-label="Remover e-book">
+                            <button onClick={() => removeItem(ctaAcessoId)} className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/8 bg-white/[0.03] text-white/30 hover:border-red-400/30 hover:text-red-400 hover:bg-red-400/10 transition-all duration-200" aria-label="Remover e-book">
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
@@ -284,7 +548,7 @@ const CartDrawer = () => {
                           <p className="mt-1 font-ui text-[0.6rem] tracking-[0.18em] text-text-muted uppercase">Inscrição no evento</p>
                           <div className="mt-3 flex items-center justify-between">
                             <span className="font-display text-lg font-bold text-gold">R$ {eventPrice}</span>
-                            <button onClick={() => removeItem("event")} className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/8 bg-white/[0.03] text-white/30 hover:border-red-400/30 hover:text-red-400 hover:bg-red-400/10 transition-all duration-200" aria-label="Remover evento">
+                            <button onClick={() => removeItem(ctaVagaId)} className="flex h-7 w-7 items-center justify-center rounded-lg border border-white/8 bg-white/[0.03] text-white/30 hover:border-red-400/30 hover:text-red-400 hover:bg-red-400/10 transition-all duration-200" aria-label="Remover evento">
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
@@ -339,38 +603,61 @@ const CartDrawer = () => {
             </div>
 
             {/* Footer */}
-            {cartCount > 0 && (
+            {(cartCount > 0 || step === "success") && (
               <div className="border-t border-white/8 px-6 py-5 space-y-3">
                 <div className="absolute bottom-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-gold/30 to-transparent pointer-events-none" />
 
-                {checkoutError && (
+                {checkoutError && step !== "success" && (
                   <p className="text-xs text-red-400 text-center font-body -mb-1" role="alert">
                     {checkoutError}
                   </p>
                 )}
 
-                {step === "form" ? (
-                  <motion.button
-                    whileTap={{ scale: 0.98 }}
-                    onClick={handleFormSubmit}
-                    disabled={isLoadingEbook || isLoadingEvent}
-                    aria-busy={isLoadingEbook || isLoadingEvent}
-                    className="relative w-full flex items-center justify-center gap-2 min-h-[48px] rounded-xl font-ui font-bold text-sm text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(201,168,76,0.5)] overflow-hidden group disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none" style={{ background: '#2d7a4f' }} onMouseEnter={e => { if(!(e.currentTarget as HTMLButtonElement).disabled)(e.currentTarget as HTMLButtonElement).style.background='#c9a84c' }} onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background='#2d7a4f'}
+                {step === "success" ? (
+                  <button
+                    onClick={closeCart}
+                    className="w-full flex items-center justify-center gap-2 min-h-[48px] rounded-xl font-ui font-bold text-sm text-white border border-white/10 hover:border-white/20 transition-all duration-200"
+                    style={{ background: "rgba(255,255,255,0.04)" }}
                   >
-                    <span className="absolute inset-0 bg-gradient-to-r from-gold/0 via-white/10 to-gold/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-                    {(isLoadingEbook || isLoadingEvent) ? (
-                      <><Loader2 className="h-4 w-4 animate-spin" />Aguarde...</>
-                    ) : (
-                      <>Ir para pagamento<ArrowRight className="h-4 w-4" /></>
-                    )}
-                  </motion.button>
+                    Fechar
+                  </button>
+                ) : step === "payment" ? (
+                  <button
+                    onClick={() => setStep("form")}
+                    className="w-full text-center font-body text-xs text-text-muted hover:text-off-white/70 transition-colors py-1 flex items-center justify-center gap-1"
+                  >
+                    <ChevronLeft className="w-3 h-3" />Voltar aos dados
+                  </button>
+                ) : step === "form" ? (
+                  <>
+                    <motion.button
+                      whileTap={{ scale: 0.98 }}
+                      onClick={handleFormSubmit}
+                      disabled={isLoadingEbook || isLoadingEvent}
+                      aria-busy={isLoadingEbook || isLoadingEvent}
+                      className="relative w-full flex items-center justify-center gap-2 min-h-[48px] rounded-xl font-ui font-bold text-sm text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(201,168,76,0.5)] overflow-hidden group disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none" style={{ background: '#2d7a4f' }} onMouseEnter={e => { if(!(e.currentTarget as HTMLButtonElement).disabled)(e.currentTarget as HTMLButtonElement).style.background='#c9a84c' }} onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background='#2d7a4f'}
+                    >
+                      <span className="absolute inset-0 bg-gradient-to-r from-gold/0 via-white/10 to-gold/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+                      {(isLoadingEbook || isLoadingEvent) ? (
+                        <><Loader2 className="h-4 w-4 animate-spin" />Aguarde...</>
+                      ) : (
+                        <>Ir para pagamento<ArrowRight className="h-4 w-4" /></>
+                      )}
+                    </motion.button>
+                    <button
+                      onClick={() => setStep("cart")}
+                      className="w-full text-center font-body text-xs text-text-muted hover:text-off-white/70 transition-colors py-1 flex items-center justify-center gap-1"
+                    >
+                      <ChevronLeft className="w-3 h-3" />Voltar ao carrinho
+                    </button>
+                  </>
                 ) : (
                   <>
                     {/* Ebook checkout */}
                     {hasEbook && (
                     <motion.button
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => goToForm("ebook")}
+                      onClick={() => goToForm(ctaAcessoId)}
                       disabled={isLoadingEbook || isLoadingEvent}
                       className="relative w-full flex items-center justify-center gap-2 min-h-[48px] rounded-xl font-ui font-bold text-sm text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(201,168,76,0.5)] overflow-hidden group disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none" style={{ background: '#2d7a4f' }} onMouseEnter={e => { if(!(e.currentTarget as HTMLButtonElement).disabled)(e.currentTarget as HTMLButtonElement).style.background='#c9a84c' }} onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background='#2d7a4f'}
                     >
@@ -383,29 +670,27 @@ const CartDrawer = () => {
                     {hasEvent && (
                     <motion.button
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => goToForm("event")}
+                      onClick={() => goToForm(ctaVagaId)}
                       disabled={isLoadingEbook || isLoadingEvent}
                       className="relative w-full flex items-center justify-center gap-2 min-h-[48px] rounded-xl border font-ui font-bold text-sm text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(201,168,76,0.5)] disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0" style={{ background: '#2d7a4f', borderColor: '#2d7a4f' }} onMouseEnter={e => { if(!(e.currentTarget as HTMLButtonElement).disabled)(e.currentTarget as HTMLButtonElement).style.background='#c9a84c' }} onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background='#2d7a4f'}
                     >
                       <><CalendarDays className="h-4 w-4" />Inscrever no Segurança Jurídica 360<ArrowRight className="h-4 w-4" /></>
                     </motion.button>
                     )}
+
+                    <button
+                      onClick={closeCart}
+                      className="w-full text-center font-body text-xs text-text-muted hover:text-off-white/70 transition-colors py-1 flex items-center justify-center gap-1"
+                    >
+                      Continuar navegando
+                    </button>
+
+                    <div className="flex items-center justify-center gap-1.5 text-[0.6rem] text-text-muted font-body">
+                      <BookOpen className="w-3 h-3 text-wine/50 shrink-0" />
+                      <span>Compra única · sem mensalidade · acesso imediato</span>
+                    </div>
                   </>
                 )}
-
-                <button
-                  onClick={step === "form" ? () => setStep("cart") : closeCart}
-                  className="w-full text-center font-body text-xs text-text-muted hover:text-off-white/70 transition-colors py-1 flex items-center justify-center gap-1"
-                >
-                  {step === "form"
-                    ? <><ChevronLeft className="w-3 h-3" />Voltar ao carrinho</>
-                    : "Continuar navegando"}
-                </button>
-
-                <div className="flex items-center justify-center gap-1.5 text-[0.6rem] text-text-muted font-body">
-                  <BookOpen className="w-3 h-3 text-wine/50 shrink-0" />
-                  <span>Compra única · sem mensalidade · acesso imediato</span>
-                </div>
               </div>
             )}
           </motion.aside>

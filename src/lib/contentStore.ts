@@ -18,6 +18,9 @@ export interface ContentData {
   // Event product
   eventPrice: string;
   eventCheckoutUrl: string;
+  // CTA product associations
+  ctaAcessoProductId: string;
+  ctaVagaProductId: string;
 }
 
 export const CONTENT_DEFAULTS: ContentData = {
@@ -33,10 +36,12 @@ export const CONTENT_DEFAULTS: ContentData = {
   ebookDownloadUrl: "/manual-do-empregador.pdf",
   price: "49",
   priceOriginal: "97",
-  whatsappNumber: "5581985900139",
+  whatsappNumber: "558198590139",
   whatsappMsg: "Olá! Tenho interesse no Manual do Empregador.",
   eventPrice: "67",
   eventCheckoutUrl: "",
+  ctaAcessoProductId: "ebook",
+  ctaVagaProductId: "event",
 };
 
 // DB row → ContentData (snake_case to camelCase)
@@ -54,8 +59,10 @@ function dbRowToContent(row: Record<string, string>): Partial<ContentData> {
     priceOriginal:    row.price_original,
     whatsappNumber:   row.whatsapp_number,
     whatsappMsg:      row.whatsapp_msg,
-    eventPrice:       row.event_price_display,
-    eventCheckoutUrl: row.event_checkout_url,
+    eventPrice:          row.event_price_display,
+    eventCheckoutUrl:     row.event_checkout_url,
+    ctaAcessoProductId:   row.cta_acesso_product_id || "ebook",
+    ctaVagaProductId:     row.cta_vaga_product_id   || "event",
   };
 }
 
@@ -74,8 +81,10 @@ function contentToDbFields(data: Partial<ContentData>): Record<string, string> {
     priceOriginal:    "price_original",
     whatsappNumber:   "whatsapp_number",
     whatsappMsg:      "whatsapp_msg",
-    eventPrice:       "event_price_display",
-    eventCheckoutUrl: "event_checkout_url",
+    eventPrice:         "event_price_display",
+    eventCheckoutUrl:   "event_checkout_url",
+    ctaAcessoProductId: "cta_acesso_product_id",
+    ctaVagaProductId:   "cta_vaga_product_id",
   };
   const result: Record<string, string> = {};
   for (const [k, v] of Object.entries(data)) {

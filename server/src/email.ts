@@ -74,6 +74,14 @@ function ebookEmailHtml(name: string, downloadUrl: string) {
 // ── Template: confirmação de inscrição no evento ──────────────
 function eventEmailHtml(name: string, hasEbook: boolean, downloadUrl?: string) {
   const firstName = name.split(" ")[0];
+
+  // Calendar links — event: 2026-04-29 14:00-18:00 BRT = 17:00-21:00 UTC
+  const evTitle = encodeURIComponent("Segurança Jurídica 360");
+  const evDesc  = encodeURIComponent("Evento de lançamento exclusivo | Manual do Empregador");
+  const evLoc   = encodeURIComponent("Recife, Pernambuco, PE");
+  const gcalUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${evTitle}&dates=20260429T170000Z%2F20260429T210000Z&details=${evDesc}&location=${evLoc}`;
+  const outlookUrl = `https://outlook.live.com/calendar/0/action/compose?rru=addevent&startdt=2026-04-29T17%3A00%3A00Z&enddt=2026-04-29T21%3A00%3A00Z&subject=${evTitle}&location=${evLoc}&body=${evDesc}`;
+
   return `
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -93,11 +101,39 @@ function eventEmailHtml(name: string, hasEbook: boolean, downloadUrl?: string) {
           <p style="margin:0 0 20px;font-size:15px;color:#c8bfbf;line-height:1.7;">
             Sua inscrição no evento <strong style="color:#f3ece8;">Segurança Jurídica 360</strong> foi confirmada com sucesso!
           </p>
+          <!-- Ingresso digital -->
+          <div style="background:rgba(201,168,76,0.06);border:2px dashed rgba(201,168,76,0.3);border-radius:12px;padding:24px;margin:0 0 28px;text-align:center;">
+            <p style="margin:0 0 6px;font-size:10px;letter-spacing:0.2em;color:#c9a84c;text-transform:uppercase;font-weight:700;">🎫 INGRESSO DIGITAL</p>
+            <p style="margin:0 0 4px;font-size:22px;font-weight:700;color:#ffffff;">${name}</p>
+            <p style="margin:0 0 16px;font-size:12px;color:#a79797;">Segurança Jurídica 360 · Evento</p>
+            <div style="border-top:1px dashed rgba(201,168,76,0.2);padding-top:14px;">
+              <p style="margin:0;font-size:12px;color:#c8bfbf;font-style:italic;">📱 Apresente este e-mail na entrada do evento</p>
+            </div>
+          </div>
           <div style="background:rgba(201,168,76,0.07);border:1px solid rgba(201,168,76,0.2);border-radius:8px;padding:20px 24px;margin:0 0 28px;">
             <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#c9a84c;letter-spacing:0.05em;text-transform:uppercase;">Próximos passos</p>
             <p style="margin:0;font-size:14px;color:#c8bfbf;line-height:1.7;">
               Em breve você receberá as informações completas sobre local, data e horário do evento. Fique atento à sua caixa de entrada.
             </p>
+          </div>
+          <!-- Salvar na agenda -->
+          <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:8px;padding:20px 24px;margin:0 0 28px;text-align:center;">
+            <p style="margin:0 0 6px;font-size:10px;letter-spacing:0.2em;color:#c9a84c;text-transform:uppercase;font-weight:700;">📅 SALVAR NA AGENDA</p>
+            <p style="margin:0 0 16px;font-size:13px;color:#c8bfbf;">29 de Abril de 2026 · 14h às 18h · Recife, PE</p>
+            <table cellpadding="0" cellspacing="0" style="margin:0 auto;">
+              <tr>
+                <td style="padding:0 6px;">
+                  <a href="${gcalUrl}" target="_blank" style="display:inline-block;background:#1a73e8;border-radius:6px;padding:10px 18px;font-size:12px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:0.03em;">
+                    📅 Google Calendar
+                  </a>
+                </td>
+                <td style="padding:0 6px;">
+                  <a href="${outlookUrl}" target="_blank" style="display:inline-block;background:#0078d4;border-radius:6px;padding:10px 18px;font-size:12px;font-weight:600;color:#ffffff;text-decoration:none;letter-spacing:0.03em;">
+                    📅 Outlook / Hotmail
+                  </a>
+                </td>
+              </tr>
+            </table>
           </div>
           ${hasEbook && downloadUrl ? `
           <p style="margin:0 0 16px;font-size:15px;color:#c8bfbf;line-height:1.7;">

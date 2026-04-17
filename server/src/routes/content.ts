@@ -9,11 +9,16 @@ const router = Router();
 // Public — landing page fetches this on load.
 router.get("/", async (_req, res, next) => {
   try {
-    const { rows } = await pool.query(
-      `SELECT * FROM manual_content WHERE id = 'default'`,
-    );
-    if (!rows.length) return res.status(404).json({ error: "Content not found" });
-    res.json(rows[0]);
+    const [{ rows: contentRows }, { rows: configRows }] = await Promise.all([
+      pool.query(`SELECT * FROM manual_content WHERE id = 'default'`),
+      pool.query<{ key: string; value: string }>(
+        `SELECT key, value FROM manual_config WHERE key IN ('cta_acesso_product_id', 'cta_vaga_product_id')`,
+      ),
+    ]);
+    if (!contentRows.length) return res.status(404).json({ error: "Content not found" });
+    const content = { ...contentRows[0] };
+    for (const { key, value } of configRows) content[key] = value;
+    res.json(content);
   } catch (err) {
     next(err);
   }

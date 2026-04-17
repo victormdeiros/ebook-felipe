@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { pool } from "../db";
+import { scheduleCartEmails } from "../emailScheduler";
 
 const router = Router();
 
@@ -23,9 +24,24 @@ router.post("/", async (req, res, next) => {
     const { rows } = await pool.query<{ id: string; created_at: string }>(
       `INSERT INTO manual_leads (name, email, whatsapp, tags)
        VALUES ($1, $2, $3, $4)
+       ON CONFLICT (email) DO UPDATE
+         SET tags = (
+               SELECT array_agg(DISTINCT t) FROM unnest(
+                 manual_leads.tags || EXCLUDED.tags
+               ) AS t
+             ),
+             updated_at = now()
        RETURNING id, created_at`,
       [data.name, data.email, data.whatsapp, tags],
     );
+
+    // Schedule cart abandonment emails if applicable
+    const haCartTag = tags.includes("carrinho_abandonado");
+    if (haCartTag) {
+      scheduleCartEmails(data.email, data.name).catch((e) =>
+        console.error("[leads] scheduleCartEmails error:", e)
+      );
+    }
 
     res.status(201).json(rows[0]);
   } catch (err) {
