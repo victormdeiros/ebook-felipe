@@ -227,7 +227,7 @@ const CartDrawer = () => {
         name: payer.name,
         email: payer.email,
         whatsapp: payer.phone,
-        tags: isEventCheckout ? ["inscricao_evento"] : ["carrinho_abandonado"],
+        tags: isEventCheckout ? ["inscricao_evento", "carrinho_abandonado"] : ["carrinho_abandonado"],
       }),
     }).catch(() => {});
 
