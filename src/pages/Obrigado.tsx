@@ -1,5 +1,6 @@
 import { useEffect } from "react";
-import { trackPurchase } from "@/lib/tracking";
+import { trackPurchase, gtmPush } from "@/lib/tracking";
+import { CONFIG } from "@/config";
 import { motion } from "framer-motion";
 import { CheckCircle, ArrowLeft, Download, CalendarDays } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -14,6 +15,25 @@ const Obrigado = () => {
     try {
       const email = searchParams.get("payer_email") ?? "";
       if (email) trackPurchase(email);
+      const price = isEvent ? CONFIG.EVENT_PRICE : CONFIG.PRODUCT_PRICE;
+      gtmPush({
+        event: "purchase",
+        ecommerce: {
+          currency: "BRL",
+          value: price,
+          transaction_id: searchParams.get("payment_id") ?? undefined,
+          items: [
+            {
+              item_id: product,
+              item_name: isEvent ? "Segurança Jurídica 360" : CONFIG.BRAND_NAME,
+              item_category: isEvent ? "Evento" : "E-book",
+              price,
+              quantity: 1,
+            },
+          ],
+        },
+        ...(email ? { email } : {}),
+      });
     } catch (e) {
       console.error(e);
     }

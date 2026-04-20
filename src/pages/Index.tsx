@@ -1,5 +1,6 @@
 import { useEffect } from "react";
-import { trackPageView } from "@/lib/tracking";
+import { trackPageView, gtmPush } from "@/lib/tracking";
+import { CONFIG } from "@/config";
 import StickyHeader from "@/components/StickyHeader";
 import HeroSection from "@/components/HeroSection";
 import PainPointsSection from "@/components/PainPointsSection";
@@ -19,6 +20,22 @@ import FloatingWhatsApp from "@/components/FloatingWhatsApp";
 const Index = () => {
   useEffect(() => {
     const cleanup = trackPageView();
+    gtmPush({
+      event: "view_item",
+      ecommerce: {
+        currency: "BRL",
+        value: CONFIG.PRODUCT_PRICE,
+        items: [
+          {
+            item_id: "ebook",
+            item_name: CONFIG.BRAND_NAME,
+            item_category: "E-book",
+            price: CONFIG.PRODUCT_PRICE,
+            quantity: 1,
+          },
+        ],
+      },
+    });
     return cleanup;
   }, []);
 

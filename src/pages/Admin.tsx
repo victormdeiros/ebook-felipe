@@ -91,6 +91,7 @@ import {
   ContentData,
 } from "@/lib/contentStore";
 import { createMPPreference, getMPCheckoutUrl, getMPStatus } from "@/lib/mercadopago";
+import { gtmPush } from "@/lib/tracking";
 
 // AUTH
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_TOKEN ?? "ManualEmpregador@2024";
@@ -142,7 +143,7 @@ const LoginScreen = ({ onLogin }: { onLogin: () => void }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (pw === ADMIN_PASSWORD) { setAuthed(); onLogin(); }
+    if (pw === ADMIN_PASSWORD) { setAuthed(); gtmPush({ event: "admin_login" }); onLogin(); }
     else { setError(true); setPw(""); setTimeout(() => setError(false), 2000); }
   };
 
@@ -2002,6 +2003,10 @@ const AdminDashboard = ({ onLogout }: { onLogout: () => void }) => {
   const handleLogout = () => { clearAuth(); onLogout(); };
 
   const selectTab = (id: Tab) => { setTab(id); setOpenGroup(null); setMobileOpen(false); };
+
+  // GTM: fire dashboard_view once on mount, then tab_view on every tab change
+  useEffect(() => { gtmPush({ event: "dashboard_view" }); }, []);
+  useEffect(() => { gtmPush({ event: "tab_view", tab_name: tab }); }, [tab]);
 
   const apiUrl = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
   useEffect(() => {

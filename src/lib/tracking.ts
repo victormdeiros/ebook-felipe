@@ -1,5 +1,21 @@
 import { trackEvent } from "./repository";
 
+declare global {
+  interface Window {
+    dataLayer: Record<string, unknown>[];
+  }
+}
+
+/** Push an event object to the GTM dataLayer. */
+export const gtmPush = (data: Record<string, unknown>) => {
+  try {
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push(data);
+  } catch {
+    // ignore in SSR / test environments
+  }
+};
+
 const TRACKING_KEY = "fl_tracking";
 
 export interface TrackingData {
@@ -49,6 +65,7 @@ export const trackPageView = (): (() => void) => {
   data.pageviews.timestamps.push(new Date().toISOString());
   save(data);
   trackEvent("page_view");
+  gtmPush({ event: "page_view" });
 
   const startTime = Date.now();
   const handleUnload = () => {
@@ -70,6 +87,7 @@ export const trackFormStart = () => {
   data.formStarts += 1;
   save(data);
   trackEvent("form_start");
+  gtmPush({ event: "form_start" });
 };
 
 /** Call on /obrigado mount (post-purchase confirmation). */
@@ -80,6 +98,7 @@ export const trackPurchase = (email?: string) => {
   data.purchases.timestamps.push(new Date().toISOString());
   save(data);
   trackEvent("purchase", email ? { email } : undefined);
+  gtmPush({ event: "purchase", ...(email ? { email } : {}) });
 };
 
 export const resetTracking = () => {
