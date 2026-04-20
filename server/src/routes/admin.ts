@@ -130,36 +130,140 @@ router.put("/cta-config", requireAdmin, async (req, res, next) => {
 });
 
 // ── GET /api/admin/inscricoes ────────────────────────────────
-// Inscrições no evento: leads com tag inscricao_evento + pedidos aprovados product=event
+// Inscrições no evento: leads com tag inscricao_evento OU pedidos aprovados de evento
+// Branch 1 usa LATERAL join para não perder pagamentos quando o produto foi deletado
 router.get("/inscricoes", async (req, res, next) => {
   try {
     const { limit, offset } = paginationSchema.parse(req.query);
 
-    // Leads que iniciaram checkout do evento (incluindo não pagos)
-    const { rows: leads } = await pool.query(
-      `SELECT l.id, l.name, l.email, l.whatsapp, l.tags, l.created_at,
-              o.id AS order_id, o.status AS order_status, o.amount, o.mp_payment_id,
-              o.attended, o.created_at AS paid_at
-       FROM manual_leads l
-       LEFT JOIN manual_orders o
-         ON o.payer_email = l.email
-         AND (
+    const { rows } = await pool.query(
+      `WITH combined AS (
+         -- 1) Leads com tag inscricao_evento + seu pedido mais recente (aprovado primeiro)
+         --    LATERAL evita perder o pagamento caso o produto tenha sido removido da tabela
+         SELECT
+           l.id::text AS id,
+           l.name, l.email, l.whatsapp, l.tags, l.created_at,
+           o.id             AS order_id,
+           o.status         AS order_status,
+           o.amount,
+           o.mp_payment_id,
+           o.attended,
+           o.payment_method,
+           o.courtesy_by,
+           o.created_at     AS paid_at
+         FROM manual_leads l
+         LEFT JOIN LATERAL (
+           SELECT * FROM manual_orders o2
+           WHERE o2.payer_email = l.email
+           ORDER BY
+             CASE WHEN o2.status = 'approved' THEN 0 ELSE 1 END,
+             o2.created_at DESC
+           LIMIT 1
+         ) o ON true
+         WHERE 'inscricao_evento' = ANY(l.tags)
+
+         UNION ALL
+
+         -- 2) Pedidos de evento cujo pagador não tem lead com a tag (compra direta)
+         SELECT
+           o.id::text AS id,
+           COALESCE(o.payer_name, o.payer_email, 'Comprador') AS name,
+           o.payer_email AS email,
+           NULL          AS whatsapp,
+           ARRAY[]::text[] AS tags,
+           o.created_at,
+           o.id             AS order_id,
+           o.status         AS order_status,
+           o.amount,
+           o.mp_payment_id,
+           o.attended,
+           o.payment_method,
+           o.courtesy_by,
+           o.created_at     AS paid_at
+         FROM manual_orders o
+         WHERE (
            o.product IN (
-             SELECT id FROM manual_products WHERE checkout_type IN ('event', 'event_ebook')
+             SELECT id FROM manual_products WHERE checkout_type IN ('event','event_ebook')
            )
            OR o.product = 'event'
+           OR o.payment_method = 'courtesy'
          )
-       WHERE 'inscricao_evento' = ANY(l.tags)
-       ORDER BY l.created_at DESC
+         AND (
+           o.payer_email IS NULL
+           OR NOT EXISTS (
+             SELECT 1 FROM manual_leads l2
+             WHERE l2.email = o.payer_email
+               AND 'inscricao_evento' = ANY(l2.tags)
+           )
+         )
+       )
+       SELECT * FROM combined
+       ORDER BY created_at DESC
        LIMIT $1 OFFSET $2`,
       [limit, offset],
     );
 
     const { rows: countRows } = await pool.query<{ count: string }>(
-      `SELECT COUNT(*)::text AS count FROM manual_leads WHERE 'inscricao_evento' = ANY(tags)`,
+      `WITH combined AS (
+         SELECT l.id FROM manual_leads l WHERE 'inscricao_evento' = ANY(l.tags)
+         UNION ALL
+         SELECT o.id FROM manual_orders o
+         WHERE (
+           o.product IN (SELECT id FROM manual_products WHERE checkout_type IN ('event','event_ebook'))
+           OR o.product = 'event'
+           OR o.payment_method = 'courtesy'
+         )
+         AND (o.payer_email IS NULL OR NOT EXISTS (
+           SELECT 1 FROM manual_leads l2
+           WHERE l2.email = o.payer_email AND 'inscricao_evento' = ANY(l2.tags)
+         ))
+       )
+       SELECT COUNT(*)::text AS count FROM combined`,
     );
 
-    res.json({ total: Number(countRows[0].count), limit, offset, items: leads });
+    res.json({ total: Number(countRows[0].count), limit, offset, items: rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── POST /api/admin/inscricoes ───────────────────────────────
+// Cria inscrição manual (cortesia)
+router.post("/inscricoes", async (req, res, next) => {
+  try {
+    const { name, email, whatsapp, courtesy_by } = z.object({
+      name: z.string().min(1),
+      email: z.string().email(),
+      whatsapp: z.string().optional(),
+      courtesy_by: z.string().min(1),
+    }).parse(req.body);
+
+    // Upsert lead com tag inscricao_evento
+    const { rows: leadRows } = await pool.query<{ id: string }>(
+      `INSERT INTO manual_leads (name, email, whatsapp, tags)
+       VALUES ($1, $2, $3, ARRAY['inscricao_evento'])
+       ON CONFLICT (email) DO UPDATE
+         SET name      = EXCLUDED.name,
+             whatsapp  = COALESCE(EXCLUDED.whatsapp, manual_leads.whatsapp),
+             tags      = array_append(
+               array_remove(manual_leads.tags, 'inscricao_evento'),
+               'inscricao_evento'
+             )
+       RETURNING id`,
+      [name, email, whatsapp ?? null],
+    );
+
+    // Cria pedido aprovado como cortesia
+    const mpId = `courtesy_${Date.now()}_${leadRows[0].id}`;
+    const { rows: orderRows } = await pool.query<{ id: string }>(
+      `INSERT INTO manual_orders
+         (mp_payment_id, product, status, amount, payer_email, payer_name, payment_method, courtesy_by)
+       VALUES ($1, 'event', 'approved', 0, $2, $3, 'courtesy', $4)
+       RETURNING id`,
+      [mpId, email, name, courtesy_by],
+    );
+
+    res.status(201).json({ lead_id: leadRows[0].id, order_id: orderRows[0].id });
   } catch (err) {
     next(err);
   }

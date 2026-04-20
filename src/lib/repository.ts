@@ -192,6 +192,8 @@ export interface Inscricao {
   paid_at: string | null;
   attended: boolean;
   order_id: string | null;
+  payment_method: string | null;
+  courtesy_by: string | null;
 }
 
 export const getInscricoes = async (): Promise<Inscricao[]> => {
@@ -213,6 +215,24 @@ export const markAttended = async (orderId: string, attended: boolean): Promise<
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${ADMIN_TOKEN}` },
     body: JSON.stringify({ attended }),
   });
+};
+
+export const createCortesiaInscricao = async (data: {
+  name: string;
+  email: string;
+  whatsapp?: string;
+  courtesy_by: string;
+}): Promise<{ lead_id: string; order_id: string }> => {
+  const res = await fetch(`${API_URL}/api/admin/inscricoes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${ADMIN_TOKEN}` },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { error?: string };
+    throw new Error(err.error ?? "Erro ao criar inscrição");
+  }
+  return res.json() as Promise<{ lead_id: string; order_id: string }>;
 };
 
 // Ebook upload & URL

@@ -67,6 +67,7 @@ import {
   uploadEbookFile,
   getEbookUrl,
   markAttended,
+  createCortesiaInscricao,
   getEmailTemplates,
   updateEmailTemplate,
   getEmailQueue,
@@ -115,6 +116,14 @@ const formatDate = (iso: string) => {
       hour: "2-digit", minute: "2-digit",
     });
   } catch { return iso; }
+};
+
+const isoDate = () => new Date().toISOString().split("T")[0];
+
+const downloadCSV = (csv: string, filename: string) => {
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
 };
 
 const exportCSV = (leads: Lead[]) => {
@@ -213,24 +222,30 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
 
 const MetricsTab = () => {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
+  const [dlEvents, setDlEvents] = useState<Record<string, unknown>[]>([]);
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const data = await getDashboardStats();
-    setStats(data);
+    const [data, o, l] = await Promise.all([getDashboardStats(), getOrders(), getLeads()]);
+    setStats(data); setOrders(o); setLeads(l);
     setLoading(false);
   }, []);
 
   useEffect(() => { refresh(); }, [refresh]);
 
+  const refreshDL = useCallback(() => {
+    try { setDlEvents([...(window.dataLayer ?? [])]); } catch { setDlEvents([]); }
+  }, []);
+  useEffect(() => { refreshDL(); const id = setInterval(refreshDL, 3000); return () => clearInterval(id); }, [refreshDL]);
+
   const conversionRate = stats && stats.total_leads > 0
     ? ((stats.total_orders / stats.total_leads) * 100).toFixed(1)
     : "0.0";
-
   const abandonedCount = stats?.leads_by_tag?.find(t => t.tag === "carrinho_abandonado")?.count ?? 0;
   const inscricoesCount = stats?.leads_by_tag?.find(t => t.tag === "inscricao_evento")?.count ?? 0;
-
   const emailPending = stats?.email_stats?.pending ?? 0;
   const emailSent = stats?.email_stats?.sent ?? 0;
   const emailFailed = stats?.email_stats?.failed ?? 0;
@@ -251,13 +266,72 @@ const MetricsTab = () => {
     return null;
   };
 
+  // ── Export helpers ────────────────────────────────────────
+  const exportLeadsCSV = () => {
+    if (!leads.length) return;
+    const headers = ["Nome", "E-mail", "WhatsApp", "Tags", "Data"];
+    const rows = leads.map((l) => [l.name, l.email, l.whatsapp, (l.tags ?? []).join("|"), l.data].map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";"));
+    downloadCSV([headers.join(";"), ...rows].join("\n"), `leads_${isoDate()}.csv`);
+  };
+  const exportOrdersCSV = () => {
+    if (!orders.length) return;
+    const headers = ["ID", "E-mail Pagador", "Nome Pagador", "Produto", "Status", "Valor (R$)", "Método", "MP Payment ID", "Data"];
+    const rows = orders.map((o) => [o.id, o.payer_email, o.payer_name, o.product, o.status, String(o.amount), o.payment_method, o.mp_payment_id, o.created_at].map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";"));
+    downloadCSV([headers.join(";"), ...rows].join("\n"), `pedidos_${isoDate()}.csv`);
+  };
+  const exportFullReport = () => {
+    const report = { generated_at: new Date().toISOString(), summary: stats, orders, leads, gtm_events: dlEvents };
+    const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `relatorio_${isoDate()}.json`; a.click(); URL.revokeObjectURL(url);
+  };
+  const exportDLEvents = () => {
+    if (!dlEvents.length) return;
+    const headers = ["#", "Evento", "Payload"];
+    const rows = dlEvents.map((ev, i) => {
+      const { event, ...rest } = ev as { event?: string; [k: string]: unknown };
+      return [String(i + 1), `"${String(event ?? "").replace(/"/g, '""')}"`, `"${JSON.stringify(rest).replace(/"/g, '""')}"`].join(";");
+    });
+    downloadCSV([headers.join(";"), ...rows].join("\n"), `gtm_events_${isoDate()}.csv`);
+  };
+
+  // ── GTM event breakdown (only custom events, not gtm.* internals) ──
+  const dlCustomEvents = useMemo(() => dlEvents.filter(ev => {
+    const name = String((ev as { event?: string }).event ?? "");
+    return name && !name.startsWith("gtm.");
+  }), [dlEvents]);
+
+  const dlEventCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const ev of dlCustomEvents) {
+      const name = String((ev as { event?: string }).event ?? "(sem evento)");
+      counts[name] = (counts[name] ?? 0) + 1;
+    }
+    return Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  }, [dlCustomEvents]);
+
+  const GTM_EVENT_COLORS: Record<string, string> = {
+    view_item: "text-blue-400 bg-blue-500/10 border-blue-500/25",
+    purchase: "text-green-400 bg-green-500/10 border-green-500/25",
+    form_start: "text-purple-400 bg-purple-500/10 border-purple-500/25",
+    page_view: "text-sky-400 bg-sky-500/10 border-sky-500/25",
+    admin_login: "text-wine bg-wine/10 border-wine/25",
+    dashboard_view: "text-wine bg-wine/10 border-wine/15",
+    tab_view: "text-white/50 bg-white/5 border-white/10",
+  };
+
+  const paymentData = (stats?.payment_methods ?? []).map((pm) => ({
+    name: PAYMENT_METHOD_LABELS[pm.method] ?? pm.method,
+    count: pm.count,
+    revenue: Number(pm.revenue),
+  }));
+
   return (
-    <div className="space-y-8">
-      {/* Header */}
+    <div className="space-y-10">
+      {/* ── Header ── */}
       <div className="flex flex-wrap items-start sm:items-center justify-between gap-3">
         <div>
-          <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground tracking-tight">Métricas de Performance</h2>
-          <p className="text-text-muted font-body text-sm mt-1">{stats ? "Dados do banco em tempo real." : "Conectando ao backend…"}</p>
+          <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground tracking-tight">Métricas & Analytics</h2>
+          <p className="text-text-muted font-body text-sm mt-1">{stats ? "Dados em tempo real · GTM ativo" : "Conectando ao backend…"}</p>
         </div>
         <button onClick={refresh} className="flex items-center gap-2 text-text-muted hover:text-foreground font-body text-sm transition-colors border border-white/8 hover:border-white/15 px-3 py-2 rounded-md shrink-0">
           <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin" : ""}`} />Atualizar
@@ -274,7 +348,7 @@ const MetricsTab = () => {
         </div>
       )}
 
-      {/* KPI Cards — Row 1: Leads & Conversão */}
+      {/* ── KPI Row 1: Leads ── */}
       <div>
         <p className="text-[0.65rem] uppercase tracking-[0.15em] text-text-muted font-ui mb-3">Leads & Conversão</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -285,7 +359,7 @@ const MetricsTab = () => {
         </div>
       </div>
 
-      {/* KPI Cards — Row 2: Vendas & Receita */}
+      {/* ── KPI Row 2: Vendas ── */}
       <div>
         <p className="text-[0.65rem] uppercase tracking-[0.15em] text-text-muted font-ui mb-3">Vendas & Receita</p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -296,7 +370,7 @@ const MetricsTab = () => {
         </div>
       </div>
 
-      {/* Charts */}
+      {/* ── Time-series Charts ── */}
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="surface-card rounded-xl p-4 sm:p-6">
           <div className="flex items-center gap-2 mb-5">
@@ -327,7 +401,6 @@ const MetricsTab = () => {
             </div>
           )}
         </div>
-
         <div className="surface-card rounded-xl p-4 sm:p-6">
           <div className="flex items-center gap-2 mb-5">
             <Wallet className="w-4 h-4 text-gold" strokeWidth={1.5} />
@@ -353,10 +426,8 @@ const MetricsTab = () => {
         </div>
       </div>
 
-      {/* Bottom row: 3 cards */}
+      {/* ── Bottom row: Funil · Produto · Emails ── */}
       <div className="grid sm:grid-cols-3 gap-6">
-
-        {/* Funil de conversão */}
         <div className="surface-card rounded-xl p-5 space-y-4">
           <div className="flex items-center gap-2">
             <TrendingUp className="w-4 h-4 text-wine" strokeWidth={1.5} />
@@ -388,8 +459,6 @@ const MetricsTab = () => {
             </div>
           )}
         </div>
-
-        {/* Vendas por produto */}
         <div className="surface-card rounded-xl p-5 space-y-4">
           <div className="flex items-center gap-2">
             <BookOpen className="w-4 h-4 text-gold" strokeWidth={1.5} />
@@ -421,20 +490,12 @@ const MetricsTab = () => {
                 );
               })}
               <div className="pt-1 border-t border-white/5 space-y-1">
-                <div className="flex justify-between">
-                  <span className="text-text-muted">E-books aprovados</span>
-                  <span className="text-foreground tabular-nums">{stats.ebook_orders}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-text-muted">Eventos aprovados</span>
-                  <span className="text-foreground tabular-nums">{stats.event_orders}</span>
-                </div>
+                <div className="flex justify-between"><span className="text-text-muted">E-books aprovados</span><span className="text-foreground tabular-nums">{stats.ebook_orders}</span></div>
+                <div className="flex justify-between"><span className="text-text-muted">Eventos aprovados</span><span className="text-foreground tabular-nums">{stats.event_orders}</span></div>
               </div>
             </div>
           )}
         </div>
-
-        {/* E-mails automáticos */}
         <div className="surface-card rounded-xl p-5 space-y-4">
           <div className="flex items-center gap-2">
             <Mail className="w-4 h-4 text-text-muted" strokeWidth={1.5} />
@@ -451,10 +512,7 @@ const MetricsTab = () => {
                 { label: "Cancelados", value: stats?.email_stats?.cancelled ?? 0, color: "text-text-muted", dot: "bg-white/20" },
               ].map(({ label, value, color, dot }) => (
                 <div key={label} className="flex items-center justify-between py-1.5 border-b border-white/[0.04] last:border-0">
-                  <span className="flex items-center gap-2 text-text-muted">
-                    <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
-                    {label}
-                  </span>
+                  <span className="flex items-center gap-2 text-text-muted"><span className={`w-1.5 h-1.5 rounded-full ${dot}`} />{label}</span>
                   <span className={`font-semibold tabular-nums ${color}`}>{value}</span>
                 </div>
               ))}
@@ -469,6 +527,207 @@ const MetricsTab = () => {
                   ))}
                 </>
               )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ══════════════ SECTION DIVIDER ══════════════ */}
+      <div className="flex items-center gap-4 pt-2">
+        <div className="h-px flex-1 bg-white/5" />
+        <span className="text-[0.6rem] uppercase tracking-[0.2em] text-text-muted font-ui shrink-0">Analytics & Exportação</span>
+        <div className="h-px flex-1 bg-white/5" />
+      </div>
+
+      {/* ── Payment Methods Chart ── */}
+      <div>
+        <p className="text-[0.65rem] uppercase tracking-[0.15em] text-text-muted font-ui mb-3">Receita por Método de Pagamento</p>
+        <div className="surface-card rounded-xl p-4 sm:p-6">
+          {loading ? (
+            <div className="h-52 flex items-center justify-center"><Loader2 className="w-5 h-5 animate-spin text-wine/50" /></div>
+          ) : paymentData.length === 0 ? (
+            <div className="h-52 flex flex-col items-center justify-center gap-2 text-text-muted font-body text-xs">
+              <BarChart2 className="w-7 h-7 opacity-30" strokeWidth={1} /><p>Nenhuma venda ainda.</p>
+            </div>
+          ) : (
+            <>
+              <div className="h-52">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={paymentData} margin={{ top: 4, right: 4, bottom: 0, left: -8 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                    <XAxis dataKey="name" stroke="#6b5f62" tick={{ fontSize: 10, fill: "#a79797" }} tickLine={false} axisLine={false} />
+                    <YAxis stroke="#6b5f62" tick={{ fontSize: 10, fill: "#a79797" }} tickLine={false} axisLine={false} tickFormatter={(v) => `R$${(v / 1000).toFixed(1)}k`} />
+                    <Tooltip
+                      contentStyle={{ background: "#1e1212", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, fontSize: 11 }}
+                      formatter={(value: number, name: string) => [name === "revenue" ? formatCurrency(value) : value, name === "revenue" ? "Receita" : "Qtd. pedidos"]}
+                    />
+                    <Bar dataKey="revenue" fill="#c9a84c" fillOpacity={0.75} radius={[4, 4, 0, 0]} name="revenue" />
+                    <Bar dataKey="count" fill="#C8797C" fillOpacity={0.55} radius={[4, 4, 0, 0]} name="count" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <div className="flex items-center gap-4 mt-3 font-body text-xs text-text-muted">
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-gold/75 inline-block" />Receita (R$)</span>
+                <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-wine/55 inline-block" />Qtd. pedidos</span>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* ── Export Center ── */}
+      <div>
+        <p className="text-[0.65rem] uppercase tracking-[0.15em] text-text-muted font-ui mb-3">Central de Exportação</p>
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {[
+            { label: "Leads CSV", sub: loading ? "Carregando…" : `${leads.length} lead${leads.length !== 1 ? "s" : ""}`, icon: Users, action: exportLeadsCSV, accent: "wine" as const },
+            { label: "Pedidos CSV", sub: loading ? "Carregando…" : `${orders.length} pedido${orders.length !== 1 ? "s" : ""}`, icon: ShoppingCart, action: exportOrdersCSV, accent: "gold" as const },
+            { label: "Eventos GTM CSV", sub: `${dlCustomEvents.length} evento${dlCustomEvents.length !== 1 ? "s" : ""} na sessão`, icon: Activity, action: exportDLEvents, accent: null },
+            { label: "Relatório Completo", sub: "Stats + leads + pedidos + GTM", icon: Package, action: exportFullReport, accent: null },
+          ].map(({ label, sub, icon: Icon, action, accent }) => (
+            <button
+              key={label}
+              onClick={action}
+              disabled={loading}
+              className="surface-card rounded-xl p-4 flex items-start gap-3 hover:border-wine/20 transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-40 disabled:pointer-events-none text-left group"
+            >
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${accent === "wine" ? "bg-wine/10 group-hover:bg-wine/15" : accent === "gold" ? "bg-gold/10 group-hover:bg-gold/15" : "bg-white/5 group-hover:bg-white/8"} transition-colors`}>
+                <Icon className={`w-4 h-4 ${accent === "wine" ? "text-wine" : accent === "gold" ? "text-gold" : "text-text-muted"}`} strokeWidth={1.5} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-body text-xs font-semibold text-foreground">{label}</p>
+                <p className="text-[0.65rem] text-text-muted mt-0.5">{sub}</p>
+              </div>
+              <Download className="w-3.5 h-3.5 text-text-muted self-center opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── GTM DataLayer Dashboard ── */}
+      <div>
+        {/* Header + explanation */}
+        <div className="flex flex-wrap items-start justify-between gap-4 mb-5">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2.5 mb-1.5">
+              {/* Google "G" icon */}
+              <svg viewBox="0 0 24 24" className="w-4 h-4 shrink-0" aria-hidden="true">
+                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+              </svg>
+              <p className="text-[0.65rem] uppercase tracking-[0.15em] text-text-muted font-ui">Google Tag Manager — DataLayer</p>
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${dlCustomEvents.length > 0 ? "text-green-400 bg-green-500/10 border-green-500/20" : "text-white/30 bg-white/5 border-white/10"}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${dlCustomEvents.length > 0 ? "bg-green-400 animate-pulse" : "bg-white/20"}`} />
+                {dlCustomEvents.length > 0 ? `${dlCustomEvents.length} eventos` : "Aguardando"}
+              </span>
+            </div>
+            <p className="text-[0.7rem] text-text-muted font-body leading-relaxed max-w-xl">
+              O <strong className="text-white/60">Google Tag Manager</strong> injeta um objeto JavaScript chamado <code className="text-gold/70 bg-gold/5 px-1 rounded text-[10px]">dataLayer</code> no navegador. Cada ação relevante (visualização, compra, clique) empurra um evento para este array — que o GTM captura e repassa para ferramentas como <strong className="text-white/60">Google Analytics 4</strong> e <strong className="text-white/60">Google Ads</strong>. O monitor abaixo lê o dataLayer desta sessão em tempo real.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button onClick={refreshDL} className="flex items-center gap-1.5 text-text-muted hover:text-foreground font-body text-xs transition-colors border border-white/8 hover:border-white/15 px-2.5 py-1.5 rounded-md">
+              <RefreshCw className="w-3 h-3" />Atualizar
+            </button>
+            <button onClick={exportDLEvents} disabled={dlCustomEvents.length === 0} className="flex items-center gap-1.5 text-text-muted hover:text-foreground font-body text-xs transition-colors border border-white/8 hover:border-wine/30 px-2.5 py-1.5 rounded-md disabled:opacity-30 disabled:pointer-events-none">
+              <Download className="w-3 h-3" />CSV
+            </button>
+          </div>
+        </div>
+
+        {/* Event count bar chart + chips side by side */}
+        {dlEventCounts.length > 0 && (
+          <div className="grid sm:grid-cols-2 gap-4 mb-5">
+            {/* Bar chart */}
+            <div className="surface-card rounded-xl p-4">
+              <p className="text-[0.6rem] uppercase tracking-[0.12em] text-text-muted font-ui mb-3">Distribuição de eventos</p>
+              <div className="h-36">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={dlEventCounts.map(([n, c]) => ({ name: n, count: c }))} layout="vertical" margin={{ top: 0, right: 8, bottom: 0, left: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" horizontal={false} />
+                    <XAxis type="number" stroke="#6b5f62" tick={{ fontSize: 9, fill: "#a79797" }} tickLine={false} axisLine={false} allowDecimals={false} />
+                    <YAxis type="category" dataKey="name" stroke="#6b5f62" tick={{ fontSize: 9, fill: "#a79797" }} tickLine={false} axisLine={false} width={80} />
+                    <Tooltip
+                      contentStyle={{ background: "#1e1212", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, fontSize: 11 }}
+                      formatter={(v: number) => [v, "disparos"]}
+                    />
+                    <Bar dataKey="count" fill="#C8797C" fillOpacity={0.7} radius={[0, 4, 4, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+            {/* Event chips + descriptions */}
+            <div className="surface-card rounded-xl p-4">
+              <p className="text-[0.6rem] uppercase tracking-[0.12em] text-text-muted font-ui mb-3">Eventos capturados</p>
+              <div className="space-y-2">
+                {dlEventCounts.map(([name, count]) => {
+                  const EVENT_DESC: Record<string, string> = {
+                    view_item: "Produto visualizado → GA4 / Ads remarketing",
+                    purchase: "Compra concluída → conversão no GA4 / Ads",
+                    form_start: "Lead iniciou o formulário",
+                    page_view: "Pageview registrado pelo GTM",
+                    admin_login: "Login no painel administrativo",
+                    dashboard_view: "Painel admin acessado",
+                    tab_view: "Aba do admin visitada",
+                  };
+                  return (
+                    <div key={name} className="flex items-center gap-2.5">
+                      <span className={`inline-flex shrink-0 items-center px-2 py-0.5 rounded border text-[10px] font-semibold ${GTM_EVENT_COLORS[name] ?? "text-white/50 bg-white/5 border-white/10"}`}>
+                        {name} <span className="ml-1 opacity-60">×{count}</span>
+                      </span>
+                      <span className="text-[10px] text-text-muted font-body truncate">{EVENT_DESC[name] ?? "Evento customizado"}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Events table */}
+        <div className="surface-card rounded-xl overflow-hidden">
+          {dlEvents.length === 0 ? (
+            <div className="py-14 flex flex-col items-center gap-3 text-text-muted font-body text-xs">
+              <Activity className="w-8 h-8 opacity-20" strokeWidth={1} />
+              <p>Nenhum evento disparado nesta sessão.</p>
+              <p className="text-[0.65rem] opacity-60">Navegue pelo site para gerar eventos. O monitor atualiza a cada 3s.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs font-body">
+                <thead>
+                  <tr className="border-b border-white/5">
+                    <th className="text-left px-4 py-3 text-[0.6rem] uppercase tracking-[0.12em] text-text-muted font-semibold w-10">#</th>
+                    <th className="text-left px-4 py-3 text-[0.6rem] uppercase tracking-[0.12em] text-text-muted font-semibold w-44">Evento</th>
+                    <th className="text-left px-4 py-3 text-[0.6rem] uppercase tracking-[0.12em] text-text-muted font-semibold">Payload</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...dlEvents].reverse().map((ev, idx) => {
+                    const { event, ...rest } = ev as { event?: string; [k: string]: unknown };
+                    const name = String(event ?? "");
+                    const isInternal = name.startsWith("gtm.");
+                    const colorClass = GTM_EVENT_COLORS[name] ?? (isInternal ? "text-white/25 bg-transparent border-transparent" : "text-white/60 bg-white/5 border-white/10");
+                    return (
+                      <tr key={idx} className={`border-b border-white/4 last:border-0 transition-colors ${isInternal ? "opacity-40 hover:opacity-60" : "hover:bg-white/2"}`}>
+                        <td className="px-4 py-2.5 text-white/25 tabular-nums">{dlEvents.length - idx}</td>
+                        <td className="px-4 py-2.5">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded border text-[10px] font-semibold ${colorClass}`}>
+                            {name || "(sem evento)"}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 text-white/50 font-mono max-w-sm">
+                          {Object.keys(rest).length ? (
+                            <span className="block truncate text-[11px]">{JSON.stringify(rest)}</span>
+                          ) : <span className="text-white/20">—</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
@@ -591,12 +850,27 @@ const LeadsTab = () => {
 };
 
 // INSCRIÇÕES TAB
+const PAYMENT_METHOD_BADGE: Record<string, { label: string; className: string }> = {
+  approved:      { label: "Pago",      className: "text-green-400 bg-green-500/10 border-green-500/25" },
+  courtesy:      { label: "Cortesia",  className: "text-purple-400 bg-purple-500/10 border-purple-500/25" },
+  credit_card:   { label: "Cartão",    className: "text-blue-400 bg-blue-500/10 border-blue-500/25" },
+  debit_card:    { label: "Débito",    className: "text-blue-400 bg-blue-500/10 border-blue-500/25" },
+  bank_transfer: { label: "PIX",       className: "text-teal-400 bg-teal-500/10 border-teal-500/25" },
+  ticket:        { label: "Boleto",    className: "text-yellow-400 bg-yellow-500/10 border-yellow-500/25" },
+};
+
 const InscricoesTab = () => {
   const [items, setItems] = useState<Inscricao[]>([]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "paid" | "unpaid">("all");
   const [loading, setLoading] = useState(true);
   const [attendingIds, setAttendingIds] = useState<Set<string>>(new Set());
+
+  // Cortesia modal
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState({ name: "", email: "", whatsapp: "", courtesy_by: "" });
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const refresh = useCallback(() => {
     setLoading(true);
@@ -608,16 +882,39 @@ const InscricoesTab = () => {
   const toggleAttended = async (item: Inscricao) => {
     if (!item.order_id) return;
     const newVal = !item.attended;
-    // Optimistic update
     setItems((prev) => prev.map((i) => i.order_id === item.order_id ? { ...i, attended: newVal } : i));
     setAttendingIds((s) => { const ns = new Set(s); ns.add(item.order_id!); return ns; });
     try {
       await markAttended(item.order_id, newVal);
     } catch {
-      // Revert
       setItems((prev) => prev.map((i) => i.order_id === item.order_id ? { ...i, attended: !newVal } : i));
     } finally {
       setAttendingIds((s) => { const ns = new Set(s); ns.delete(item.order_id!); return ns; });
+    }
+  };
+
+  const handleCreateCortesia = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormError(null);
+    if (!form.name.trim() || !form.email.trim() || !form.courtesy_by.trim()) {
+      setFormError("Preencha nome, e-mail e quem concedeu a cortesia.");
+      return;
+    }
+    setSaving(true);
+    try {
+      await createCortesiaInscricao({
+        name: form.name.trim(),
+        email: form.email.trim(),
+        whatsapp: form.whatsapp.trim() || undefined,
+        courtesy_by: form.courtesy_by.trim(),
+      });
+      setShowModal(false);
+      setForm({ name: "", email: "", whatsapp: "", courtesy_by: "" });
+      refresh();
+    } catch (err) {
+      setFormError((err as Error).message ?? "Erro ao criar inscrição.");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -631,103 +928,213 @@ const InscricoesTab = () => {
   }, [items, search, filter]);
 
   const paidCount = items.filter((i) => i.order_status === "approved").length;
+  const courtesyCount = items.filter((i) => i.payment_method === "courtesy").length;
   const unpaidCount = items.length - paidCount;
 
+  const getStatusBadge = (item: Inscricao) => {
+    if (item.payment_method === "courtesy") return PAYMENT_METHOD_BADGE.courtesy;
+    if (item.order_status === "approved") {
+      const byMethod = item.payment_method ? PAYMENT_METHOD_BADGE[item.payment_method] : null;
+      return byMethod ?? PAYMENT_METHOD_BADGE.approved;
+    }
+    return { label: item.order_status ?? "Pendente", className: "text-orange-400 bg-orange-500/10 border-orange-500/25" };
+  };
+
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground tracking-tight">Inscrições — Segurança Jurídica 360</h2>
-        <div className="flex gap-4 mt-2">
-          <p className="text-text-muted font-body text-sm">{loading ? "Carregando…" : `${items.length} total`}</p>
-          <p className="text-green-400 font-body text-sm">{paidCount} pagos</p>
-          <p className="text-orange-400 font-body text-sm">{unpaidCount} não pagos</p>
-        </div>
-      </div>
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
-          <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nome ou e-mail…" className="w-full bg-support border border-white/8 rounded-md pl-9 pr-4 py-2.5 text-foreground font-body text-sm focus:outline-none focus:border-wine/40 transition-colors" />
-        </div>
-        <div className="flex gap-2">
-          {(["all", "paid", "unpaid"] as const).map((f) => (
-            <button key={f} onClick={() => setFilter(f)} className={`px-3 py-2 rounded-md font-body text-xs font-semibold transition-all ${filter === f ? "bg-wine/15 text-wine border border-wine/20" : "border border-white/8 text-text-muted hover:text-foreground"}`}>
-              {f === "all" ? "Todos" : f === "paid" ? "Pagos" : "Não pagos"}
-            </button>
-          ))}
-        </div>
-        <button onClick={() => {
-          if (!filtered.length) return;
-          const headers = ["Nome", "E-mail", "WhatsApp", "Status", "Valor", "Data inscrição"];
-          const rows = filtered.map((i) => [i.name, i.email, i.whatsapp, i.order_status ?? "pendente", i.amount ?? "", i.created_at].map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";"));
-          const csv = [headers.join(";"), ...rows].join("\n");
-          const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement("a"); a.href = url; a.download = `inscricoes_${new Date().toISOString().split("T")[0]}.csv`; a.click(); URL.revokeObjectURL(url);
-        }} disabled={filtered.length === 0} className="flex items-center gap-2 border border-white/8 hover:border-wine/30 text-text-muted hover:text-foreground px-4 py-2.5 rounded-md font-body text-sm transition-all duration-200 disabled:opacity-30 disabled:pointer-events-none">
-          <Download className="w-3.5 h-3.5" />CSV
-        </button>
-      </div>
-      <div className="surface-card rounded-xl overflow-hidden">
-        {loading ? (
-          <div className="py-16 flex flex-col items-center justify-center gap-3"><Loader2 className="w-6 h-6 text-wine animate-spin" /><p className="text-text-muted font-body text-sm">Carregando…</p></div>
-        ) : filtered.length === 0 ? (
-          <div className="py-20 flex flex-col items-center justify-center text-text-muted font-body text-sm gap-2"><CalendarDays className="w-8 h-8 opacity-30" strokeWidth={1} /><p>Nenhuma inscrição.</p></div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm font-body">
-              <thead><tr className="border-b border-white/5">
-                <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold">Nome</th>
-                <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold">E-mail</th>
-                <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold hidden md:table-cell">WhatsApp</th>
-                <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold">Status pgto</th>
-                <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold hidden sm:table-cell">Data</th>
-                <th className="text-center px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold">Presença</th>
-              </tr></thead>
-              <tbody>
-                {filtered.map((item, i) => {
-                  const paid = item.order_status === "approved";
-                  return (
-                    <tr key={i} className="border-b border-white/4 hover:bg-white/2 transition-colors last:border-0">
-                      <td className="px-5 py-3.5 text-white max-w-[140px]"><span className="block truncate">{item.name}</span></td>
-                      <td className="px-5 py-3.5 text-white/85 max-w-[180px]"><span className="block truncate">{item.email}</span></td>
-                      <td className="px-5 py-3.5 text-white/85 hidden md:table-cell">{item.whatsapp}</td>
-                      <td className="px-5 py-3.5">
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded border text-[10px] font-semibold uppercase tracking-wide ${paid ? "text-green-400 bg-green-500/10 border-green-500/25" : "text-orange-400 bg-orange-500/10 border-orange-500/25"}`}>
-                          {paid ? "Pago" : item.order_status ?? "Pendente"}
-                        </span>
-                      </td>
-                      <td className="px-5 py-3.5 text-white/60 hidden sm:table-cell whitespace-nowrap">{formatDate(item.created_at)}</td>
-                      <td className="px-5 py-3.5 text-center">
-                        {item.order_id ? (
-                          <button
-                            onClick={() => toggleAttended(item)}
-                            disabled={attendingIds.has(item.order_id!)}
-                            title={item.attended ? "Marcar como ausente" : "Confirmar presença"}
-                            className={`inline-flex items-center justify-center w-8 h-8 rounded-full border transition-all duration-200 disabled:opacity-40 ${
-                              item.attended
-                                ? "bg-green-500/15 border-green-500/40 text-green-400 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400"
-                                : "bg-white/[0.04] border-white/10 text-text-muted hover:bg-green-500/10 hover:border-green-500/30 hover:text-green-400"
-                            }`}
-                          >
-                            {attendingIds.has(item.order_id!) ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            ) : (
-                              <Check className="w-3.5 h-3.5" />
-                            )}
-                          </button>
-                        ) : (
-                          <span className="text-white/20 text-xs">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+    <>
+      <div className="space-y-6">
+        <div className="flex flex-wrap items-start gap-3 justify-between">
+          <div>
+            <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground tracking-tight">Inscrições — Segurança Jurídica 360</h2>
+            <div className="flex flex-wrap gap-4 mt-2">
+              <p className="text-text-muted font-body text-sm">{loading ? "Carregando…" : `${items.length} total`}</p>
+              <p className="text-green-400 font-body text-sm">{paidCount} pagos</p>
+              {courtesyCount > 0 && <p className="text-purple-400 font-body text-sm">{courtesyCount} cortesia{courtesyCount !== 1 ? "s" : ""}</p>}
+              <p className="text-orange-400 font-body text-sm">{unpaidCount} não pagos</p>
+            </div>
           </div>
-        )}
+          <button
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-2 bg-wine/10 hover:bg-wine/15 border border-wine/25 hover:border-wine/40 text-wine px-4 py-2.5 rounded-md font-body text-sm font-semibold transition-all duration-200 hover:-translate-y-0.5 shrink-0"
+          >
+            <Plus className="w-4 h-4" />Nova inscrição
+          </button>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted pointer-events-none" />
+            <input type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por nome ou e-mail…" className="w-full bg-support border border-white/8 rounded-md pl-9 pr-4 py-2.5 text-foreground font-body text-sm focus:outline-none focus:border-wine/40 transition-colors" />
+          </div>
+          <div className="flex gap-2">
+            {(["all", "paid", "unpaid"] as const).map((f) => (
+              <button key={f} onClick={() => setFilter(f)} className={`px-3 py-2 rounded-md font-body text-xs font-semibold transition-all ${filter === f ? "bg-wine/15 text-wine border border-wine/20" : "border border-white/8 text-text-muted hover:text-foreground"}`}>
+                {f === "all" ? "Todos" : f === "paid" ? "Pagos" : "Não pagos"}
+              </button>
+            ))}
+          </div>
+          <button onClick={() => {
+            if (!filtered.length) return;
+            const headers = ["Nome", "E-mail", "WhatsApp", "Status", "Método Pgto", "Cortesia de", "Valor", "Data inscrição"];
+            const rows = filtered.map((i) => [i.name, i.email, i.whatsapp, i.order_status ?? "pendente", i.payment_method ?? "", i.courtesy_by ?? "", i.amount ?? "", i.created_at].map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";"));
+            downloadCSV([headers.join(";"), ...rows].join("\n"), `inscricoes_${isoDate()}.csv`);
+          }} disabled={filtered.length === 0} className="flex items-center gap-2 border border-white/8 hover:border-wine/30 text-text-muted hover:text-foreground px-4 py-2.5 rounded-md font-body text-sm transition-all duration-200 disabled:opacity-30 disabled:pointer-events-none">
+            <Download className="w-3.5 h-3.5" />CSV
+          </button>
+        </div>
+        <div className="surface-card rounded-xl overflow-hidden">
+          {loading ? (
+            <div className="py-16 flex flex-col items-center justify-center gap-3"><Loader2 className="w-6 h-6 text-wine animate-spin" /><p className="text-text-muted font-body text-sm">Carregando…</p></div>
+          ) : filtered.length === 0 ? (
+            <div className="py-20 flex flex-col items-center justify-center text-text-muted font-body text-sm gap-2"><CalendarDays className="w-8 h-8 opacity-30" strokeWidth={1} /><p>Nenhuma inscrição.</p></div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm font-body">
+                <thead><tr className="border-b border-white/5">
+                  <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold">Nome</th>
+                  <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold">E-mail</th>
+                  <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold hidden md:table-cell">WhatsApp</th>
+                  <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold">Pagamento</th>
+                  <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold hidden sm:table-cell">Data</th>
+                  <th className="text-center px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold">Presença</th>
+                </tr></thead>
+                <tbody>
+                  {filtered.map((item, i) => {
+                    const badge = getStatusBadge(item);
+                    return (
+                      <tr key={i} className="border-b border-white/4 hover:bg-white/2 transition-colors last:border-0">
+                        <td className="px-5 py-3.5 text-white max-w-[140px]"><span className="block truncate">{item.name}</span></td>
+                        <td className="px-5 py-3.5 text-white/85 max-w-[180px]"><span className="block truncate">{item.email}</span></td>
+                        <td className="px-5 py-3.5 text-white/85 hidden md:table-cell">{item.whatsapp}</td>
+                        <td className="px-5 py-3.5">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded border text-[10px] font-semibold uppercase tracking-wide ${badge.className}`}>
+                            {badge.label}
+                          </span>
+                          {item.payment_method === "courtesy" && item.courtesy_by && (
+                            <p className="text-[10px] text-white/35 mt-0.5 max-w-[120px] truncate" title={`Cortesia de: ${item.courtesy_by}`}>por {item.courtesy_by}</p>
+                          )}
+                        </td>
+                        <td className="px-5 py-3.5 text-white/60 hidden sm:table-cell whitespace-nowrap">{formatDate(item.created_at)}</td>
+                        <td className="px-5 py-3.5 text-center">
+                          {item.order_id ? (
+                            <button
+                              onClick={() => toggleAttended(item)}
+                              disabled={attendingIds.has(item.order_id!)}
+                              title={item.attended ? "Marcar como ausente" : "Confirmar presença"}
+                              className={`inline-flex items-center justify-center w-8 h-8 rounded-full border transition-all duration-200 disabled:opacity-40 ${
+                                item.attended
+                                  ? "bg-green-500/15 border-green-500/40 text-green-400 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-400"
+                                  : "bg-white/[0.04] border-white/10 text-text-muted hover:bg-green-500/10 hover:border-green-500/30 hover:text-green-400"
+                              }`}
+                            >
+                              {attendingIds.has(item.order_id!) ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : (
+                                <Check className="w-3.5 h-3.5" />
+                              )}
+                            </button>
+                          ) : (
+                            <span className="text-white/20 text-xs">—</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+
+      {/* ── Cortesia Modal ── */}
+      <AnimatePresence>
+        {showModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+            onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 16 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 16 }}
+              transition={{ duration: 0.2, ease: [0.25, 0, 0, 1] }}
+              className="w-full max-w-md bg-[#1a0f10] border border-white/10 rounded-2xl p-6 shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <h3 className="font-display text-lg font-semibold text-foreground">Nova inscrição — Cortesia</h3>
+                  <p className="text-text-muted font-body text-xs mt-0.5">Inscrição gratuita concedida manualmente.</p>
+                </div>
+                <button onClick={() => setShowModal(false)} className="text-text-muted hover:text-foreground transition-colors p-1.5 rounded-md hover:bg-white/5">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <form onSubmit={handleCreateCortesia} className="space-y-4">
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-body text-text-muted mb-1.5">Nome completo *</label>
+                    <input
+                      type="text"
+                      value={form.name}
+                      onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
+                      placeholder="João da Silva"
+                      className="w-full bg-support border border-white/8 rounded-md px-3.5 py-2.5 text-foreground font-body text-sm focus:outline-none focus:border-wine/40 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-body text-text-muted mb-1.5">E-mail *</label>
+                    <input
+                      type="email"
+                      value={form.email}
+                      onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
+                      placeholder="joao@email.com"
+                      className="w-full bg-support border border-white/8 rounded-md px-3.5 py-2.5 text-foreground font-body text-sm focus:outline-none focus:border-wine/40 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-body text-text-muted mb-1.5">WhatsApp <span className="text-white/25">(opcional)</span></label>
+                    <input
+                      type="tel"
+                      value={form.whatsapp}
+                      onChange={(e) => setForm(f => ({ ...f, whatsapp: e.target.value }))}
+                      placeholder="(11) 99999-9999"
+                      className="w-full bg-support border border-white/8 rounded-md px-3.5 py-2.5 text-foreground font-body text-sm focus:outline-none focus:border-wine/40 transition-colors"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-body text-text-muted mb-1.5">Cortesia concedida por *</label>
+                    <input
+                      type="text"
+                      value={form.courtesy_by}
+                      onChange={(e) => setForm(f => ({ ...f, courtesy_by: e.target.value }))}
+                      placeholder="ex: Felipe, Parceria X, Patrocinador…"
+                      className="w-full bg-support border border-white/8 rounded-md px-3.5 py-2.5 text-foreground font-body text-sm focus:outline-none focus:border-wine/40 transition-colors"
+                    />
+                  </div>
+                </div>
+                {formError && (
+                  <p className="flex items-center gap-1.5 text-red-400 font-body text-xs">
+                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />{formError}
+                  </p>
+                )}
+                <div className="flex gap-3 pt-1">
+                  <button type="button" onClick={() => setShowModal(false)} className="flex-1 border border-white/8 hover:border-white/15 text-text-muted hover:text-foreground px-4 py-2.5 rounded-md font-body text-sm transition-colors">
+                    Cancelar
+                  </button>
+                  <button type="submit" disabled={saving} className="flex-1 flex items-center justify-center gap-2 bg-wine hover:bg-wine-light text-background font-ui font-bold text-sm min-h-[42px] rounded-md transition-all duration-200 disabled:opacity-50 disabled:pointer-events-none">
+                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    {saving ? "Salvando…" : "Criar inscrição"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </>
   );
 };
 
