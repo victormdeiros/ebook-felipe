@@ -75,6 +75,9 @@ import {
   testSendCartEmails,
   getCTAConfig,
   saveCTAConfig,
+  getGtmEvents,
+  saveGtmEvents,
+  type GtmEvent,
   type Lead,
   type Order,
   type DashboardStats,
@@ -732,6 +735,234 @@ const MetricsTab = () => {
           )}
         </div>
       </div>
+
+      {/* ── GTM Events Library ── */}
+      <GtmEventsLibrary />
+    </div>
+  );
+};
+
+
+// GTM EVENTS LIBRARY
+const GtmEventsLibrary = () => {
+  const [events, setEvents] = useState<GtmEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [formEventName, setFormEventName] = useState("");
+  const [formDesc, setFormDesc] = useState("");
+  const [formPayload, setFormPayload] = useState("{}");
+  const [payloadError, setPayloadError] = useState<string | null>(null);
+  const [firedId, setFiredId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const evs = await getGtmEvents();
+    setEvents(evs);
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const openAdd = () => {
+    setEditingId(null);
+    setFormEventName(""); setFormDesc(""); setFormPayload("{}"); setPayloadError(null);
+    setShowForm(true);
+  };
+
+  const openEdit = (ev: GtmEvent) => {
+    setEditingId(ev.id);
+    setFormEventName(ev.event); setFormDesc(ev.description);
+    setFormPayload(Object.keys(ev.payload).length ? JSON.stringify(ev.payload, null, 2) : "{}");
+    setPayloadError(null); setShowForm(true);
+  };
+
+  const persist = async (updated: GtmEvent[]) => {
+    await saveGtmEvents(updated);
+    setEvents(updated);
+  };
+
+  const saveForm = async () => {
+    setPayloadError(null);
+    if (!formEventName.trim()) { setPayloadError("O nome do evento é obrigatório."); return; }
+    let parsed: Record<string, unknown> = {};
+    try {
+      parsed = JSON.parse(formPayload || "{}");
+      if (typeof parsed !== "object" || Array.isArray(parsed)) throw new Error();
+    } catch {
+      setPayloadError("Payload deve ser um objeto JSON válido. Ex: { \"chave\": \"valor\" }");
+      return;
+    }
+    setSaving(true);
+    try {
+      const updated = editingId
+        ? events.map(e => e.id === editingId ? { ...e, event: formEventName.trim(), description: formDesc.trim(), payload: parsed } : e)
+        : [...events, {
+            id: `ev_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+            event: formEventName.trim(),
+            description: formDesc.trim(),
+            payload: parsed,
+            enabled: true,
+            created_at: new Date().toISOString(),
+          }];
+      await persist(updated);
+      setShowForm(false);
+    } finally { setSaving(false); }
+  };
+
+  const deleteEvent = (id: string) => persist(events.filter(e => e.id !== id));
+  const toggleEnabled = (id: string) => persist(events.map(e => e.id === id ? { ...e, enabled: !e.enabled } : e));
+
+  const fireEvent = (ev: GtmEvent) => {
+    gtmPush({ event: ev.event, ...ev.payload });
+    setFiredId(ev.id);
+    setTimeout(() => setFiredId(null), 2000);
+  };
+
+  const copySnippet = (ev: GtmEvent) => {
+    const extras = Object.entries(ev.payload).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(", ");
+    const snippet = `gtmPush({ event: "${ev.event}"${extras ? ", " + extras : ""} });`;
+    navigator.clipboard.writeText(snippet).catch(() => {});
+    setCopiedId(ev.id);
+    setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+        <div>
+          <p className="text-[0.65rem] uppercase tracking-[0.15em] text-text-muted font-ui">Biblioteca de Eventos — GTM</p>
+          <p className="text-[0.7rem] text-text-muted font-body mt-1 max-w-lg leading-relaxed">
+            Registre eventos customizados. Use <strong className="text-white/60">"Disparar"</strong> para empurrar um evento ao <code className="text-gold/70 bg-gold/5 px-1 rounded text-[10px]">dataLayer</code> nesta sessão e validar tags no <strong className="text-white/60">GTM Preview Mode</strong> — sem precisar alterar o código.
+          </p>
+        </div>
+        {!showForm && (
+          <button onClick={openAdd} className="flex items-center gap-2 bg-wine/10 hover:bg-wine/15 border border-wine/25 hover:border-wine/40 text-wine px-3.5 py-2 rounded-md font-body text-xs font-semibold transition-all hover:-translate-y-0.5 shrink-0">
+            <Plus className="w-3.5 h-3.5" />Novo evento
+          </button>
+        )}
+      </div>
+
+      {/* Add / Edit form */}
+      <AnimatePresence>
+        {showForm && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.18 }}
+            className="surface-card rounded-xl p-5 mb-4 border-wine/15"
+          >
+            <p className="text-xs font-body font-semibold text-foreground mb-4">{editingId ? "Editar evento" : "Novo evento GTM"}</p>
+            <div className="grid sm:grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="block text-[0.65rem] text-text-muted font-body mb-1.5 uppercase tracking-[0.1em]">Nome do evento *</label>
+                <input
+                  type="text" value={formEventName} onChange={e => setFormEventName(e.target.value)}
+                  placeholder="ex: video_play, cta_click, scroll_50"
+                  className="w-full bg-support border border-white/8 rounded-md px-3 py-2 text-foreground font-mono text-xs focus:outline-none focus:border-wine/40 transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-[0.65rem] text-text-muted font-body mb-1.5 uppercase tracking-[0.1em]">Descrição</label>
+                <input
+                  type="text" value={formDesc} onChange={e => setFormDesc(e.target.value)}
+                  placeholder="O que este evento rastreia?"
+                  className="w-full bg-support border border-white/8 rounded-md px-3 py-2 text-foreground font-body text-xs focus:outline-none focus:border-wine/40 transition-colors"
+                />
+              </div>
+            </div>
+            <div className="mb-3">
+              <label className="block text-[0.65rem] text-text-muted font-body mb-1.5 uppercase tracking-[0.1em]">
+                Payload extra <span className="text-white/25 normal-case tracking-normal">(JSON, opcional)</span>
+              </label>
+              <textarea
+                value={formPayload} onChange={e => { setFormPayload(e.target.value); setPayloadError(null); }}
+                rows={3}
+                placeholder={'{ "category": "engagement", "label": "video_principal" }'}
+                className="w-full bg-support border border-white/8 rounded-md px-3 py-2 text-foreground font-mono text-xs focus:outline-none focus:border-wine/40 transition-colors resize-none"
+              />
+              {payloadError && (
+                <p className="flex items-center gap-1 text-red-400 text-[10px] mt-1 font-body">
+                  <AlertCircle className="w-3 h-3 shrink-0" />{payloadError}
+                </p>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button onClick={() => setShowForm(false)} className="flex-1 border border-white/8 hover:border-white/15 text-text-muted hover:text-foreground px-3 py-2 rounded-md font-body text-xs transition-colors">
+                Cancelar
+              </button>
+              <button onClick={saveForm} disabled={saving} className="flex-1 flex items-center justify-center gap-1.5 bg-wine hover:bg-wine-light text-background font-ui font-bold text-xs min-h-[34px] rounded-md transition-all disabled:opacity-50">
+                {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Check className="w-3.5 h-3.5" />}
+                {saving ? "Salvando…" : "Salvar evento"}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Events list */}
+      {loading ? (
+        <div className="surface-card rounded-xl py-10 flex items-center justify-center">
+          <Loader2 className="w-5 h-5 text-wine/50 animate-spin" />
+        </div>
+      ) : events.length === 0 ? (
+        <div className="surface-card rounded-xl py-12 flex flex-col items-center gap-2 text-text-muted font-body text-xs">
+          <Zap className="w-7 h-7 opacity-20" strokeWidth={1} />
+          <p>Nenhum evento registrado.</p>
+          <p className="text-[0.65rem] opacity-60">Clique em <strong>"Novo evento"</strong> para começar a montar sua biblioteca.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {events.map(ev => (
+            <div key={ev.id} className={`surface-card rounded-xl px-4 py-3.5 flex flex-wrap sm:flex-nowrap items-center gap-3 transition-opacity ${!ev.enabled ? "opacity-40" : ""}`}>
+              {/* Info */}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded border text-[10px] font-semibold font-mono text-wine bg-wine/10 border-wine/25 shrink-0">{ev.event}</span>
+                  {ev.description && <span className="text-xs text-white/60 font-body">{ev.description}</span>}
+                </div>
+                {Object.keys(ev.payload).length > 0 && (
+                  <p className="text-[10px] text-text-muted font-mono mt-1 truncate">{JSON.stringify(ev.payload)}</p>
+                )}
+              </div>
+              {/* Actions */}
+              <div className="flex items-center gap-1 shrink-0 flex-wrap">
+                <button onClick={() => toggleEnabled(ev.id)} title={ev.enabled ? "Desativar" : "Ativar"} className="p-1.5 rounded-md text-text-muted hover:text-foreground hover:bg-white/5 transition-colors">
+                  {ev.enabled ? <ToggleRight className="w-4 h-4 text-green-400" /> : <ToggleLeft className="w-4 h-4" />}
+                </button>
+                <button
+                  onClick={() => fireEvent(ev)} disabled={!ev.enabled}
+                  title="Disparar para o dataLayer agora — valide no GTM Preview Mode"
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md font-body text-[10px] font-semibold border transition-all duration-200 disabled:pointer-events-none ${
+                    firedId === ev.id ? "text-green-400 bg-green-500/10 border-green-500/25" : "text-text-muted border-white/8 hover:text-wine hover:border-wine/25 hover:bg-wine/5"
+                  }`}
+                >
+                  {firedId === ev.id ? <Check className="w-3 h-3" /> : <Zap className="w-3 h-3" />}
+                  {firedId === ev.id ? "Disparado!" : "Disparar"}
+                </button>
+                <button
+                  onClick={() => copySnippet(ev)}
+                  title="Copiar gtmPush(...) para usar no código"
+                  className={`flex items-center gap-1 px-2.5 py-1.5 rounded-md font-body text-[10px] font-semibold border transition-all duration-200 ${
+                    copiedId === ev.id ? "text-green-400 bg-green-500/10 border-green-500/25" : "text-text-muted border-white/8 hover:text-foreground hover:border-white/15"
+                  }`}
+                >
+                  {copiedId === ev.id ? <Check className="w-3 h-3" /> : <Link2 className="w-3 h-3" />}
+                  {copiedId === ev.id ? "Copiado!" : "Snippet"}
+                </button>
+                <button onClick={() => openEdit(ev)} title="Editar" className="p-1.5 rounded-md text-text-muted hover:text-foreground hover:bg-white/5 transition-colors">
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+                <button onClick={() => deleteEvent(ev.id)} title="Remover" className="p-1.5 rounded-md text-text-muted hover:text-red-400 hover:bg-red-500/5 transition-colors">
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

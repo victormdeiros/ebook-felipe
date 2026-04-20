@@ -398,3 +398,39 @@ export const saveCTAConfig = async (config: Partial<CTAConfig>): Promise<void> =
   if (!res.ok) throw new Error("Erro ao salvar configuração de CTAs");
 };
 
+// GTM Events Catalog
+
+export interface GtmEvent {
+  id: string;
+  event: string;
+  description: string;
+  payload: Record<string, unknown>;
+  enabled: boolean;
+  created_at: string;
+}
+
+export const getGtmEvents = async (): Promise<GtmEvent[]> => {
+  if (!API_URL || !ADMIN_TOKEN) return [];
+  try {
+    const res = await fetch(`${API_URL}/api/admin/gtm-events`, {
+      headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+    });
+    if (!res.ok) return [];
+    const { events } = await res.json() as { events: GtmEvent[] };
+    return events;
+  } catch { return []; }
+};
+
+export const saveGtmEvents = async (events: GtmEvent[]): Promise<void> => {
+  if (!API_URL || !ADMIN_TOKEN) return;
+  const res = await fetch(`${API_URL}/api/admin/gtm-events`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${ADMIN_TOKEN}` },
+    body: JSON.stringify({ events }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { error?: string };
+    throw new Error(err.error ?? "Erro ao salvar eventos GTM");
+  }
+};
+

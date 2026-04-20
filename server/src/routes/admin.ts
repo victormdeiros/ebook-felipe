@@ -129,6 +129,47 @@ router.put("/cta-config", requireAdmin, async (req, res, next) => {
   }
 });
 
+// ── GET /api/admin/gtm-events ─────────────────────────────────
+// Returns the GTM custom events catalog stored in manual_config
+router.get("/gtm-events", requireAdmin, async (_req, res, next) => {
+  try {
+    const { rows } = await pool.query<{ value: string }>(
+      `SELECT value FROM manual_config WHERE key = 'gtm_events_catalog'`,
+    );
+    const events = rows[0]?.value ? JSON.parse(rows[0].value) : [];
+    res.json({ events });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ── PUT /api/admin/gtm-events ─────────────────────────────────
+// Replaces the entire GTM events catalog
+router.put("/gtm-events", requireAdmin, async (req, res, next) => {
+  try {
+    const { events } = z.object({
+      events: z.array(z.object({
+        id: z.string(),
+        event: z.string().min(1).max(100),
+        description: z.string().max(300),
+        payload: z.record(z.unknown()),
+        enabled: z.boolean(),
+        created_at: z.string(),
+      })),
+    }).parse(req.body);
+
+    await pool.query(
+      `INSERT INTO manual_config (key, value, updated_at)
+       VALUES ('gtm_events_catalog', $1, now())
+       ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+      [JSON.stringify(events)],
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 // ── GET /api/admin/inscricoes ────────────────────────────────
 // Inscrições no evento: leads com tag inscricao_evento OU pedidos aprovados de evento
 // Branch 1 usa LATERAL join para não perder pagamentos quando o produto foi deletado
