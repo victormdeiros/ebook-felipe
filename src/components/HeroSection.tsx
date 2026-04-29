@@ -10,10 +10,10 @@ import { useCart } from "@/contexts/CartContext";
 const HeroSection = () => {
   const shouldReduceMotion = useReducedMotion();
   const content = getContent();
-  const { addEventToCart, openCart } = useCart();
+  const { addToCart, openCart } = useCart();
 
-  const handleAddEventToCart = () => {
-    addEventToCart();
+  const handleAddToCart = () => {
+    addToCart();
     openCart();
   };
   const whatsappNumber = content.whatsappNumber || CONFIG.WHATSAPP_NUMBER;
@@ -93,10 +93,10 @@ const HeroSection = () => {
               className="mb-6 flex flex-col gap-3 sm:flex-row"
             >
               <button
-                onClick={handleAddEventToCart}
+                onClick={handleAddToCart}
                 className="flex min-h-[52px] items-center justify-center gap-2 rounded-md px-7 text-center font-ui text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(201,168,76,0.45)] whitespace-nowrap cursor-pointer" style={{ background: '#2d7a4f' }} onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background='#c9a84c'} onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background='#2d7a4f'}
               >
-                GARANTIR MINHA VAGA
+                GARANTIR MEU ACESSO
               </button>
               <a
                 href={whatsappUrl}
@@ -126,7 +126,7 @@ const HeroSection = () => {
             {/* Stats */}
             <motion.div
               {...fade(0.6)}
-              className="grid grid-cols-3 gap-6 border-t border-white/8 pt-7"
+              className="hidden grid-cols-3 gap-6 border-t border-white/8 pt-7 md:grid"
             >
               <div>
                 <p className="font-display text-2xl text-off-white sm:text-3xl">

@@ -150,7 +150,7 @@ const EventSection = () => {
               {/* Date */}
               <div className="flex flex-col items-center justify-center gap-0.5 bg-gold/[0.10] px-8 sm:px-10 py-5 border-b sm:border-b-0 sm:border-r border-gold/15">
                 <p className="font-ui text-[0.45rem] tracking-[0.3em] text-gold/50 uppercase mb-1">Data</p>
-                <p className="font-display text-3xl sm:text-4xl font-bold text-off-white leading-none tracking-tight">29 Abr</p>
+                <p className="font-display text-3xl sm:text-4xl font-bold text-off-white leading-none tracking-tight">10 Jun</p>
                 <p className="font-display text-lg font-semibold text-gold leading-none mt-1">2026</p>
               </div>
               {/* Time */}
@@ -181,6 +181,7 @@ const EventSection = () => {
 
         {/* ── Speakers ── */}
         <motion.p
+          id="palestrantes"
           {...fade(0.22)}
           className="font-ui text-[0.6rem] tracking-[0.3em] text-white/30 text-center mb-8"
         >
@@ -245,7 +246,7 @@ const EventSection = () => {
         </div>
 
         {/* ── Venue ── */}
-        <motion.div {...fade(0.22)} className="mb-20 lg:mb-28">
+        <motion.div id="local" {...fade(0.22)} className="mb-20 lg:mb-28">
 
           {/* Address row */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
@@ -355,6 +356,7 @@ const EventSection = () => {
 
           {/* Registration card */}
           <motion.div
+            id="inscricao"
             {...fade(0.28)}
             className="rounded-2xl overflow-hidden border border-gold/20 shadow-[0_40px_100px_-24px_rgba(0,0,0,0.85),0_0_0_1px_rgba(201,168,76,0.06)]"
             style={{ background: "linear-gradient(160deg, #161008 0%, #0a0805 100%)" }}

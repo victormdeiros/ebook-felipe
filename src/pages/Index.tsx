@@ -5,14 +5,13 @@ import StickyHeader from "@/components/StickyHeader";
 import HeroSection from "@/components/HeroSection";
 import PainPointsSection from "@/components/PainPointsSection";
 import EbookPresentationSection from "@/components/EbookPresentationSection";
-import EventSection from "@/components/EventSection";
 import LearningSection from "@/components/LearningSection";
 import TargetAudienceSection from "@/components/TargetAudienceSection";
 import TargetAudienceTextSection from "@/components/TargetAudienceTextSection";
 import AboutSection from "@/components/AboutSection";
 import ImportanceSection from "@/components/ImportanceSection";
 import TestimonialsSection from "@/components/TestimonialsSection";
-import PriceSection from "@/components/PriceSection";
+import EbookPriceSection from "@/components/EbookPriceSection";
 import CtaSection from "@/components/CtaSection";
 import FooterSection from "@/components/FooterSection";
 import FloatingWhatsApp from "@/components/FloatingWhatsApp";
@@ -41,24 +40,22 @@ const Index = () => {
 
   return (
     <>
-      {/* Skip link for keyboard users */}
       <a href="#main-content" className="skip-link">
-        Pular para o conteúdo principal
+        Pular para o conteudo principal
       </a>
 
-      <StickyHeader />
+      <StickyHeader variant="ebook" />
       <main id="main-content">
         <HeroSection />
         <PainPointsSection />
         <EbookPresentationSection />
-        <EventSection />
         <LearningSection />
         <TargetAudienceTextSection />
         <TargetAudienceSection />
         <AboutSection />
         <ImportanceSection />
         <TestimonialsSection />
-        <PriceSection />
+        <EbookPriceSection />
         <CtaSection />
         <FooterSection />
       </main>

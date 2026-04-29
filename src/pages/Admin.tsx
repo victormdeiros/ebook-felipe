@@ -1863,7 +1863,7 @@ const EmailsTab = () => {
                     <span className="ml-auto text-[0.6rem] font-body text-amber-400/60 border border-amber-400/15 bg-amber-400/5 px-2 py-0.5 rounded-full">Sequência de 3 e-mails</span>
                   )}
                   {group === "Lembrete do evento" && (
-                    <span className="ml-auto text-[0.6rem] font-body text-blue-400/60 border border-blue-400/15 bg-blue-400/5 px-2 py-0.5 rounded-full">29/04/2026 · 16h</span>
+                    <span className="ml-auto text-[0.6rem] font-body text-blue-400/60 border border-blue-400/15 bg-blue-400/5 px-2 py-0.5 rounded-full">10/06/2026 · 16h</span>
                   )}
                 </div>
                 <div className="space-y-3">
@@ -1978,7 +1978,7 @@ const EmailsTab = () => {
           <div className="rounded-xl border border-white/5 bg-white/[0.02] p-5 font-body text-xs text-text-muted space-y-2">
             <p className="text-white/50 text-[0.65rem] uppercase tracking-[0.15em] mb-2">Como funciona</p>
             <p>🛒 <strong className="text-white/60">Carrinho abandonado:</strong> agendado quando o lead preenche o formulário mas não finaliza o pagamento. Cancelado se ele converter.</p>
-            <p>📅 <strong className="text-white/60">Lembretes do evento:</strong> agendados quando o pagamento é aprovado. Disparados antes de 29/04/2026 16h.</p>
+            <p>📅 <strong className="text-white/60">Lembretes do evento:</strong> agendados quando o pagamento é aprovado. Disparados antes de 10/06/2026 16h.</p>
             <p>⏱ O servidor processa a fila a cada 5 minutos. Use "Processar fila agora" para forçar.</p>
           </div>
         </div>
