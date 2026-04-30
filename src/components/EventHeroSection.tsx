@@ -13,8 +13,8 @@ const eventFacts = [
 const speakers = [
   { name: "Lais Leite",    photo: laisFoto,                      pos: "object-top" },
   { name: "Felipe Lopes",  photo: felipeLopes,                   pos: "object-top" },
-  { name: "Wagner",        photo: "/wagner_palestrante.jpeg",    pos: "object-top" },
-  { name: "Victor",        photo: "/palestrante_victor.jpg",     pos: "object-top" },
+  { name: "Wagner Silva",        photo: "/wagner_palestrante.jpeg",    pos: "object-top" },
+  { name: "Victor Medeiros",        photo: "/palestrante_victor.jpg",     pos: "object-top" },
 ];
 
 const EventHeroSection = () => {
