@@ -1,5 +1,19 @@
+﻿import { useState, useRef } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { ArrowRight, Bot, BriefcaseBusiness, CalendarDays, CheckCircle2, Clock, Coffee, ExternalLink, FileCheck2, MapPin, Network, ShieldCheck, Star, Users, Zap } from "lucide-react";
+import {
+  ArrowRight,
+  Bot,
+  BriefcaseBusiness,
+  CalendarDays,
+  ChevronDown,
+  Clock,
+  Coffee,
+  ExternalLink,
+  FileCheck2,
+  MapPin,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
 import { CONFIG } from "@/config";
 import { getContent } from "@/lib/contentStore";
@@ -7,48 +21,95 @@ import felipeLopes from "@/felipe.png";
 import laisFoto from "@/assets/lais-foto.png";
 
 const stats = [
-  { value: "2H", label: "de conteudo direto ao ponto" },
+  { value: "2H", label: "de conteúdo direto ao ponto" },
   { value: "4", label: "especialistas no palco" },
-  { value: "360", label: "visao juridica, DP e IA" },
+  { value: "360°", label: "visão jurídica, DP e IA" },
 ];
 
-const learning = [
-  { icon: ShieldCheck, title: "Blindagem trabalhista", text: "Como reduzir riscos antes da contratacao, durante a rotina e no desligamento." },
-  { icon: FileCheck2, title: "Processos de DP", text: "Rotinas, documentos e pontos de controle que deixam a empresa menos exposta." },
-  { icon: Bot, title: "IA aplicada a gestao", text: "Onde a tecnologia pode apoiar automacao, produtividade e decisao sem improviso." },
-  { icon: Users, title: "Networking direcionado", text: "Conexao com empresarios e gestores que vivem os mesmos desafios de gestao." },
-];
-
-const pillars = [
+const benefits = [
   {
     icon: ShieldCheck,
-    title: "Blindagem Jurídica",
-    text: "Os autores revelam como evitar passivos trabalhistas da contratação à rescisão, com base no Manual do Empregador.",
+    title: "Blindagem Trabalhista",
+    text: "Como reduzir riscos antes da contratação, durante a rotina e no desligamento.",
   },
   {
-    icon: Zap,
-    title: "Inovação e Eficiência",
-    text: "Como Automação e IA podem eliminar erros humanos no DP e otimizar a gestão de pessoas na sua empresa.",
+    icon: FileCheck2,
+    title: "Processos de DP",
+    text: "Rotinas, documentos e pontos de controle que deixam a empresa menos exposta.",
   },
   {
-    icon: Network,
-    title: "Networking Estratégico",
-    text: "Um ambiente pensado para conectar empresários e gestores que buscam profissionalizar sua gestão.",
+    icon: Bot,
+    title: "IA Aplicada à Gestão",
+    text: "Onde a tecnologia pode apoiar automação, produtividade e decisão sem improviso.",
+  },
+  {
+    icon: Users,
+    title: "Networking Direcionado",
+    text: "Conexão com empresários e gestores que vivem os mesmos desafios de gestão.",
   },
 ];
 
 const speakers = [
-  { name: "Felipe Lopes", role: "Advogado Trabalhista", badge: "Trabalhista", photo: felipeLopes, text: "Mais de 20 anos orientando empresas em decisoes trabalhistas e analise de risco." },
-  { name: "Lais Leite", role: "Advogada e co-autora", badge: "Compliance", photo: laisFoto, text: "Atuacao em direito do trabalho empresarial, procedimentos internos e prevencao." },
-  { name: "Wagner", role: "IA e Marketing", badge: "IA & Marketing", photo: "/wagner_palestrante.jpeg", text: "Aplicacoes praticas de IA e marketing para acelerar operacoes sem perder estrategia." },
-  { name: "Victor", role: "Automacao com IA", badge: "Automacao", photo: "/palestrante_victor.jpg", text: "Automacao de processos para reduzir tarefas repetitivas e ganhar eficiencia." },
+  {
+    name: "Felipe Lopes",
+    role: "Advogado Trabalhista",
+    photo: felipeLopes,
+    text: "Mais de 20 anos orientando empresas em decisões trabalhistas e análise de risco.",
+  },
+  {
+    name: "Lais Leite",
+    role: "Advogada e Co-autora",
+    photo: laisFoto,
+    text: "Atuação em direito do trabalho empresarial, procedimentos internos e prevenção.",
+  },
+  {
+    name: "Wagner",
+    role: "IA e Marketing",
+    photo: "/wagner_palestrante.jpeg",
+    text: "Aplicações práticas de IA e marketing para acelerar operações sem perder estratégia.",
+  },
+  {
+    name: "Victor",
+    role: "Automação com IA",
+    photo: "/palestrante_victor.jpg",
+    text: "Automação de processos para reduzir tarefas repetitivas e ganhar eficiência.",
+  },
 ];
 
-const photos = [
-  { src: "/local_do_evento/auditorio.jpg", label: "Auditorio" },
-  { src: "/local_do_evento/ambiente_coffee.jpg", label: "Coffee break" },
-  { src: "/local_do_evento/ambiente_network_2.jpg", label: "Networking" },
-  { src: "/local_do_evento/ambiente_network_3.jpg", label: "Ambiente" },
+const checklist = [
+  "Como estruturar admissão, rotina e rescisão para minimizar passivos trabalhistas",
+  "Os documentos que todo empregador deve ter atualizados para se proteger",
+  "Como usar IA para automatizar tarefas repetitivas no Departamento Pessoal",
+  "O que fazer quando um colaborador aciona sua empresa na Justiça do Trabalho",
+  "Como construir uma cultura de compliance trabalhista na prática do dia a dia",
+  "Ferramentas digitais para gestão de pessoas com segurança jurídica",
+];
+
+const faqItems = [
+  {
+    q: "O evento é presencial?",
+    a: "Sim, o evento é 100% presencial em Recife/PE, na Rua Buenos Aires, 80 — Espinheiro. Não haverá transmissão online.",
+  },
+  {
+    q: "Haverá gravação ou material de apoio?",
+    a: "O evento não será gravado. A proposta é criar um ambiente de imersão e networking presencial. Haverá material de apoio distribuído no local.",
+  },
+  {
+    q: "Quem deve participar?",
+    a: "Empresários, sócios, gestores de RH e DP que querem proteger sua empresa de passivos trabalhistas e aplicar boas práticas de gestão de pessoas.",
+  },
+  {
+    q: "Há coffee break?",
+    a: "Sim, está incluso no ingresso um coffee break completo e um momento de networking estruturado entre os participantes.",
+  },
+  {
+    q: "Como funciona a inscrição?",
+    a: "Após o pagamento confirmado, você receberá a confirmação por e-mail com todos os detalhes do evento, incluindo endereço e horário de acesso.",
+  },
+  {
+    q: "Posso transferir minha inscrição?",
+    a: "Sim, é possível transferir a inscrição para outra pessoa com até 48h de antecedência. Basta entrar em contato via WhatsApp.",
+  },
 ];
 
 const EventLandingSections = () => {
@@ -56,6 +117,7 @@ const EventLandingSections = () => {
   const { addEventToCart, openCart } = useCart();
   const content = getContent();
   const price = content.eventPrice || String(CONFIG.EVENT_PRICE);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
 
   const handleRegister = () => {
     addEventToCart();
@@ -66,7 +128,7 @@ const EventLandingSections = () => {
     shouldReduceMotion
       ? {}
       : {
-          initial: false,
+          initial: { opacity: 0, y: 24 },
           whileInView: { opacity: 1, y: 0 },
           viewport: { once: true, margin: "-80px" },
           transition: { duration: 0.6, delay, ease: [0.25, 0, 0, 1] as const },
@@ -74,323 +136,442 @@ const EventLandingSections = () => {
 
   return (
     <>
-      <section
-        id="save-the-date"
-        className="relative overflow-hidden py-20 lg:py-28"
-        style={{
-          background:
-            "radial-gradient(ellipse 130% 55% at 50% 0%, rgba(62,21,23,0.45) 0%, transparent 58%), #090608",
-        }}
-      >
-        <div className="pointer-events-none absolute left-1/2 top-0 h-px w-40 -translate-x-1/2 bg-gradient-to-r from-transparent via-wine/50 to-transparent" />
-        <div className="pointer-events-none absolute left-[-8rem] top-1/3 h-[40rem] w-[40rem] rounded-full bg-wine/[0.05] blur-[160px]" />
-        <div className="pointer-events-none absolute right-[-8rem] bottom-1/4 h-[36rem] w-[36rem] rounded-full bg-gold/[0.04] blur-[150px]" />
-
-        <div className="container relative z-10 mx-auto">
-          <div className="mx-auto max-w-3xl text-center">
-            <motion.div {...reveal()} className="mb-6">
-              <span className="inline-flex items-center gap-2 rounded-full border border-gold/40 bg-gold/[0.08] px-5 py-2 font-ui text-[0.6rem] tracking-[0.3em] text-gold">
-                <Star className="h-3 w-3 shrink-0 fill-gold" />
-                EVENTO DE LANCAMENTO EXCLUSIVO
-              </span>
-            </motion.div>
-
-            <motion.h2
-              {...reveal(0.05)}
-              className="mb-5 font-display text-5xl font-bold leading-[0.92] text-off-white sm:text-6xl lg:text-[5rem]"
-            >
-              Seguranca
-              <br />
-              <span className="italic text-wine">Juridica 360</span>
-            </motion.h2>
-
-            <motion.p
-              {...reveal(0.1)}
-              className="mb-8 text-center font-ui text-xs uppercase tracking-[0.22em] text-gold/75"
-            >
-              Blindando sua empresa contra riscos trabalhistas
-            </motion.p>
-
-            <motion.div {...reveal(0.15)} className="mb-10 flex flex-col items-center gap-3">
-              <span className="inline-flex items-center gap-2 rounded-full border border-gold/30 bg-gold/10 px-5 py-1.5 font-ui text-[0.55rem] uppercase tracking-[0.35em] text-gold">
-                <CalendarDays className="h-3 w-3" />
-                SAVE THE DATE
-              </span>
-              <div
-                className="inline-flex flex-col items-stretch overflow-hidden rounded-2xl border border-gold/25 shadow-[0_0_60px_-16px_rgba(201,168,76,0.45)] sm:flex-row"
-                style={{ background: "rgba(201,168,76,0.04)" }}
-              >
-                <div className="flex flex-col items-center justify-center gap-0.5 border-b border-gold/15 bg-gold/[0.10] px-8 py-5 sm:border-b-0 sm:border-r sm:px-10">
-                  <p className="mb-1 font-ui text-[0.45rem] uppercase tracking-[0.3em] text-gold/50">Data</p>
-                  <p className="font-display text-3xl font-bold leading-none tracking-tight text-off-white sm:text-4xl">10 Jun</p>
-                  <p className="mt-1 font-display text-lg font-semibold leading-none text-gold">2026</p>
-                </div>
-                <div className="flex flex-col items-center justify-center gap-0.5 border-b border-white/5 bg-white/[0.03] px-8 py-5 sm:border-b-0 sm:border-r sm:px-10">
-                  <p className="mb-1 font-ui text-[0.45rem] uppercase tracking-[0.3em] text-gold/50">Horario</p>
-                  <p className="font-display text-3xl font-bold leading-none tracking-tight text-off-white sm:text-4xl">16h &mdash; 18h</p>
-                  <p className="mt-1 font-ui text-[0.5rem] tracking-[0.12em] text-gold/50">HORARIO DE BRASILIA</p>
-                </div>
-                <div className="flex flex-col items-center justify-center gap-0.5 bg-white/[0.02] px-8 py-5 sm:px-10">
-                  <p className="mb-1 font-ui text-[0.45rem] uppercase tracking-[0.3em] text-gold/50">Local</p>
-                  <p className="font-display text-3xl font-bold leading-none tracking-tight text-off-white sm:text-4xl">Recife</p>
-                  <p className="mt-1 flex items-center gap-1 font-ui text-[0.5rem] tracking-[0.12em] text-gold/50">
-                    <MapPin className="h-2.5 w-2.5" />
-                    PERNAMBUCO &middot; PE
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-
-            <motion.p
-              {...reveal(0.2)}
-              className="mx-auto max-w-xl text-center text-base leading-relaxed text-text-secondary"
-            >
-              Um encontro estrategico com especialistas em Direito Trabalhista, IA e Gestao de
-              Pessoas para empresarios e gestores que buscam previsibilidade, protecao e eficiencia.
-            </motion.p>
-          </div>
+      {/* ── Stats Bar ─────────────────────────────────── */}
+      <section className="border-y border-white/5 bg-[#0a0a0a]">
+        <div className="container mx-auto grid grid-cols-3 divide-x divide-white/5">
+          {stats.map((item) => (
+            <div key={item.value} className="flex flex-col items-center py-10 text-center">
+              <p className="font-display text-4xl font-black text-white sm:text-5xl lg:text-6xl">
+                {item.value}
+              </p>
+              <p className="mt-2 max-w-[120px] font-ui text-[0.55rem] uppercase tracking-[0.16em] text-white/40">
+                {item.label}
+              </p>
+            </div>
+          ))}
         </div>
       </section>
 
-      <section id="experiencia" className="relative overflow-hidden bg-[#050505] py-16 lg:py-24">
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/20 to-transparent" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,83,18,0.18),transparent_26%),radial-gradient(circle_at_80%_12%,rgba(201,168,76,0.10),transparent_22%)]" />
-        <div className="container relative z-10 mx-auto">
-          <motion.div {...reveal()} className="grid gap-5 md:grid-cols-3">
-            {stats.map((item) => (
-              <div key={item.value} className="rounded-lg border border-[#ff6b1a]/35 bg-[#ff5a14] px-6 py-6 text-center shadow-[0_22px_50px_-28px_rgba(255,90,20,0.9)]">
-                <p className="font-display text-5xl font-bold leading-none text-white">{item.value}</p>
-                <p className="mt-2 text-center font-ui text-[0.62rem] tracking-[0.16em] text-white/85">{item.label}</p>
-              </div>
-            ))}
+      {/* ── Video Section (Bloco 3) ────────────────────── */}
+      {/* Top: solid black — eyebrow + title */}
+      <section className="bg-[#030405] pb-0 pt-20 lg:pt-28">
+        <div className="container mx-auto text-center">
+          <motion.div {...reveal()}>
+            <p className="mb-4 block text-center font-ui text-xs font-black uppercase tracking-[0.28em] text-[#dc2626]">
+              UM DIA QUE VAI MUDAR SUA VISÃO
+            </p>
+            <h2 className="mx-auto max-w-2xl font-display text-4xl font-black uppercase leading-tight text-white sm:text-5xl lg:text-6xl">
+              Mais do que um evento —<br />
+              <span className="text-[#dc2626]">uma virada de chave.</span>
+            </h2>
           </motion.div>
+        </div>
 
-          <motion.div {...reveal(0.08)} className="mt-14 grid items-center gap-8 lg:grid-cols-[0.95fr_1.05fr]">
-            <div className="relative overflow-hidden rounded-xl border border-white/10 bg-black">
-              <img src="/local_do_evento/ambiente_network_2.jpg" alt="Participantes em ambiente de networking" className="h-full min-h-[320px] w-full object-cover opacity-85" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" />
-              <div className="absolute bottom-0 left-0 max-w-md p-6">
-                <p className="font-ui text-[0.62rem] tracking-[0.22em] text-gold">AO VIVO EM RECIFE</p>
-                <h2 className="mt-3 font-display text-4xl font-bold leading-[0.95] text-white md:text-5xl">
-                  Um ambiente para resolver a rotina antes dela virar passivo.
-                </h2>
+        {/* Video — full width, natural aspect ratio, fades on top & bottom edges */}
+        <motion.div {...reveal(0.1)} className="relative mt-12 w-full overflow-hidden" style={{ aspectRatio: "16/9" }}>
+          <video
+            ref={(el) => {
+              if (!el) return;
+              const trim = () => {
+                if (el.duration && el.currentTime >= el.duration - 3) {
+                  el.currentTime = 0;
+                }
+              };
+              el.addEventListener("timeupdate", trim);
+            }}
+            src="/kling_20260501_作品__973_0 (1).mp4"
+            className="h-full w-full object-cover object-center"
+            autoPlay
+            muted
+            loop
+            playsInline
+          />
+          {/* Fade edges */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-[#030405] to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-[#030405] to-transparent" />
+        </motion.div>
+
+        {/* Content below video — still inside same dark section */}
+        <div className="container mx-auto pb-16 pt-10 text-center lg:pb-24">
+          <motion.p
+            {...reveal(0.15)}
+            className="mx-auto max-w-xl font-body text-lg leading-relaxed text-white/75 sm:text-xl"
+          >
+            Em um único dia, você vai sair com clareza jurídica, estratégias práticas e a segurança de quem sabe exatamente como proteger o que construiu.
+          </motion.p>
+
+          {/* Highlighted date/time block */}
+          <motion.div
+            {...reveal(0.22)}
+            className="mx-auto mt-12 w-full max-w-3xl overflow-hidden rounded-xl border border-[#dc2626]/25 bg-[#dc2626]/8"
+          >
+            <div className="grid grid-cols-3 divide-x divide-white/10">
+              <div className="flex flex-col items-center py-7">
+                <p className="font-ui text-[0.5rem] font-black uppercase tracking-[0.28em] text-[#dc2626]">Data</p>
+                <p className="mt-2 whitespace-nowrap font-display font-black uppercase text-white" style={{ fontSize: "clamp(1.4rem, 3.5vw, 2.5rem)" }}>10 JUN 2026</p>
               </div>
-            </div>
-
-            <div>
-              <p className="font-ui text-[0.65rem] tracking-[0.24em] text-[#ff7a1a]">NA JORNADA VOCE VAI APRENDER</p>
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                {learning.map(({ icon: Icon, title, text }, index) => (
-                  <motion.div key={title} {...reveal(0.04 * index)} className="rounded-lg border border-white/10 bg-white/[0.035] p-5">
-                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-md bg-[#ff6b1a] text-white">
-                      <Icon className="h-5 w-5" />
-                    </div>
-                    <h3 className="font-display text-xl font-bold text-white">{title}</h3>
-                    <p className="mt-2 text-left text-sm leading-relaxed text-white/62">{text}</p>
-                  </motion.div>
-                ))}
+              <div className="flex flex-col items-center py-7">
+                <p className="font-ui text-[0.5rem] font-black uppercase tracking-[0.28em] text-[#dc2626]">Horário</p>
+                <p className="mt-2 whitespace-nowrap font-display font-black uppercase text-white" style={{ fontSize: "clamp(1.4rem, 3.5vw, 2.5rem)" }}>16H — 18H</p>
+              </div>
+              <div className="flex flex-col items-center py-7">
+                <p className="font-ui text-[0.5rem] font-black uppercase tracking-[0.28em] text-[#dc2626]">Local</p>
+                <p className="mt-2 whitespace-nowrap font-display font-black uppercase text-white" style={{ fontSize: "clamp(1.4rem, 3.5vw, 2.5rem)" }}>RECIFE / PE</p>
               </div>
             </div>
           </motion.div>
         </div>
       </section>
 
-      <section className="relative overflow-hidden bg-[#0f0a0c] py-16 lg:py-24">
-        <div className="absolute inset-y-0 left-0 w-px bg-gradient-to-b from-transparent via-wine/40 to-transparent" />
+      {/* ── Benefits Grid (Bloco 4) ───────────────────── */}
+      <section className="bg-[#0a0a0a] py-20 lg:py-28">
         <div className="container mx-auto">
-          <motion.div {...reveal()} className="mb-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div>
-              <p className="font-ui text-[0.65rem] tracking-[0.24em] text-gold">OS TRÊS PILARES DO EVENTO</p>
-              <h2 className="mt-3 font-display text-4xl font-bold text-white md:text-5xl">Conteúdo para proteger, otimizar e conectar.</h2>
-            </div>
-            <button onClick={handleRegister} className="flex min-h-[48px] items-center justify-center gap-2 rounded-md px-6 font-ui text-xs font-bold text-white transition-transform hover:-translate-y-0.5" style={{ background: "#14b86f" }}>
-              QUERO PARTICIPAR
-              <ArrowRight className="h-4 w-4" />
-            </button>
+          <motion.div {...reveal()} className="mb-14 text-center">
+            <p className="mb-4 block text-center font-ui text-xs font-black uppercase tracking-[0.28em] text-[#dc2626]">
+              NA JORNADA VOCÊ VAI APRENDER
+            </p>
+            <h2 className="mx-auto max-w-2xl font-display text-4xl font-black uppercase leading-tight text-white sm:text-5xl">
+              Conteúdo para proteger,
+              <br />
+              otimizar e decidir.
+            </h2>
           </motion.div>
 
-          <div className="grid gap-4 md:grid-cols-3">
-            {pillars.map(({ icon: Icon, title, text }, index) => (
-              <motion.div key={title} {...reveal(index * 0.04)} className="rounded-lg border border-white/10 bg-black/40 p-5">
-                <div className="mb-5 flex items-center gap-3">
-                  <span className="font-display text-2xl font-bold text-[#ff6b1a]">{String(index + 1).padStart(2, "0")}</span>
-                  <div className="flex h-10 w-10 items-center justify-center rounded-md border border-gold/20 bg-gold/[0.08]">
-                    <Icon className="h-5 w-5 text-gold" />
-                  </div>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {benefits.map(({ icon: Icon, title, text }, index) => (
+              <motion.div
+                key={title}
+                {...reveal(index * 0.06)}
+                className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-7"
+              >
+                <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-md bg-[#dc2626]/12 text-[#dc2626]">
+                  <Icon className="h-5 w-5" />
                 </div>
-                <h3 className="font-display text-2xl font-bold leading-tight text-white">{title}</h3>
-                <p className="mt-3 text-left text-sm leading-relaxed text-white/68">{text}</p>
+                <h3 className="font-display text-xl font-bold text-white">{title}</h3>
+                <p className="mt-3 text-left text-sm leading-relaxed text-white/55">{text}</p>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      <section id="local" className="relative overflow-hidden bg-[#030405] py-16 lg:py-24">
-        <div className="container mx-auto">
-          <motion.div {...reveal()} className="mb-10 grid gap-6 lg:grid-cols-[1fr_auto] lg:items-end">
-            <div>
-              <p className="font-ui text-[0.65rem] tracking-[0.24em] text-[#ff7a1a]">LOCAL DO EVENTO</p>
-              <h2 className="mt-3 font-display text-4xl font-bold leading-[0.96] text-white md:text-5xl">
-                Estrutura presencial para conteudo, conexao e decisao.
-              </h2>
-              <div className="mt-6 rounded-lg border border-gold/15 bg-gold/[0.04] p-5">
-                <p className="flex items-center gap-2 font-ui text-[0.62rem] tracking-[0.18em] text-gold">
-                  <MapPin className="h-4 w-4" />
-                  RUA BUENOS AIRES, 80
-                </p>
-                <p className="mt-2 text-left text-sm leading-relaxed text-white/68">
-                  Espinheiro, Recife/PE. Ambiente pensado para aula, coffee break e networking entre empresarios.
-                </p>
-              </div>
-            </div>
-            <a
-              href="https://maps.google.com/?q=Rua+Buenos+Aires,+80,+Espinheiro,+Recife,+PE"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 self-start rounded-full border border-gold/25 px-4 py-2 font-ui text-[0.6rem] tracking-[0.18em] text-gold/75 transition-all duration-200 hover:border-gold/55 hover:text-gold lg:self-end"
-            >
-              <ExternalLink className="h-3.5 w-3.5" />
-              VER NO GOOGLE MAPS
-            </a>
-          </motion.div>
-
-          <motion.div {...reveal(0.05)} className="grid gap-3 lg:grid-cols-2">
-            <div className="grid grid-cols-2 gap-3">
-              {photos.map((photo, index) => (
-                <motion.div
-                  key={photo.src}
-                  {...reveal(index * 0.04)}
-                  className={`relative overflow-hidden rounded-lg border border-white/10 bg-black ${
-                    index === 0 ? "col-span-2 aspect-[16/7]" : "aspect-[4/3]"
-                  }`}
-                >
-                  <img
-                    src={photo.src}
-                    alt={photo.label}
-                    className="h-full w-full object-cover opacity-90 transition-transform duration-700 hover:scale-105"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/65 to-transparent" />
-                  <span className="absolute bottom-3 left-3 rounded bg-black/60 px-3 py-1 font-ui text-[0.55rem] tracking-[0.18em] text-white">
-                    {photo.label}
-                  </span>
-                </motion.div>
-              ))}
-            </div>
-
-            <div className="relative min-h-[320px] overflow-hidden rounded-lg border border-gold/15 bg-white/[0.02]">
-              <iframe
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3950.52154422001!2d-34.896043824992205!3d-8.048160591979087!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x7ab18efa5548081%3A0x79afe9f082d5c50a!2sR.%20Buenos%20Aires%2C%2080%20-%20Espinheiro%2C%20Recife%20-%20PE%2C%2052020-180!5e0!3m2!1sen!2sbr!4v1777490901503!5m2!1sen!2sbr"
-                className="absolute inset-0 h-full w-full"
-                style={{ filter: "grayscale(1) invert(1) brightness(0.85) contrast(1.05)" }}
-                loading="lazy"
-                title="Local do evento"
-                referrerPolicy="no-referrer-when-downgrade"
-                allowFullScreen
-              />
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-4 py-3">
-                <p className="font-body text-xs text-white/80">
-                  Rua Buenos Aires, 80 &middot; Espinheiro &middot; Recife/PE
-                </p>
-              </div>
-            </div>
-          </motion.div>
+      {/* ── Full-width Image Break (Bloco 5) ─────────── */}
+      <div className="relative h-[340px] w-full overflow-hidden sm:h-[420px]">
+        <img
+          src="/local_do_evento/auditorio.jpg"
+          alt="Auditório do evento Segurança Jurídica 360"
+          className="h-full w-full object-cover brightness-[0.4] grayscale"
+        />
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          <p className="font-ui text-[0.6rem] uppercase tracking-[0.4em] text-white/50">
+            O AMBIENTE
+          </p>
+          <p className="mt-3 text-center font-display font-black uppercase leading-tight text-white"
+            style={{ fontSize: "clamp(2rem, 6vw, 4.5rem)" }}
+          >
+            Espaço criado para
+            <br />
+            decisão e resultado.
+          </p>
         </div>
-      </section>
+      </div>
 
-      <section id="palestrantes" className="relative overflow-hidden bg-[#080508] py-16 lg:py-24">
+      {/* ── Speakers Grid (Bloco 6) ───────────────────── */}
+      <section id="palestrantes" className="bg-[#080808] py-20 lg:py-28">
         <div className="container mx-auto">
-          <motion.div {...reveal()} className="mx-auto mb-12 max-w-2xl text-center">
-            <p className="font-ui text-[0.65rem] tracking-[0.24em] text-gold">CONHECA SEUS MENTORES</p>
-            <h2 className="mt-3 font-display text-4xl font-bold text-white md:text-5xl">Especialistas no palco.</h2>
+          <motion.div {...reveal()} className="mb-14 text-center">
+            <p className="mb-4 block text-center font-ui text-xs font-black uppercase tracking-[0.28em] text-[#dc2626]">
+              CONHEÇA SEUS MENTORES
+            </p>
+            <h2 className="font-display text-4xl font-black uppercase text-white sm:text-5xl">
+              Especialistas no palco.
+            </h2>
           </motion.div>
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {speakers.map((speaker, index) => (
               <motion.article
                 key={speaker.name}
-                {...reveal(index * 0.06)}
-                className="group overflow-hidden rounded-lg border border-white/10 bg-black transition-colors hover:border-gold/30 hover:bg-gold/[0.03]"
+                {...reveal(index * 0.07)}
+                className="overflow-hidden rounded-lg border border-[#2a2a2a] bg-[#111111]"
               >
-                <div className="h-0.5 w-full bg-gradient-to-r from-gold via-gold/60 to-transparent" />
-                <div className="relative aspect-[3/4] overflow-hidden">
-                  <img src={speaker.photo} alt={speaker.name} className="h-full w-full object-cover object-top transition-transform duration-700 group-hover:scale-105" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/15 to-transparent" />
-                  <span className="absolute left-3 top-3 inline-block rounded-sm border border-gold/30 bg-gold/10 px-2 py-0.5 font-ui text-[0.6rem] tracking-widest text-gold uppercase">
-                    {speaker.badge}
-                  </span>
-                  <div className="absolute bottom-0 left-0 right-0 p-4">
-                    <h3 className="font-display text-2xl font-bold text-white">{speaker.name}</h3>
-                    <p className="font-ui text-[0.58rem] tracking-[0.16em] text-[#ff7a1a]">{speaker.role}</p>
-                  </div>
+                <div className="relative aspect-square overflow-hidden">
+                  <img
+                    src={speaker.photo}
+                    alt={speaker.name}
+                    className="h-full w-full object-cover object-top grayscale transition-[filter] duration-500 hover:grayscale-0"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-transparent to-transparent" />
                 </div>
-                <p className="p-4 text-left text-sm leading-relaxed text-white/62">{speaker.text}</p>
+                <div className="p-5">
+                  <p className="font-display text-xl font-bold text-white">{speaker.name}</p>
+                  <p className="font-ui text-[0.58rem] uppercase tracking-[0.18em] text-[#dc2626]">
+                    {speaker.role}
+                  </p>
+                  <p className="mt-3 text-left text-sm leading-relaxed text-white/50">
+                    {speaker.text}
+                  </p>
+                </div>
               </motion.article>
             ))}
           </div>
         </div>
       </section>
 
-      <section id="inscricao" className="relative overflow-hidden bg-[#0a050b] py-16 lg:py-24">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_50%,rgba(201,168,76,0.06),transparent)]" />
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-gold/40 to-transparent" />
-        <div className="container relative z-10 mx-auto">
-          <motion.div {...reveal()} className="mx-auto mb-8 flex max-w-5xl items-center justify-center gap-3 rounded-lg border border-gold/30 bg-gold/[0.06] px-6 py-3">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-gold" />
-            <p className="font-ui text-sm font-bold tracking-wide text-gold uppercase">
-              Vagas limitadas &mdash; ultimas oportunidades de inscricao
+      {/* ── Checklist (Bloco 7) ───────────────────────── */}
+      <section className="bg-[#050505] py-20 lg:py-28">
+        <div className="container mx-auto">
+          <div className="mx-auto max-w-3xl">
+            <motion.div {...reveal()} className="mb-12 text-center">
+              <p className="mb-4 block text-center font-ui text-xs font-black uppercase tracking-[0.28em] text-[#dc2626]">
+                O QUE VOCÊ VAI SAIR SABENDO
+              </p>
+              <h2 className="font-display text-4xl font-black uppercase leading-tight text-white sm:text-5xl">
+                Seis pontos que vão
+                <br />
+                mudar sua gestão.
+              </h2>
+            </motion.div>
+
+            <ul className="space-y-5">
+              {checklist.map((item, index) => (
+                <motion.li
+                  key={item}
+                  {...reveal(index * 0.06)}
+                  className="flex items-start gap-4 border-b border-white/5 pb-5 last:border-0 last:pb-0"
+                >
+                  <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#dc2626] text-white">
+                    <svg className="h-3.5 w-3.5" viewBox="0 0 14 14" fill="none">
+                      <path
+                        d="M2 7l4 4 6-7"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    </svg>
+                  </span>
+                  <p className="font-body text-base leading-relaxed text-white/75">{item}</p>
+                </motion.li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Pricing Card (Bloco 8) ────────────────────── */}
+      <section id="inscricao" className="bg-[#0a0a0a] py-20 lg:py-28">
+        <div className="container mx-auto">
+          <motion.div {...reveal()} className="mb-12 text-center">
+            <p className="mb-4 block text-center font-ui text-xs font-black uppercase tracking-[0.28em] text-[#dc2626]">
+              INSCRIÇÃO ABERTA
             </p>
+            <h2 className="font-display text-4xl font-black uppercase text-white sm:text-5xl">
+              Garanta sua vaga.
+            </h2>
           </motion.div>
 
-          <motion.div {...reveal(0.05)} className="mx-auto grid max-w-5xl overflow-hidden rounded-xl border border-gold/25 bg-black shadow-[0_44px_120px_-36px_rgba(0,0,0,1)] lg:grid-cols-[1fr_0.76fr]">
-            <div className="relative min-h-[360px] p-8 sm:p-10">
-              <img src="/local_do_evento/ambiente_coffee.jpg" alt="Ambiente do evento" className="absolute inset-0 h-full w-full object-cover opacity-42" />
-              <div className="absolute inset-0 bg-gradient-to-r from-black via-black/86 to-black/45" />
-              <div className="relative z-10">
-                <p className="font-ui text-[0.65rem] tracking-[0.24em] text-gold">INSCRICAO ABERTA</p>
-                <h2 className="mt-4 font-display text-5xl font-bold leading-[0.92] text-white md:text-6xl">
-                  Garanta sua vaga no Seguranca Juridica 360.
-                </h2>
-                <ul className="mt-8 grid gap-3 sm:grid-cols-2">
-                  {["Conteudo presencial", "Coffee break incluso", "Networking direcionado", "Confirmacao por e-mail"].map((item) => (
-                    <li key={item} className="flex items-center gap-2 text-sm font-semibold text-white/78">
-                      <CheckCircle2 className="h-4 w-4 text-[#14b86f]" />
+          <motion.div {...reveal(0.08)} className="mx-auto max-w-md">
+            <div className="overflow-hidden rounded-xl border border-[#dc2626]/30 bg-[#1a1a1a] shadow-[0_0_60px_-20px_rgba(220,38,38,0.3)]">
+              <div className="bg-[#dc2626] px-8 py-4 text-center">
+                <p className="font-ui text-[0.65rem] font-black uppercase tracking-[0.28em] text-white">
+                  INGRESSO ÚNICO
+                </p>
+              </div>
+
+              <div className="px-8 py-8 text-center">
+                <p className="mb-2 font-ui text-[0.58rem] uppercase tracking-[0.18em] text-white/35">
+                  INVESTIMENTO
+                </p>
+                <div className="flex items-start justify-center gap-1">
+                  <span className="mt-3 font-display text-2xl font-bold text-white/50">R$</span>
+                  <span className="font-display text-8xl font-black leading-none text-white">
+                    {price}
+                  </span>
+                </div>
+                <p className="mt-2 font-ui text-[0.58rem] uppercase tracking-[0.14em] text-white/35">
+                  pagamento único
+                </p>
+              </div>
+
+              <div className="border-t border-white/5 px-8 pb-2 pt-6">
+                <ul className="space-y-3">
+                  {[
+                    "Conteúdo presencial exclusivo",
+                    "Coffee break completo",
+                    "Networking direcionado",
+                    "Material de apoio",
+                    "Confirmação por e-mail",
+                  ].map((item) => (
+                    <li key={item} className="flex items-center gap-3 text-sm text-white/65">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#dc2626]/15 text-[#dc2626]">
+                        <svg className="h-3 w-3" viewBox="0 0 12 12" fill="none">
+                          <path
+                            d="M2 6l3 3 5-5"
+                            stroke="currentColor"
+                            strokeWidth="1.5"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                          />
+                        </svg>
+                      </span>
                       {item}
                     </li>
                   ))}
                 </ul>
               </div>
-            </div>
 
-            <div className="border-t border-white/10 bg-[#120a05] p-8 sm:p-10 lg:border-l lg:border-t-0">
-              <p className="font-ui text-[0.62rem] tracking-[0.2em] text-white/50">INVESTIMENTO</p>
-              <div className="mt-3 flex items-end gap-2">
-                <span className="font-display text-2xl text-gold">R$</span>
-                <span className="font-display text-7xl font-bold leading-none text-white">{price}</span>
-                <span className="mb-2 font-display text-2xl text-white/45">,00</span>
+              <div className="px-8 py-8">
+                <button
+                  onClick={handleRegister}
+                  className="flex min-h-[54px] w-full items-center justify-center gap-2 rounded-md bg-[#dc2626] font-ui text-sm font-black uppercase tracking-[0.06em] text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#b91c1c] hover:shadow-[0_18px_44px_-10px_rgba(220,38,38,0.6)]"
+                >
+                  GARANTIR MINHA VAGA
+                  <ArrowRight className="h-4 w-4" />
+                </button>
+                <p className="mt-3 text-center font-ui text-[0.55rem] uppercase tracking-[0.14em] text-white/25">
+                  10 de junho · 16h às 18h · Recife/PE
+                </p>
               </div>
-              <p className="mt-2 flex items-center gap-1.5 font-ui text-xs tracking-wider text-text-muted">
-                <Clock className="h-3.5 w-3.5 text-gold" />
-                Inscricoes encerram em <strong className="text-gold">10 de junho as 14h</strong>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ── Location Info + Map (Bloco 9) ─────────────── */}
+      <section id="local" className="bg-[#050505] py-20 lg:py-28">
+        <div className="container mx-auto">
+          <motion.div {...reveal()} className="mb-12 text-center">
+            <p className="mb-4 block text-center font-ui text-xs font-black uppercase tracking-[0.28em] text-[#dc2626]">
+              LOCAL DO EVENTO
+            </p>
+            <h2 className="font-display text-4xl font-black uppercase text-white sm:text-5xl">
+              Onde acontece.
+            </h2>
+          </motion.div>
+
+          <motion.div {...reveal(0.06)} className="grid gap-8 lg:grid-cols-2">
+            <div className="flex flex-col justify-center">
+              <p className="font-ui text-[0.58rem] uppercase tracking-[0.24em] text-white/35">
+                ENDEREÇO
               </p>
-              <div className="mt-7 space-y-3">
+              <h3 className="mt-3 font-display text-3xl font-bold text-white">
+                Rua Buenos Aires, 80
+              </h3>
+              <p className="mt-1 font-body text-base text-white/50">
+                Espinheiro, Recife — Pernambuco
+              </p>
+
+              <div className="mt-8 space-y-4">
                 {[
-                  { icon: CalendarDays, text: "10 de junho de 2026, das 16h as 18h" },
-                  { icon: MapPin, text: "Rua Buenos Aires, 80 - Espinheiro" },
-                  { icon: Coffee, text: "Coffee break e networking presencial" },
-                  { icon: BriefcaseBusiness, text: "Conteudo para empresarios e gestores" },
+                  { icon: CalendarDays, text: "10 de junho de 2026" },
+                  { icon: Clock, text: "16h às 18h (horário de Brasília)" },
+                  { icon: Coffee, text: "Coffee break e networking inclusos" },
+                  { icon: BriefcaseBusiness, text: "Ambiente para empresários e gestores" },
                 ].map(({ icon: Icon, text }) => (
-                  <div key={text} className="flex items-start gap-3 rounded-md border border-white/8 bg-white/[0.035] p-3">
-                    <Icon className="mt-0.5 h-4 w-4 shrink-0 text-gold" />
-                    <span className="text-sm leading-relaxed text-white/72">{text}</span>
+                  <div key={text} className="flex items-start gap-3">
+                    <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-[#dc2626]/10 text-[#dc2626]">
+                      <Icon className="h-4 w-4" />
+                    </div>
+                    <p className="pt-1 text-sm leading-relaxed text-white/60">{text}</p>
                   </div>
                 ))}
               </div>
-              <button onClick={handleRegister} className="mt-7 flex min-h-[54px] w-full items-center justify-center gap-2 rounded-md font-ui text-sm font-bold text-white transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_44px_-10px_rgba(0,220,120,0.65)]" style={{ background: "#14b86f" }}>
-                GARANTIR MINHA VAGA
-                <ArrowRight className="h-4 w-4" />
-              </button>
+
+              <a
+                href="https://maps.google.com/?q=Rua+Buenos+Aires,+80,+Espinheiro,+Recife,+PE"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-8 inline-flex items-center gap-2 font-ui text-[0.6rem] uppercase tracking-[0.2em] text-[#dc2626] transition-colors hover:text-red-400"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                VER NO GOOGLE MAPS
+              </a>
             </div>
+
+            <div className="relative min-h-[320px] overflow-hidden rounded-lg border border-white/8">
+              <iframe
+                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3950.52154422001!2d-34.896043824992205!3d-8.048160591979087!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x7ab18efa5548081%3A0x79afe9f082d5c50a!2sR.%20Buenos%20Aires%2C%2080%20-%20Espinheiro%2C%20Recife%20-%20PE%2C%2052020-180!5e0!3m2!1sen!2sbr!4v1777490901503!5m2!1sen!2sbr"
+                className="absolute inset-0 h-full w-full"
+                style={{ filter: "grayscale(1) invert(1) brightness(0.8) contrast(1.1)" }}
+                loading="lazy"
+                title="Local do evento Segurança Jurídica 360"
+                referrerPolicy="no-referrer-when-downgrade"
+                allowFullScreen
+              />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 to-transparent px-4 py-3">
+                <p className="font-body text-xs text-white/70">
+                  Rua Buenos Aires, 80 · Espinheiro · Recife/PE
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ── FAQ Accordion (Bloco 10) ───────────────────── */}
+      <section className="bg-[#0a0a0a] py-20 lg:py-28">
+        <div className="container mx-auto">
+          <motion.div {...reveal()} className="mb-12 text-center">
+            <p className="mb-4 block text-center font-ui text-xs font-black uppercase tracking-[0.28em] text-[#dc2626]">
+              DÚVIDAS FREQUENTES
+            </p>
+            <h2 className="font-display text-4xl font-black uppercase text-white sm:text-5xl">
+              Perguntas e Respostas.
+            </h2>
+          </motion.div>
+
+          <div className="mx-auto max-w-[700px]">
+            {faqItems.map((item, index) => (
+              <motion.div
+                key={item.q}
+                {...reveal(index * 0.05)}
+                className="border-b border-white/8"
+              >
+                <button
+                  onClick={() => setOpenFaq(openFaq === index ? null : index)}
+                  className="flex w-full items-center justify-between gap-4 py-5 text-left"
+                >
+                  <span className="font-body text-base font-semibold text-white/80">{item.q}</span>
+                  <ChevronDown
+                    className={`h-5 w-5 shrink-0 text-[#dc2626] transition-transform duration-200 ${
+                      openFaq === index ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+                {openFaq === index && (
+                  <div className="pb-5">
+                    <p className="font-body text-sm leading-relaxed text-white/50">{item.a}</p>
+                  </div>
+                )}
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Final CTA ─────────────────────────────────── */}
+      <section className="bg-[#0d0000] py-20 lg:py-28">
+        <div className="container mx-auto text-center">
+          <motion.div {...reveal()}>
+            <p className="mb-4 block text-center font-ui text-xs font-black uppercase tracking-[0.28em] text-[#dc2626]">
+              NÃO PERCA A OPORTUNIDADE
+            </p>
+            <h2 className="mx-auto max-w-2xl font-display text-4xl font-black uppercase leading-tight text-white sm:text-5xl">
+              Uma decisão que protege
+              <br />
+              <span className="text-[#dc2626]">sua empresa por anos.</span>
+            </h2>
+            <p className="mx-auto mt-6 max-w-lg font-body text-base leading-relaxed text-white/50">
+              10 de junho de 2026 · Recife/PE · Vagas limitadas
+            </p>
+            <button
+              onClick={handleRegister}
+              className="group mt-10 inline-flex min-h-[56px] items-center justify-center gap-2 rounded-md bg-[#dc2626] px-10 font-ui text-sm font-black uppercase tracking-[0.08em] text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#b91c1c] hover:shadow-[0_18px_44px_-10px_rgba(220,38,38,0.55)]"
+            >
+              GARANTIR MINHA VAGA AGORA
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+            </button>
           </motion.div>
         </div>
       </section>

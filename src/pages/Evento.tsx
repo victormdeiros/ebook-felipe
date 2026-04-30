@@ -10,6 +10,19 @@ import { gtmPush, trackPageView } from "@/lib/tracking";
 
 const Evento = () => {
   useEffect(() => {
+    document.title = "Segurança Jurídica 360° – Evento";
+
+    const favicon = document.querySelector<HTMLLinkElement>("link[rel='icon']");
+    const originalHref = favicon?.href ?? "/icon-manual.png";
+    if (favicon) favicon.href = "/logo_seguran\u00e7a_juridica-removebg-preview.png";
+
+    return () => {
+      document.title = "Manual do Empregador – E-book";
+      if (favicon) favicon.href = originalHref;
+    };
+  }, []);
+
+  useEffect(() => {
     const cleanup = trackPageView();
     gtmPush({
       event: "view_item",
@@ -36,10 +49,10 @@ const Evento = () => {
         Pular para o conteudo principal
       </a>
 
-      <StickyHeader variant="event" />
+      <EventCountdown />
+      <StickyHeader variant="event" topOffset={48} />
       <main id="main-content">
         <EventHeroSection />
-        <EventCountdown />
         <EventLandingSections />
         <FooterSection />
       </main>

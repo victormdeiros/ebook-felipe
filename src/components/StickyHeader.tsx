@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Menu, ShoppingCart, X } from "lucide-react";
 import iconManual from "@/assets/icon- manual do empregador.png";
+const iconEventoSrc = "/logo_segurança_juridica-removebg-preview.png";
 import { useCart } from "@/contexts/CartContext";
 import CartDrawer from "@/components/CartDrawer";
 
@@ -21,7 +22,7 @@ const NAV_ITEMS = {
   ],
 };
 
-const StickyHeader = ({ variant = "ebook" }: { variant?: HeaderVariant }) => {
+const StickyHeader = ({ variant = "ebook", topOffset = 0 }: { variant?: HeaderVariant; topOffset?: number }) => {
   const [scrolled, setScrolled] = useState(false);
   const [progress, setProgress] = useState(0);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -66,32 +67,25 @@ const StickyHeader = ({ variant = "ebook" }: { variant?: HeaderVariant }) => {
   return (
     <>
       <header
-        className={`fixed left-0 right-0 top-0 z-50 transition-all duration-300 ${
+        style={{ top: `${topOffset}px` }}
+        className={`fixed left-0 right-0 z-50 transition-all duration-300 ${
           scrolled
             ? "bg-background/95 shadow-[0_1px_0_rgba(200,121,124,0.08)] backdrop-blur-md"
             : "bg-background/60 backdrop-blur-sm"
         }`}
       >
-        {isEvent && (
-          <div className="bg-wine py-1.5 text-center">
-            <p className="font-ui text-[0.62rem] font-black tracking-[0.2em] uppercase text-white/90">
-              Ultimas vagas disponiveis &mdash; Evento dia 10/06 em Recife
-            </p>
-          </div>
-        )}
-
         <div
-          className="absolute left-0 h-[2px] bg-wine transition-all duration-100"
-          style={{ width: `${progress}%`, top: isEvent ? "1.85rem" : "0" }}
+          className="absolute left-0 top-0 h-[2px] bg-wine transition-all duration-100"
+          style={{ width: `${progress}%` }}
           aria-hidden="true"
         />
 
         <div className={`container mx-auto flex items-center justify-between px-6 transition-all duration-300 lg:px-12 ${scrolled ? "py-3" : "py-4"}`}>
-          <a href={isEvent ? "/evento" : "/ebook"} aria-label="Manual do Empregador - inicio" className="flex items-center gap-2.5">
+          <a href={isEvent ? "/evento" : "/ebook"} aria-label={isEvent ? "Segurança Jurídica 360 - início" : "Manual do Empregador - inicio"} className="flex items-center gap-2.5">
             <img
-              src={iconManual}
-              alt="Manual do Empregador"
-              className={`shrink-0 object-contain transition-all duration-300 ${scrolled ? "h-8" : "h-10"}`}
+              src={isEvent ? iconEventoSrc : iconManual}
+              alt={isEvent ? "Segurança Jurídica 360°" : "Manual do Empregador"}
+              className={`shrink-0 object-contain transition-all duration-300 ${isEvent ? (scrolled ? "h-10" : "h-14") : (scrolled ? "h-8" : "h-10")}`}
             />
           </a>
 
