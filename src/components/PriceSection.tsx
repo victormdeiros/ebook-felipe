@@ -98,8 +98,8 @@ const PriceSection = () => {
               de R$ {ebookPriceOriginal},00
             </p>
             <p className="text-wine" style={{ fontSize: "20px", margin: "4px 0" }} aria-hidden="true">↓</p>
-            <p className="font-display text-off-white" style={{ fontSize: "62px", lineHeight: 1, marginBottom: "4px" }}>
-              R$ {ebookPrice},00
+            <p className="font-display text-off-white flex items-start justify-center" style={{ fontSize: "62px", lineHeight: 1, marginBottom: "4px" }}>
+              R$ {ebookPrice}<span style={{ fontSize: "28px", lineHeight: 1, marginTop: "8px" }}>,00</span>
             </p>
             <p className="font-body mb-6" style={{ fontSize: "13px", color: "#a79797" }}>
               Manual do Empregador — PDF

@@ -388,6 +388,7 @@ const EventLandingSections = () => {
                   <span className="font-display text-8xl font-black leading-none text-white">
                     {price}
                   </span>
+                  <span className="mt-3 font-display text-2xl font-bold text-white/50">,00</span>
                 </div>
                 <p className="mt-2 font-ui text-[0.58rem] uppercase tracking-[0.14em] text-white/35">
                   pagamento único
