@@ -2129,6 +2129,53 @@ const ConfiguracoesTab = () => {
           <p className="mt-1 text-white/40">Arquivos: <code className="bg-white/5 px-1 rounded">001_init.sql</code> e <code className="bg-white/5 px-1 rounded">002_orders.sql</code></p>
         </div>
       </div>
+
+      {/* Gatilhos GTM / Pixel */}
+      <div className="surface-card rounded-xl p-5 sm:p-6 space-y-5">
+        <div className="flex items-center gap-3 pb-4 border-b border-white/5">
+          <div className="w-8 h-8 rounded-md bg-wine/10 border border-wine/20 flex items-center justify-center">
+            <MousePointer2 className="w-4 h-4 text-wine" strokeWidth={1.5} />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-display text-lg font-semibold text-foreground">Gatilhos de Rastreamento (GTM/Pixel)</h3>
+            <p className="text-text-muted font-body text-xs">IDs das seções e formulários para facilitar a configuração</p>
+          </div>
+        </div>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="rounded-xl border border-white/10 bg-background p-4 space-y-4">
+            <div className="flex items-center gap-2 border-b border-white/5 pb-2 mb-2">
+              <BookOpen className="w-4 h-4 text-text-muted" />
+              <h4 className="font-semibold text-sm text-foreground">Página do E-book</h4>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <p className="text-text-muted text-[11px] mb-1 uppercase tracking-wider">Formulário de Lead (Contato)</p>
+                <code className="text-xs text-wine bg-wine/10 border border-wine/20 rounded px-2 py-1 select-all block text-center">form-lead-ebook</code>
+              </div>
+              <div>
+                <p className="text-text-muted text-[11px] mb-1 uppercase tracking-wider">Formulário de Checkout</p>
+                <code className="text-xs text-gold bg-gold/10 border border-gold/20 rounded px-2 py-1 select-all block text-center">form-checkout-ebook</code>
+              </div>
+            </div>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-background p-4 space-y-4">
+            <div className="flex items-center gap-2 border-b border-white/5 pb-2 mb-2">
+              <CalendarDays className="w-4 h-4 text-text-muted" />
+              <h4 className="font-semibold text-sm text-foreground">Página do Evento</h4>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <p className="text-text-muted text-[11px] mb-1 uppercase tracking-wider">Formulário de Lead (Inscrição)</p>
+                <code className="text-xs text-wine bg-wine/10 border border-wine/20 rounded px-2 py-1 select-all block text-center">form-lead-evento</code>
+              </div>
+              <div>
+                <p className="text-text-muted text-[11px] mb-1 uppercase tracking-wider">Formulário de Checkout</p>
+                <code className="text-xs text-gold bg-gold/10 border border-gold/20 rounded px-2 py-1 select-all block text-center">form-checkout-evento</code>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

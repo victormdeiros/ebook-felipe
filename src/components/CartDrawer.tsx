@@ -412,7 +412,7 @@ const CartDrawer = () => {
                       <span className="text-[0.65rem] font-ui text-text-muted/60 bg-white/[0.03] border border-white/8 rounded px-2 py-1">1×</span>
                     </div>
                     {/* Brick container */}
-                    <div className="relative min-h-[200px]">
+                    <div id={cartItem?.id === "ebook" ? "form-checkout-ebook" : "form-checkout-evento"} className="relative min-h-[200px]">
                       {brickLoading && (
                         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 z-10 rounded-xl bg-[#0c0709]">
                           <Loader2 className="w-6 h-6 text-gold animate-spin" />

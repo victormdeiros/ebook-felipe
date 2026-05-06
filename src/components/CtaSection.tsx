@@ -130,7 +130,7 @@ const CtaSection = () => {
                 </button>
               </div>
             ) : (
-              <form onSubmit={handleSubmit} noValidate className="space-y-5">
+              <form id="form-lead-ebook" onSubmit={handleSubmit} noValidate className="space-y-5">
                 {/* Nome */}
                 <div>
                   <label htmlFor="name" className={labelBase}>

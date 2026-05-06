@@ -422,8 +422,9 @@ const EventLandingSections = () => {
                 </ul>
               </div>
 
-              <div className="px-8 py-8">
+              <div id="form-lead-evento" className="px-8 py-8">
                 <button
+                  id="btn-add-cart-evento"
                   onClick={handleRegister}
                   className="flex min-h-[54px] w-full items-center justify-center gap-2 rounded-md bg-[#dc2626] font-ui text-sm font-black uppercase tracking-[0.06em] text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#b91c1c] hover:shadow-[0_18px_44px_-10px_rgba(220,38,38,0.6)]"
                 >

@@ -79,6 +79,7 @@ const EbookPriceSection = () => {
             <p className="mt-3 text-sm text-text-muted">Manual do Empregador - PDF</p>
 
             <button
+              id="btn-add-cart-ebook"
               onClick={handleAddToCart}
               className="mt-8 flex min-h-[54px] w-full items-center justify-center rounded-xl px-6 font-ui text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_18px_44px_-10px_rgba(201,168,76,0.55)]"
               style={{ background: "#2d7a4f" }}
