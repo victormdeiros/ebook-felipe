@@ -452,6 +452,7 @@ const CartDrawer = () => {
                       <span className="text-[0.65rem] font-ui text-text-muted/60 bg-white/[0.03] border border-white/8 rounded px-2 py-1">1×</span>
                     </div>
 
+                    <form id={checkoutTarget === "ebook" ? "form-lead-ebook" : "form-lead-evento"} onSubmit={e => { e.preventDefault(); handleFormSubmit(); }} noValidate className="space-y-4">
                     {/* Name */}
                     <div>
                       <label className="block font-ui text-[0.62rem] tracking-[0.1em] text-off-white/60 mb-1.5 uppercase">Nome completo</label>
@@ -459,7 +460,6 @@ const CartDrawer = () => {
                         type="text"
                         value={form.name}
                         onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-                        onKeyDown={e => e.key === "Enter" && handleFormSubmit()}
                         placeholder="Ex: João da Silva"
                         autoComplete="name"
                         className={`w-full rounded-lg border px-3.5 py-2.5 text-sm text-off-white placeholder:text-text-muted focus:outline-none transition-all duration-200 ${formErrors.name ? "border-red-400/50" : "border-white/10 focus:border-gold/40"}`}
@@ -475,7 +475,6 @@ const CartDrawer = () => {
                         type="email"
                         value={form.email}
                         onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
-                        onKeyDown={e => e.key === "Enter" && handleFormSubmit()}
                         placeholder="joao@email.com"
                         autoComplete="email"
                         className={`w-full rounded-lg border px-3.5 py-2.5 text-sm text-off-white placeholder:text-text-muted focus:outline-none transition-all duration-200 ${formErrors.email ? "border-red-400/50" : "border-white/10 focus:border-gold/40"}`}
@@ -491,7 +490,6 @@ const CartDrawer = () => {
                         type="tel"
                         value={form.phone}
                         onChange={e => setForm(p => ({ ...p, phone: e.target.value }))}
-                        onKeyDown={e => e.key === "Enter" && handleFormSubmit()}
                         placeholder="(81) 99999-9999"
                         autoComplete="tel"
                         className={`w-full rounded-lg border px-3.5 py-2.5 text-sm text-off-white placeholder:text-text-muted focus:outline-none transition-all duration-200 ${formErrors.phone ? "border-red-400/50" : "border-white/10 focus:border-gold/40"}`}
@@ -503,6 +501,7 @@ const CartDrawer = () => {
                     <p className="text-[0.62rem] text-text-muted font-body leading-relaxed">
                       Seus dados são usados para confirmar a compra e envio do material. Nunca compartilhamos suas informações.
                     </p>
+                    </form>
                   </motion.div>
                 ) : (
                   <motion.div
@@ -632,7 +631,8 @@ const CartDrawer = () => {
                   <>
                     <motion.button
                       whileTap={{ scale: 0.98 }}
-                      onClick={handleFormSubmit}
+                      type="submit"
+                      form={checkoutTarget === "ebook" ? "form-lead-ebook" : "form-lead-evento"}
                       disabled={isLoadingEbook || isLoadingEvent}
                       aria-busy={isLoadingEbook || isLoadingEvent}
                       className="relative w-full flex items-center justify-center gap-2 min-h-[48px] rounded-xl font-ui font-bold text-sm text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(201,168,76,0.5)] overflow-hidden group disabled:opacity-70 disabled:cursor-not-allowed disabled:hover:translate-y-0 disabled:hover:shadow-none" style={{ background: '#2d7a4f' }} onMouseEnter={e => { if(!(e.currentTarget as HTMLButtonElement).disabled)(e.currentTarget as HTMLButtonElement).style.background='#c9a84c' }} onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background='#2d7a4f'}
