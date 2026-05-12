@@ -48,7 +48,7 @@ jobs:
               VITE_API_URL="" \
               VITE_MP_SANDBOX="false"
 
-            AUTH_REPO="https://x-access-token:${{ secrets.GITHUB_DOKKU_TOKEN }}@github.com/${{ github.repository }}.git"
+            AUTH_REPO="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
 
             detect_lock() {
               printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | grep -Eq "deploy lock in place|app is currently locked|deploy lock"
