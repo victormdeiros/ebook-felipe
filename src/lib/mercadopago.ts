@@ -30,14 +30,15 @@ export class MPNotConfiguredError extends Error {
  * Cria uma preferência de pagamento no backend e retorna as URLs de checkout.
  *
  * @param product - "ebook" (padrão) ou "event"
- * @throws {MPNotConfiguredError} quando VITE_API_URL não está definida
+ * @throws {MPNotConfiguredError} quando VITE_API_URL não foi definida
+ *   (string vazia é tratada como same-origin — backend no mesmo host).
  * @throws {Error} para erros da API
  */
 export const createMPPreference = async (
   product: "ebook" | "event" = "ebook",
   payer?: { name: string; email: string; phone: string }
 ): Promise<MPPreferenceResult> => {
-  if (!API_URL) {
+  if (import.meta.env.VITE_API_URL === undefined) {
     throw new MPNotConfiguredError();
   }
 
@@ -81,7 +82,7 @@ export const getMPStatus = async (): Promise<{
   public_key: string | null;
   products: { ebook: { price: number }; event: { price: number } };
 } | null> => {
-  if (!API_URL) return null;
+  if (import.meta.env.VITE_API_URL === undefined) return null;
   try {
     const res = await fetch(`${API_URL}/api/mp/status`);
     if (!res.ok) return null;
