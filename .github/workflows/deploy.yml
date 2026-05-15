@@ -15,10 +15,18 @@ jobs:
     steps:
       - name: Trigger Dokku deploy
         uses: appleboy/ssh-action@v1.2.0
+        env:
+          VPS_OS_PASSWORD: ${{ secrets.VPS_OS_PASSWORD }}
+          APP_DATABASE_URL: ${{ secrets.APP_DATABASE_URL }}
+          APP_ADMIN_TOKEN: ${{ secrets.APP_ADMIN_TOKEN }}
+          APP_MP_ACCESS_TOKEN: ${{ secrets.APP_MP_ACCESS_TOKEN }}
+          APP_MP_PUBLIC_KEY: ${{ secrets.APP_MP_PUBLIC_KEY }}
+          APP_SITE_URL: ${{ secrets.APP_SITE_URL }}
         with:
           host: 157.173.118.98
           username: converseia
           password: ${{ secrets.VPS_OS_PASSWORD }}
+          envs: VPS_OS_PASSWORD,APP_DATABASE_URL,APP_ADMIN_TOKEN,APP_MP_ACCESS_TOKEN,APP_MP_PUBLIC_KEY,APP_SITE_URL
           script_stop: true
           script: |
             COMMIT_NAME=$(printf '%s' "${{ github.event.head_commit.message }}" | head -n 1)
@@ -26,7 +34,7 @@ jobs:
             if [ -z "$COMMIT_NAME" ]; then COMMIT_NAME="${{ github.sha }}"; fi
             if [ -z "$COMMIT_DATE" ]; then COMMIT_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ); fi
 
-            echo ${{ secrets.VPS_OS_PASSWORD }} | sudo -S dokku config:set --no-restart ebookfelipelopesadv \
+            printf '%s\n' "$VPS_OS_PASSWORD" | sudo -S dokku config:set --no-restart ebookfelipelopesadv \
               DEPLOYED_BRANCH=main \
               DEPLOYED_REPO_URL=https://github.com/${{ github.repository }}.git \
               DEPLOYED_COMMIT_SHA=${{ github.sha }} \
@@ -34,19 +42,31 @@ jobs:
               DEPLOYED_COMMIT_URL=https://github.com/${{ github.repository }}/commit/${{ github.sha }} \
               DEPLOYED_COMMIT_DATE="$COMMIT_DATE"
 
-            # Set required application environment variables from GitHub Secrets
-            echo ${{ secrets.VPS_OS_PASSWORD }} | sudo -S dokku config:set --no-restart ebookfelipelopesadv \
-              DATABASE_URL="${{ secrets.APP_DATABASE_URL }}" \
-              ADMIN_TOKEN="${{ secrets.APP_ADMIN_TOKEN }}" \
-              MP_ACCESS_TOKEN="${{ secrets.APP_MP_ACCESS_TOKEN }}" \
-              MP_PUBLIC_KEY="${{ secrets.APP_MP_PUBLIC_KEY }}" \
-              VITE_ADMIN_TOKEN="${{ secrets.APP_ADMIN_TOKEN }}" \
-              VITE_MP_PUBLIC_KEY="${{ secrets.APP_MP_PUBLIC_KEY }}" \
-              SITE_URL="${{ secrets.APP_SITE_URL }}" \
-              CORS_ORIGIN="${{ secrets.APP_SITE_URL }}" \
+            # Keep runtime defaults current, but never overwrite Dokku secrets with
+            # empty GitHub secrets. Missing secrets should preserve existing app config.
+            printf '%s\n' "$VPS_OS_PASSWORD" | sudo -S dokku config:set --no-restart ebookfelipelopesadv \
               NODE_ENV=production \
               VITE_API_URL="" \
               VITE_MP_SANDBOX="false"
+
+            set_secret_config() {
+              key="$1"
+              value="$2"
+              if [ -n "$value" ]; then
+                printf '%s\n' "$VPS_OS_PASSWORD" | sudo -S dokku config:set --no-restart ebookfelipelopesadv "$key=$value"
+              else
+                echo "Skipping $key: GitHub secret is empty or unavailable."
+              fi
+            }
+
+            set_secret_config DATABASE_URL "$APP_DATABASE_URL"
+            set_secret_config ADMIN_TOKEN "$APP_ADMIN_TOKEN"
+            set_secret_config MP_ACCESS_TOKEN "$APP_MP_ACCESS_TOKEN"
+            set_secret_config MP_PUBLIC_KEY "$APP_MP_PUBLIC_KEY"
+            set_secret_config VITE_ADMIN_TOKEN "$APP_ADMIN_TOKEN"
+            set_secret_config VITE_MP_PUBLIC_KEY "$APP_MP_PUBLIC_KEY"
+            set_secret_config SITE_URL "$APP_SITE_URL"
+            set_secret_config CORS_ORIGIN "$APP_SITE_URL"
 
             AUTH_REPO="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
 
@@ -55,7 +75,7 @@ jobs:
             }
 
             run_deploy() {
-              echo ${{ secrets.VPS_OS_PASSWORD }} | sudo -S dokku git:sync --build ebookfelipelopesadv "$AUTH_REPO" main 2>&1
+              printf '%s\n' "$VPS_OS_PASSWORD" | sudo -S dokku git:sync --build ebookfelipelopesadv "$AUTH_REPO" main 2>&1
             }
 
             DEPLOY_OUTPUT=$(run_deploy) && DEPLOY_STATUS=0 || DEPLOY_STATUS=$?
@@ -63,7 +83,7 @@ jobs:
 
             if [ "$DEPLOY_STATUS" -ne 0 ] && detect_lock "$DEPLOY_OUTPUT"; then
               echo "Deploy lock detectado. Executando dokku apps:unlock e tentando novamente..."
-              echo ${{ secrets.VPS_OS_PASSWORD }} | sudo -S dokku apps:unlock ebookfelipelopesadv 2>&1 || true
+              printf '%s\n' "$VPS_OS_PASSWORD" | sudo -S dokku apps:unlock ebookfelipelopesadv 2>&1 || true
               DEPLOY_OUTPUT=$(run_deploy) && DEPLOY_STATUS=0 || DEPLOY_STATUS=$?
               echo "$DEPLOY_OUTPUT"
             fi
