@@ -17,24 +17,36 @@ jobs:
         uses: appleboy/ssh-action@v1.2.0
         env:
           VPS_OS_PASSWORD: ${{ secrets.VPS_OS_PASSWORD }}
-          APP_DATABASE_URL: ${{ secrets.APP_DATABASE_URL }}
-          APP_ADMIN_TOKEN: ${{ secrets.APP_ADMIN_TOKEN }}
-          APP_MP_ACCESS_TOKEN: ${{ secrets.APP_MP_ACCESS_TOKEN }}
-          APP_MP_PUBLIC_KEY: ${{ secrets.APP_MP_PUBLIC_KEY }}
-          APP_SITE_URL: ${{ secrets.APP_SITE_URL }}
+          APP_DATABASE_URL: ${{ secrets.APP_DATABASE_URL || secrets.DATABASE_URL }}
+          APP_ADMIN_TOKEN: ${{ secrets.APP_ADMIN_TOKEN || secrets.ADMIN_TOKEN || secrets.VITE_ADMIN_TOKEN }}
+          APP_MP_ACCESS_TOKEN: ${{ secrets.APP_MP_ACCESS_TOKEN || secrets.MP_ACCESS_TOKEN || secrets.ACCESS_TOKEN }}
+          APP_MP_PUBLIC_KEY: ${{ secrets.APP_MP_PUBLIC_KEY || secrets.MP_PUBLIC_KEY || secrets.PUBLIC_KEY || secrets.VITE_MP_PUBLIC_KEY }}
+          APP_SITE_URL: ${{ secrets.APP_SITE_URL || secrets.SITE_URL }}
         with:
           host: 157.173.118.98
           username: converseia
           password: ${{ secrets.VPS_OS_PASSWORD }}
           envs: VPS_OS_PASSWORD,APP_DATABASE_URL,APP_ADMIN_TOKEN,APP_MP_ACCESS_TOKEN,APP_MP_PUBLIC_KEY,APP_SITE_URL
-          script_stop: true
           script: |
+            set -eu
+
+            : "${VPS_OS_PASSWORD:?VPS_OS_PASSWORD is required for sudo.}"
+            APP_DATABASE_URL="${APP_DATABASE_URL:-}"
+            APP_ADMIN_TOKEN="${APP_ADMIN_TOKEN:-}"
+            APP_MP_ACCESS_TOKEN="${APP_MP_ACCESS_TOKEN:-}"
+            APP_MP_PUBLIC_KEY="${APP_MP_PUBLIC_KEY:-}"
+            APP_SITE_URL="${APP_SITE_URL:-}"
+
+            dokku_cmd() {
+              printf '%s\n' "$VPS_OS_PASSWORD" | sudo -S -p '' dokku "$@"
+            }
+
             COMMIT_NAME=$(printf '%s' "${{ github.event.head_commit.message }}" | head -n 1)
             COMMIT_DATE="${{ github.event.head_commit.timestamp }}"
             if [ -z "$COMMIT_NAME" ]; then COMMIT_NAME="${{ github.sha }}"; fi
             if [ -z "$COMMIT_DATE" ]; then COMMIT_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ); fi
 
-            printf '%s\n' "$VPS_OS_PASSWORD" | sudo -S dokku config:set --no-restart ebookfelipelopesadv \
+            dokku_cmd config:set --no-restart ebookfelipelopesadv \
               DEPLOYED_BRANCH=main \
               DEPLOYED_REPO_URL=https://github.com/${{ github.repository }}.git \
               DEPLOYED_COMMIT_SHA=${{ github.sha }} \
@@ -44,7 +56,7 @@ jobs:
 
             # Keep runtime defaults current, but never overwrite Dokku secrets with
             # empty GitHub secrets. Missing secrets should preserve existing app config.
-            printf '%s\n' "$VPS_OS_PASSWORD" | sudo -S dokku config:set --no-restart ebookfelipelopesadv \
+            dokku_cmd config:set --no-restart ebookfelipelopesadv \
               NODE_ENV=production \
               VITE_API_URL="" \
               VITE_MP_SANDBOX="false"
@@ -53,7 +65,7 @@ jobs:
               key="$1"
               value="$2"
               if [ -n "$value" ]; then
-                printf '%s\n' "$VPS_OS_PASSWORD" | sudo -S dokku config:set --no-restart ebookfelipelopesadv "$key=$value"
+                dokku_cmd config:set --no-restart ebookfelipelopesadv "$key=$value"
               else
                 echo "Skipping $key: GitHub secret is empty or unavailable."
               fi
@@ -68,6 +80,21 @@ jobs:
             set_secret_config SITE_URL "$APP_SITE_URL"
             set_secret_config CORS_ORIGIN "$APP_SITE_URL"
 
+            require_dokku_config() {
+              key="$1"
+              value="$(dokku_cmd config:get ebookfelipelopesadv "$key" 2>/dev/null || true)"
+              if [ -z "$value" ]; then
+                echo "::error::Missing required Dokku config: $key. Set the matching GitHub secret or run dokku config:set ebookfelipelopesadv $key=..."
+                exit 1
+              fi
+              echo "Verified $key is configured in Dokku."
+            }
+
+            require_dokku_config DATABASE_URL
+            require_dokku_config ADMIN_TOKEN
+            require_dokku_config MP_ACCESS_TOKEN
+            require_dokku_config MP_PUBLIC_KEY
+
             AUTH_REPO="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
 
             detect_lock() {
@@ -75,7 +102,7 @@ jobs:
             }
 
             run_deploy() {
-              printf '%s\n' "$VPS_OS_PASSWORD" | sudo -S dokku git:sync --build ebookfelipelopesadv "$AUTH_REPO" main 2>&1
+              dokku_cmd git:sync --build ebookfelipelopesadv "$AUTH_REPO" main 2>&1
             }
 
             DEPLOY_OUTPUT=$(run_deploy) && DEPLOY_STATUS=0 || DEPLOY_STATUS=$?
@@ -83,7 +110,7 @@ jobs:
 
             if [ "$DEPLOY_STATUS" -ne 0 ] && detect_lock "$DEPLOY_OUTPUT"; then
               echo "Deploy lock detectado. Executando dokku apps:unlock e tentando novamente..."
-              printf '%s\n' "$VPS_OS_PASSWORD" | sudo -S dokku apps:unlock ebookfelipelopesadv 2>&1 || true
+              dokku_cmd apps:unlock ebookfelipelopesadv 2>&1 || true
               DEPLOY_OUTPUT=$(run_deploy) && DEPLOY_STATUS=0 || DEPLOY_STATUS=$?
               echo "$DEPLOY_OUTPUT"
             fi
