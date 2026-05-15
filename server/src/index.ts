@@ -30,12 +30,20 @@ app.use(
 );
 
 app.get("/api/health", async (_req, res) => {
+  if (!config.DATABASE_URL) {
+    return res.status(503).json({ ok: false, db: "not_configured" });
+  }
+
   try {
     await pool.query("SELECT 1");
     res.json({ ok: true, db: "up" });
   } catch {
     res.status(503).json({ ok: false, db: "down" });
   }
+});
+
+app.get("/api/live", (_req, res) => {
+  res.json({ ok: true });
 });
 
 app.use("/api/leads", leadsRouter);

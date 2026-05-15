@@ -9,7 +9,8 @@ Production: **https://api-manual.converseia.com** (Dokku app `manual-empregador-
 
 | Method | Path                  | Auth          | Purpose                              |
 | ------ | --------------------- | ------------- | ------------------------------------ |
-| GET    | `/api/health`         | —             | Liveness + DB ping                   |
+| GET    | `/api/live`           | —             | Liveness check for Dokku/Nginx       |
+| GET    | `/api/health`         | —             | Readiness check with DB ping         |
 | POST   | `/api/leads`          | —             | Insert a lead from the CTA form      |
 | POST   | `/api/events`         | —             | Insert an analytics event            |
 | GET    | `/api/admin/leads`    | Bearer token  | Paginated leads (admin panel)        |
@@ -33,7 +34,8 @@ npm install
 npm run dev              # tsx watch
 ```
 
-Visit http://localhost:3000/api/health to confirm it's up.
+Visit http://localhost:3000/api/live to confirm the process is up.
+Use http://localhost:3000/api/health to confirm the database is reachable.
 
 ## Deploying via Dokku (GitHub push flow)
 
@@ -53,7 +55,9 @@ env vars configured. To deploy:
 
 3. Verify:
    ```bash
-   curl https://api-manual.converseia.com/api/health
+   curl https://manualdoempregador.com.br/api/live
+   # → {"ok":true}
+   curl https://manualdoempregador.com.br/api/health
    # → {"ok":true,"db":"up"}
    ```
 

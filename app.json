@@ -13,7 +13,7 @@
       {
         "type": "path",
         "name": "health",
-        "path": "/api/health",
+        "path": "/api/live",
         "timeout": 30,
         "retries": 2
       }

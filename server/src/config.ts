@@ -1,20 +1,24 @@
 import "dotenv/config";
 import { z } from "zod";
 
+const emptyToUndefined = (value: unknown) => value === "" ? undefined : value;
+const optionalString = z.preprocess(emptyToUndefined, z.string().optional());
+const optionalUrl = z.preprocess(emptyToUndefined, z.string().url().optional());
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "production", "test"]).default("production"),
   PORT: z.coerce.number().int().positive().default(5000),
-  DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
+  DATABASE_URL: optionalString,
   CORS_ORIGIN: z.string().default(""),
-  ADMIN_TOKEN: z.string().min(8, "ADMIN_TOKEN must be at least 8 chars"),
-  MP_ACCESS_TOKEN: z.string().optional(),
-  MP_PUBLIC_KEY: z.string().optional(),
-  SITE_URL: z.string().url().optional().default("http://localhost:8081"),
+  ADMIN_TOKEN: z.preprocess(emptyToUndefined, z.string().min(8).optional()),
+  MP_ACCESS_TOKEN: optionalString,
+  MP_PUBLIC_KEY: optionalString,
+  SITE_URL: optionalUrl,
   // Email (Resend)
-  RESEND_API_KEY: z.string().optional(),
+  RESEND_API_KEY: optionalString,
   EMAIL_FROM: z.string().default("Manual do Empregador <noreply@manualempregador.com.br>"),
   // MinIO / S3
-  MINIO_ENDPOINT: z.string().url().default("http://157.173.118.98:9003"),
+  MINIO_ENDPOINT: optionalUrl,
   MINIO_ACCESS_KEY: z.string().default("minio"),
   MINIO_SECRET_KEY: z.string().default("minio1234"),
   MINIO_REGION: z.string().default("us-east-1"),
@@ -28,11 +32,27 @@ if (!parsed.success) {
   process.exit(1);
 }
 
+const corsOrigins = parsed.data.CORS_ORIGIN.split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+const siteUrl = parsed.data.SITE_URL
+  ?? corsOrigins.find((origin) => origin.startsWith("http"))
+  ?? "https://manualdoempregador.com.br";
+
+if (!parsed.data.DATABASE_URL) {
+  console.warn("[config] DATABASE_URL is not set; DB-backed API routes will be unavailable.");
+}
+
+if (!parsed.data.ADMIN_TOKEN) {
+  console.warn("[config] ADMIN_TOKEN is not set; admin API routes will reject all requests.");
+}
+
 export const config = {
   ...parsed.data,
-  corsOrigins: parsed.data.CORS_ORIGIN.split(",")
-    .map((o) => o.trim())
-    .filter(Boolean),
+  SITE_URL: siteUrl,
+  MINIO_ENDPOINT: parsed.data.MINIO_ENDPOINT ?? "http://157.173.118.98:9003",
+  corsOrigins,
 
   // Produtos — preços em BRL
   products: {
