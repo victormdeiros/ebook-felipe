@@ -117,6 +117,31 @@ export const deleteAdminAllowedEmail = async (email: string): Promise<void> => {
   }
 };
 
+export type ManualMaterialKind = "ebook" | "event" | "event_ebook";
+
+export const sendManualMaterialEmail = async (data: {
+  email: string;
+  name: string;
+  kind: ManualMaterialKind;
+  note?: string;
+}): Promise<{ ok: true; email: string; kind: ManualMaterialKind }> => {
+  const res = await fetch(`${API_URL}/api/admin/send-material-email`, {
+    method: "POST",
+    headers: adminHeaders(true),
+    body: JSON.stringify(data),
+  });
+  const body = await res.json().catch(() => ({})) as {
+    ok?: boolean;
+    email?: string;
+    kind?: ManualMaterialKind;
+    error?: string;
+  };
+  if (!res.ok || !body.ok) {
+    throw new Error(body.error ?? "Erro ao enviar e-mail de confirmacao");
+  }
+  return { ok: true, email: body.email ?? data.email, kind: body.kind ?? data.kind };
+};
+
 export interface Lead {
   id?: string;
   name: string;

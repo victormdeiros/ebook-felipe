@@ -4,7 +4,7 @@ import { z } from "zod";
 import multer from "multer";
 import { pool } from "../db";
 import { config } from "../config";
-import { sendAdminLoginCodeEmail } from "../email";
+import { sendAdminLoginCodeEmail, sendEbookPurchaseEmail, sendEventConfirmationEmail } from "../email";
 import { type AdminRequest, hashAdminToken, requireAdmin } from "../middleware/auth";
 import { uploadEbook } from "../storage";
 import { processQueue, scheduleCartEmails } from "../emailScheduler";
@@ -225,6 +225,31 @@ const paginationSchema = z.object({
   limit: z.coerce.number().int().positive().max(500).default(100),
   offset: z.coerce.number().int().nonnegative().default(0),
 });
+
+const manualMaterialEmailSchema = z.object({
+  email: z.string().trim().toLowerCase().email(),
+  name: z.string().trim().min(1).max(200).default("Cliente"),
+  kind: z.enum(["ebook", "event", "event_ebook"]).default("ebook"),
+  note: z.string().trim().max(300).optional(),
+});
+
+const absoluteUrl = (url: string): string => {
+  if (!url) return "";
+  if (/^https?:\/\//i.test(url)) return url;
+  return `${config.SITE_URL.replace(/\/$/, "")}/${url.replace(/^\//, "")}`;
+};
+
+const getEbookDownloadUrl = async (): Promise<string> => {
+  const { rows: cfgRows } = await pool.query<{ value: string }>(
+    `SELECT value FROM manual_config WHERE key = 'ebook_download_url'`,
+  );
+  if (cfgRows[0]?.value) return absoluteUrl(cfgRows[0].value);
+
+  const { rows: contentRows } = await pool.query<{ ebook_download_url: string }>(
+    `SELECT ebook_download_url FROM manual_content WHERE id = 'default'`,
+  );
+  return absoluteUrl(contentRows[0]?.ebook_download_url ?? "");
+};
 
 // ── GET /api/admin/leads ─────────────────────────────────────
 // Suporta filtro por ?tag=carrinho_abandonado
@@ -770,6 +795,46 @@ router.get("/email-queue", async (req, res, next) => {
 
 // ── POST /api/admin/email-queue/process ──────────────────────
 // Dispara manualmente o processamento da fila (útil para testes).
+// Envia manualmente o e-mail de confirmacao/material para um destinatario.
+router.post("/send-material-email", async (req, res, next) => {
+  try {
+    if (!config.RESEND_API_KEY) {
+      return res.status(503).json({ ok: false, error: "RESEND_API_KEY nao configurado no servidor." });
+    }
+
+    const { email, name, kind, note } = manualMaterialEmailSchema.parse(req.body);
+    const ebookUrl = kind === "event" ? undefined : await getEbookDownloadUrl();
+
+    if (kind === "ebook") {
+      await sendEbookPurchaseEmail(email, name, ebookUrl ?? "");
+    } else if (kind === "event") {
+      await sendEventConfirmationEmail(email, name, false, undefined);
+    } else {
+      await sendEventConfirmationEmail(email, name, true, ebookUrl);
+    }
+
+    const adminReq = req as AdminRequest;
+    pool.query(
+      `INSERT INTO manual_events (name, payload)
+       VALUES ($1, $2)`,
+      [
+        "manual_material_email_sent",
+        JSON.stringify({
+          email,
+          lead_name: name,
+          kind,
+          note: note ?? null,
+          admin_email: adminReq.adminEmail ?? null,
+        }),
+      ],
+    ).catch(() => {});
+
+    res.json({ ok: true, email, kind });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post("/email-queue/process", async (_req, res, next) => {
   try {
     const stats = await processQueue();

@@ -85,6 +85,7 @@ import {
   getAdminAllowedEmails,
   addAdminAllowedEmail,
   deleteAdminAllowedEmail,
+  sendManualMaterialEmail,
   type GtmEvent,
   type Lead,
   type Order,
@@ -95,6 +96,7 @@ import {
   type EmailQueueItem,
   type CTAConfig,
   type AdminAllowedEmail,
+  type ManualMaterialKind,
 } from "@/lib/repository";
 import {
   getContent,
@@ -1543,11 +1545,26 @@ const STATUS_LABELS: Record<Order["status"], { label: string; color: string }> =
   refunded: { label: "Estornado", color: "text-orange-400 bg-orange-500/10 border-orange-500/25" },
 };
 
+const MATERIAL_KIND_LABELS: Record<ManualMaterialKind, string> = {
+  ebook: "E-book",
+  event: "Ingresso evento",
+  event_ebook: "Evento + e-book",
+};
+
 const PedidosTab = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | Order["status"]>("all");
   const [loading, setLoading] = useState(true);
+  const [materialForm, setMaterialForm] = useState({
+    name: "",
+    email: "",
+    kind: "ebook" as ManualMaterialKind,
+    note: "",
+  });
+  const [materialSending, setMaterialSending] = useState(false);
+  const [materialMessage, setMaterialMessage] = useState("");
+  const [materialError, setMaterialError] = useState("");
 
   const refresh = useCallback(() => {
     setLoading(true);
@@ -1567,6 +1584,55 @@ const PedidosTab = () => {
   }, [orders, search, filter]);
 
   const totalApproved = orders.filter((o) => o.status === "approved").reduce((s, o) => s + Number(o.amount), 0);
+
+  const updateMaterialForm = (field: keyof typeof materialForm, value: string) => {
+    setMaterialForm((prev) => ({ ...prev, [field]: value }));
+    setMaterialError("");
+    setMaterialMessage("");
+  };
+
+  const fillMaterialFromOrder = (order: Order) => {
+    setMaterialForm({
+      name: order.payer_name || "",
+      email: order.payer_email || "",
+      kind: order.product === "event" ? "event" : "ebook",
+      note: order.status === "approved" ? "reenviar_confirmacao" : `pedido_${order.status}`,
+    });
+    setMaterialError(order.payer_email ? "" : "Pedido sem e-mail. Preencha o destinatario manualmente.");
+    setMaterialMessage("");
+  };
+
+  const submitMaterialEmail = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const email = materialForm.email.trim().toLowerCase();
+    const name = materialForm.name.trim();
+    if (!name || !email) {
+      setMaterialError("Preencha nome e e-mail do destinatario.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setMaterialError("Informe um e-mail valido.");
+      return;
+    }
+
+    setMaterialSending(true);
+    setMaterialError("");
+    setMaterialMessage("");
+    try {
+      await sendManualMaterialEmail({
+        name,
+        email,
+        kind: materialForm.kind,
+        note: materialForm.note.trim() || undefined,
+      });
+      setMaterialMessage(`Confirmacao enviada para ${email}.`);
+      setMaterialForm((prev) => ({ ...prev, note: "" }));
+    } catch (err) {
+      setMaterialError(err instanceof Error ? err.message : "Erro ao enviar e-mail.");
+    } finally {
+      setMaterialSending(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -1595,6 +1661,7 @@ const PedidosTab = () => {
           ))}
         </div>
       </div>
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px] items-start">
       <div className="surface-card rounded-xl overflow-hidden">
         {loading ? (
           <div className="py-16 flex flex-col items-center justify-center gap-3">
@@ -1613,6 +1680,7 @@ const PedidosTab = () => {
                 <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold">Valor</th>
                 <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold">Status</th>
                 <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold hidden sm:table-cell">Data</th>
+                <th className="text-right px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold">Envio</th>
               </tr></thead>
               <tbody>
                 {filtered.map((order) => {
@@ -1634,6 +1702,11 @@ const PedidosTab = () => {
                       <td className="px-5 py-3.5 font-semibold text-gold whitespace-nowrap">{formatCurrency(Number(order.amount))}</td>
                       <td className="px-5 py-3.5"><span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[0.65rem] font-semibold ${statusInfo.color}`}>{statusInfo.label}</span></td>
                       <td className="px-5 py-3.5 text-white/60 hidden sm:table-cell whitespace-nowrap">{formatDate(order.created_at)}</td>
+                      <td className="px-5 py-3.5 text-right">
+                        <button onClick={() => fillMaterialFromOrder(order)} className="inline-flex items-center gap-1.5 rounded-md border border-white/8 px-2.5 py-1.5 text-[0.68rem] font-body text-text-muted hover:border-gold/30 hover:text-gold hover:bg-gold/5 transition-colors">
+                          <SendHorizonal className="w-3 h-3" />Enviar
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
@@ -1641,6 +1714,62 @@ const PedidosTab = () => {
             </table>
           </div>
         )}
+      </div>
+      <aside className="surface-card rounded-xl p-5 border border-gold/10 xl:sticky xl:top-24">
+        <div className="flex items-start gap-3 pb-4 border-b border-white/5">
+          <div className="w-9 h-9 rounded-lg bg-gold/10 border border-gold/20 flex items-center justify-center shrink-0">
+            <SendHorizonal className="w-4 h-4 text-gold" />
+          </div>
+          <div className="min-w-0">
+            <h3 className="font-display text-base font-semibold text-foreground">Enviar material</h3>
+            <p className="text-text-muted font-body text-xs mt-0.5">E-mail de confirmação</p>
+          </div>
+        </div>
+
+        <form onSubmit={submitMaterialEmail} className="mt-4 space-y-3">
+          <div className="space-y-1.5">
+            <label className="block text-[0.65rem] text-text-muted font-body uppercase tracking-[0.12em]">Tipo</label>
+            <select value={materialForm.kind} onChange={(e) => updateMaterialForm("kind", e.target.value as ManualMaterialKind)} className="w-full bg-background border border-white/8 focus:border-gold/40 rounded-md px-3 py-2.5 text-foreground font-body text-sm focus:outline-none transition-colors">
+              {(Object.keys(MATERIAL_KIND_LABELS) as ManualMaterialKind[]).map((kind) => (
+                <option key={kind} value={kind}>{MATERIAL_KIND_LABELS[kind]}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-[0.65rem] text-text-muted font-body uppercase tracking-[0.12em]">Nome</label>
+            <input value={materialForm.name} onChange={(e) => updateMaterialForm("name", e.target.value)} placeholder="Nome do destinatário" className="w-full bg-background border border-white/8 focus:border-gold/40 rounded-md px-3 py-2.5 text-foreground font-body text-sm focus:outline-none transition-colors" />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-[0.65rem] text-text-muted font-body uppercase tracking-[0.12em]">E-mail</label>
+            <input type="email" value={materialForm.email} onChange={(e) => updateMaterialForm("email", e.target.value)} placeholder="email@dominio.com" className="w-full bg-background border border-white/8 focus:border-gold/40 rounded-md px-3 py-2.5 text-foreground font-body text-sm focus:outline-none transition-colors" />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="block text-[0.65rem] text-text-muted font-body uppercase tracking-[0.12em]">Nota interna</label>
+            <input value={materialForm.note} onChange={(e) => updateMaterialForm("note", e.target.value)} placeholder="Ex: presente / falha no pagamento" className="w-full bg-background border border-white/8 focus:border-gold/40 rounded-md px-3 py-2.5 text-foreground font-body text-sm focus:outline-none transition-colors" />
+          </div>
+
+          <AnimatePresence mode="wait">
+            {materialMessage && (
+              <motion.p key="ok" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex items-start gap-1.5 text-green-400 text-xs font-body">
+                <Check className="w-3.5 h-3.5 mt-0.5 shrink-0" />{materialMessage}
+              </motion.p>
+            )}
+            {materialError && (
+              <motion.p key="err" initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="flex items-start gap-1.5 text-red-400 text-xs font-body">
+                <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />{materialError}
+              </motion.p>
+            )}
+          </AnimatePresence>
+
+          <button type="submit" disabled={materialSending} className="w-full flex items-center justify-center gap-2 min-h-[42px] rounded-md bg-gold/15 border border-gold/25 text-gold hover:bg-gold/20 hover:border-gold/35 font-ui text-xs font-bold transition-all disabled:opacity-50 disabled:pointer-events-none">
+            {materialSending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <SendHorizonal className="w-3.5 h-3.5" />}
+            {materialSending ? "ENVIANDO" : "ENVIAR CONFIRMAÇÃO"}
+          </button>
+        </form>
+      </aside>
       </div>
     </div>
   );
