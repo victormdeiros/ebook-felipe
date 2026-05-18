@@ -7,8 +7,8 @@ import { Resend } from "resend";
 import { pool } from "./db";
 import { config } from "./config";
 
-// Event date: 29/04/2026 16:00 BRT (UTC-3)
-const EVENT_DATE = new Date("2026-04-29T19:00:00.000Z"); // 16h BRT = 19h UTC
+// Event date: 10/06/2026 16:00 BRT (UTC-3)
+const EVENT_DATE = new Date("2026-06-10T19:00:00.000Z"); // 16h BRT = 19h UTC
 
 function getResend(): Resend | null {
   if (!config.RESEND_API_KEY) return null;
@@ -130,7 +130,7 @@ function event1dHtml(firstName: string): string {
     <p style="margin:0 0 28px;font-size:13px;color:#c9a84c;letter-spacing:0.05em;">SEGURANÇA JURÍDICA 360 — SEU INGRESSO ESTÁ CONFIRMADO</p>
     <div style="background:rgba(201,168,76,0.06);border:2px dashed rgba(201,168,76,0.3);border-radius:12px;padding:24px;margin:0 0 28px;text-align:center;">
       <p style="margin:0 0 6px;font-size:10px;letter-spacing:0.2em;color:#c9a84c;text-transform:uppercase;font-weight:700;">DATA E HORÁRIO</p>
-      <p style="margin:0 0 4px;font-size:24px;font-weight:700;color:#fff;">29 de Abril de 2026</p>
+      <p style="margin:0 0 4px;font-size:24px;font-weight:700;color:#fff;">10 de Junho de 2026</p>
       <p style="margin:0 0 12px;font-size:16px;color:#c9a84c;font-weight:600;">16h às 18h</p>
       <p style="margin:0;font-size:13px;color:#a79797;">Rua Buenos Aires, 80 · Espinheiro · Recife/PE</p>
     </div>
