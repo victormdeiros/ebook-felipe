@@ -238,7 +238,7 @@ const CartDrawer = () => {
         setStep("payment");
       } else {
         closeCart();
-        window.location.href = getMPCheckoutUrl(result);
+        window.location.assign(getMPCheckoutUrl(result));
       }
     } catch (err) {
       if (err instanceof MPNotConfiguredError) {
@@ -247,7 +247,7 @@ const CartDrawer = () => {
           : content.eventCheckoutUrl || CONFIG.EVENT_PAYMENT_URL;
         if (fallbackUrl && fallbackUrl !== "#" && !fallbackUrl.includes("example")) {
           closeCart();
-          window.location.href = fallbackUrl;
+          window.location.assign(fallbackUrl);
         } else {
           setCheckoutError(checkoutTarget === "ebook"
             ? "Checkout do e-book não configurado. Contate o suporte."

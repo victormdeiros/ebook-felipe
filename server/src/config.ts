@@ -11,6 +11,7 @@ const envSchema = z.object({
   DATABASE_URL: optionalString,
   CORS_ORIGIN: z.string().default(""),
   ADMIN_TOKEN: z.preprocess(emptyToUndefined, z.string().min(8).optional()),
+  ADMIN_AUTH_SECRET: optionalString,
   MP_ACCESS_TOKEN: optionalString,
   MP_PUBLIC_KEY: optionalString,
   SITE_URL: optionalUrl,
@@ -44,8 +45,8 @@ if (!parsed.data.DATABASE_URL) {
   console.warn("[config] DATABASE_URL is not set; DB-backed API routes will be unavailable.");
 }
 
-if (!parsed.data.ADMIN_TOKEN) {
-  console.warn("[config] ADMIN_TOKEN is not set; admin API routes will reject all requests.");
+if (!parsed.data.ADMIN_AUTH_SECRET && !parsed.data.ADMIN_TOKEN && !parsed.data.RESEND_API_KEY) {
+  console.warn("[config] ADMIN_AUTH_SECRET is not set; using a weak fallback for admin code hashing.");
 }
 
 export const config = {

@@ -76,10 +76,10 @@ jobs:
             }
 
             set_secret_config DATABASE_URL "$APP_DATABASE_URL"
+            set_secret_config ADMIN_AUTH_SECRET "$APP_ADMIN_TOKEN"
             set_secret_config ADMIN_TOKEN "$APP_ADMIN_TOKEN"
             set_secret_config MP_ACCESS_TOKEN "$APP_MP_ACCESS_TOKEN"
             set_secret_config MP_PUBLIC_KEY "$APP_MP_PUBLIC_KEY"
-            set_secret_config VITE_ADMIN_TOKEN "$APP_ADMIN_TOKEN"
             set_secret_config VITE_MP_PUBLIC_KEY "$APP_MP_PUBLIC_KEY"
             set_secret_config SITE_URL "$APP_SITE_URL"
             set_secret_config CORS_ORIGIN "$APP_SITE_URL"
@@ -135,10 +135,10 @@ jobs:
             set_default_config_if_missing SITE_URL "$DEFAULT_SITE_URL"
             set_default_config_if_missing CORS_ORIGIN "$DEFAULT_SITE_URL"
             recover_config_from_container DATABASE_URL
+            recover_config_from_container ADMIN_AUTH_SECRET
             recover_config_from_container ADMIN_TOKEN
             recover_config_from_container MP_ACCESS_TOKEN
             recover_config_from_container MP_PUBLIC_KEY
-            recover_config_from_container VITE_ADMIN_TOKEN
             recover_config_from_container VITE_MP_PUBLIC_KEY
             normalize_database_url
 
@@ -152,8 +152,20 @@ jobs:
               echo "Verified $key is configured in Dokku."
             }
 
+            require_any_dokku_config() {
+              first="$1"
+              second="$2"
+              first_value="$(dokku_cmd config:get "$APP_NAME" "$first" 2>/dev/null || true)"
+              second_value="$(dokku_cmd config:get "$APP_NAME" "$second" 2>/dev/null || true)"
+              if [ -z "$first_value" ] && [ -z "$second_value" ]; then
+                echo "::error::Missing required Dokku config: $first or $second. Set the matching GitHub secret or run dokku config:set $APP_NAME $first=..."
+                exit 1
+              fi
+              echo "Verified $first or $second is configured in Dokku."
+            }
+
             require_dokku_config DATABASE_URL
-            require_dokku_config ADMIN_TOKEN
+            require_any_dokku_config ADMIN_AUTH_SECRET ADMIN_TOKEN
             require_dokku_config MP_ACCESS_TOKEN
             require_dokku_config MP_PUBLIC_KEY
 

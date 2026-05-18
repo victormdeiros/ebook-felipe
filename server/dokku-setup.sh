@@ -13,9 +13,10 @@ MINIO_ENDPOINT=${MINIO_ENDPOINT:-http://157.173.118.98:9003}
 MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minio}
 MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-}
 MINIO_REGION=${MINIO_REGION:-us-east-1}
+ADMIN_AUTH_SECRET=${ADMIN_AUTH_SECRET:-${ADMIN_TOKEN:-}}
 
 : "${DATABASE_URL:?Set DATABASE_URL before running this setup script.}"
-: "${ADMIN_TOKEN:?Set ADMIN_TOKEN before running this setup script.}"
+: "${ADMIN_AUTH_SECRET:?Set ADMIN_AUTH_SECRET before running this setup script.}"
 : "${MP_ACCESS_TOKEN:?Set MP_ACCESS_TOKEN before running this setup script.}"
 : "${MP_PUBLIC_KEY:?Set MP_PUBLIC_KEY before running this setup script.}"
 
@@ -34,7 +35,7 @@ dokku network:set $APP attach-post-deploy docker_default
 dokku config:set $APP \
   NODE_ENV=production \
   DATABASE_URL="$DATABASE_URL" \
-  ADMIN_TOKEN="$ADMIN_TOKEN" \
+  ADMIN_AUTH_SECRET="$ADMIN_AUTH_SECRET" \
   MP_ACCESS_TOKEN="$MP_ACCESS_TOKEN" \
   MP_PUBLIC_KEY="$MP_PUBLIC_KEY" \
   SITE_URL="$SITE_URL" \
@@ -46,7 +47,6 @@ dokku config:set $APP \
   MINIO_SECRET_KEY="$MINIO_SECRET_KEY" \
   MINIO_REGION="$MINIO_REGION" \
   VITE_API_URL="" \
-  VITE_ADMIN_TOKEN="$ADMIN_TOKEN" \
   VITE_MP_PUBLIC_KEY="$MP_PUBLIC_KEY" \
   VITE_MP_SANDBOX="false"
 

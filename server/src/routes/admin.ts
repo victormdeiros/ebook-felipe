@@ -1,13 +1,216 @@
 import { Router } from "express";
+import { createHmac, randomBytes, randomInt } from "node:crypto";
 import { z } from "zod";
 import multer from "multer";
 import { pool } from "../db";
-import { requireAdmin } from "../middleware/auth";
+import { config } from "../config";
+import { sendAdminLoginCodeEmail } from "../email";
+import { type AdminRequest, hashAdminToken, requireAdmin } from "../middleware/auth";
 import { uploadEbook } from "../storage";
 import { processQueue, scheduleCartEmails } from "../emailScheduler";
 
 const router = Router();
+
+const ADMIN_CODE_TTL_MINUTES = 10;
+const ADMIN_SESSION_TTL_DAYS = 7;
+const adminAuthSecret = config.ADMIN_AUTH_SECRET
+  ?? config.ADMIN_TOKEN
+  ?? config.RESEND_API_KEY
+  ?? "manual-admin-auth";
+
+const emailOnlySchema = z.object({
+  email: z.string().trim().toLowerCase().email(),
+});
+
+const verifyCodeSchema = emailOnlySchema.extend({
+  code: z.string().trim().regex(/^\d{6}$/),
+});
+
+const hashAdminCode = (email: string, code: string) =>
+  createHmac("sha256", adminAuthSecret).update(`${email}:${code}`).digest("hex");
+
+// Public auth: request a one-time login code for an allowed admin e-mail.
+router.post("/auth/request-code", async (req, res, next) => {
+  try {
+    if (!config.RESEND_API_KEY) {
+      return res.status(503).json({ error: "RESEND_API_KEY nao configurado no servidor." });
+    }
+
+    const { email } = emailOnlySchema.parse(req.body);
+    const { rows } = await pool.query<{ email: string }>(
+      `SELECT email FROM manual_admin_allowed_emails WHERE email = $1`,
+      [email],
+    );
+
+    // Keep the response neutral so the allowed list is not exposed.
+    if (!rows.length) {
+      console.warn(`[admin-auth] code requested for non-allowed email: ${email}`);
+      return res.json({ ok: true });
+    }
+
+    const code = randomInt(0, 1_000_000).toString().padStart(6, "0");
+    const codeHash = hashAdminCode(email, code);
+
+    await pool.query(
+      `UPDATE manual_admin_login_codes
+       SET consumed_at = now()
+       WHERE email = $1 AND consumed_at IS NULL`,
+      [email],
+    );
+
+    await pool.query(
+      `INSERT INTO manual_admin_login_codes
+       (email, code_hash, expires_at, requested_ip, user_agent)
+       VALUES ($1, $2, now() + ($3::text || ' minutes')::interval, $4, $5)`,
+      [
+        email,
+        codeHash,
+        ADMIN_CODE_TTL_MINUTES,
+        req.ip ?? null,
+        req.header("user-agent") ?? null,
+      ],
+    );
+
+    await sendAdminLoginCodeEmail(email, code);
+    res.json({ ok: true, expiresInMinutes: ADMIN_CODE_TTL_MINUTES });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Public auth: exchange the one-time code for a short-lived admin session.
+router.post("/auth/verify-code", async (req, res, next) => {
+  try {
+    const { email, code } = verifyCodeSchema.parse(req.body);
+    const { rows } = await pool.query<{
+      id: string;
+      code_hash: string;
+      attempts: number;
+      expires_at: string;
+    }>(
+      `SELECT id, code_hash, attempts, expires_at
+       FROM manual_admin_login_codes
+       WHERE email = $1 AND consumed_at IS NULL
+       ORDER BY created_at DESC
+       LIMIT 1`,
+      [email],
+    );
+
+    const challenge = rows[0];
+    if (!challenge || new Date(challenge.expires_at).getTime() <= Date.now()) {
+      return res.status(400).json({ error: "Codigo expirado. Solicite um novo acesso." });
+    }
+
+    if (challenge.attempts >= 5) {
+      return res.status(429).json({ error: "Muitas tentativas. Solicite um novo codigo." });
+    }
+
+    if (challenge.code_hash !== hashAdminCode(email, code)) {
+      await pool.query(
+        `UPDATE manual_admin_login_codes SET attempts = attempts + 1 WHERE id = $1`,
+        [challenge.id],
+      );
+      return res.status(400).json({ error: "Codigo invalido." });
+    }
+
+    const token = randomBytes(32).toString("base64url");
+    const tokenHash = hashAdminToken(token);
+    const { rows: sessionRows } = await pool.query<{ expires_at: string }>(
+      `WITH consumed AS (
+         UPDATE manual_admin_login_codes
+         SET consumed_at = now()
+         WHERE id = $1
+       )
+       INSERT INTO manual_admin_sessions (email, token_hash, expires_at)
+       VALUES ($2, $3, now() + ($4::text || ' days')::interval)
+       RETURNING expires_at`,
+      [challenge.id, email, tokenHash, ADMIN_SESSION_TTL_DAYS],
+    );
+
+    res.json({
+      ok: true,
+      token,
+      email,
+      expiresAt: sessionRows[0].expires_at,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.use(requireAdmin);
+
+router.get("/auth/session", (req, res) => {
+  const adminReq = req as AdminRequest;
+  res.json({ ok: true, email: adminReq.adminEmail });
+});
+
+router.delete("/auth/session", async (req, res, next) => {
+  try {
+    const adminReq = req as AdminRequest;
+    if (adminReq.adminSessionId) {
+      await pool.query(
+        `UPDATE manual_admin_sessions SET revoked_at = now() WHERE id = $1`,
+        [adminReq.adminSessionId],
+      );
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.get("/allowed-emails", async (_req, res, next) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT email, created_at
+       FROM manual_admin_allowed_emails
+       ORDER BY created_at ASC, email ASC`,
+    );
+    res.json({ items: rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.post("/allowed-emails", async (req, res, next) => {
+  try {
+    const { email } = emailOnlySchema.parse(req.body);
+    const { rows } = await pool.query(
+      `INSERT INTO manual_admin_allowed_emails (email)
+       VALUES ($1)
+       ON CONFLICT (email) DO UPDATE SET email = EXCLUDED.email
+       RETURNING email, created_at`,
+      [email],
+    );
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.delete("/allowed-emails/:email", async (req, res, next) => {
+  try {
+    const email = z.string().trim().toLowerCase().email().parse(req.params.email);
+    const { rows: countRows } = await pool.query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count FROM manual_admin_allowed_emails`,
+    );
+
+    if (Number(countRows[0].count) <= 1) {
+      return res.status(400).json({ error: "Mantenha pelo menos um e-mail permitido." });
+    }
+
+    const { rowCount } = await pool.query(
+      `DELETE FROM manual_admin_allowed_emails WHERE email = $1`,
+      [email],
+    );
+
+    if (!rowCount) return res.status(404).json({ error: "E-mail nao encontrado." });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
 
 const upload = multer({
   storage: multer.memoryStorage(),

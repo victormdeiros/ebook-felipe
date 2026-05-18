@@ -5,7 +5,117 @@
 import { CONFIG } from "@/config";
 
 const API_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
-const ADMIN_TOKEN = import.meta.env.VITE_ADMIN_TOKEN ?? "";
+const API_CONFIGURED = import.meta.env.VITE_API_URL !== undefined;
+const ADMIN_SESSION_TOKEN_KEY = "fl_admin_session_token";
+const ADMIN_SESSION_EMAIL_KEY = "fl_admin_session_email";
+
+export const getAdminSessionToken = (): string => {
+  try { return sessionStorage.getItem(ADMIN_SESSION_TOKEN_KEY) ?? ""; }
+  catch { return ""; }
+};
+
+export const getAdminSessionEmail = (): string => {
+  try { return sessionStorage.getItem(ADMIN_SESSION_EMAIL_KEY) ?? ""; }
+  catch { return ""; }
+};
+
+export const setAdminSession = (token: string, email: string): void => {
+  sessionStorage.setItem(ADMIN_SESSION_TOKEN_KEY, token);
+  sessionStorage.setItem(ADMIN_SESSION_EMAIL_KEY, email);
+};
+
+export const clearAdminSession = (): void => {
+  sessionStorage.removeItem(ADMIN_SESSION_TOKEN_KEY);
+  sessionStorage.removeItem(ADMIN_SESSION_EMAIL_KEY);
+};
+
+const hasAdminSession = () => API_CONFIGURED && !!getAdminSessionToken();
+
+const adminHeaders = (json = false): HeadersInit => ({
+  ...(json ? { "Content-Type": "application/json" } : {}),
+  Authorization: `Bearer ${getAdminSessionToken()}`,
+});
+
+export const requestAdminLoginCode = async (email: string): Promise<void> => {
+  const res = await fetch(`${API_URL}/api/admin/auth/request-code`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { error?: string };
+    throw new Error(err.error ?? "Erro ao enviar codigo de acesso");
+  }
+};
+
+export const verifyAdminLoginCode = async (
+  email: string,
+  code: string,
+): Promise<{ token: string; email: string; expiresAt: string }> => {
+  const res = await fetch(`${API_URL}/api/admin/auth/verify-code`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, code }),
+  });
+  const data = await res.json().catch(() => ({})) as {
+    token?: string;
+    email?: string;
+    expiresAt?: string;
+    error?: string;
+  };
+  if (!res.ok || !data.token || !data.email || !data.expiresAt) {
+    throw new Error(data.error ?? "Codigo invalido");
+  }
+  setAdminSession(data.token, data.email);
+  return { token: data.token, email: data.email, expiresAt: data.expiresAt };
+};
+
+export const logoutAdminSession = async (): Promise<void> => {
+  const token = getAdminSessionToken();
+  clearAdminSession();
+  if (!API_CONFIGURED || !token) return;
+  fetch(`${API_URL}/api/admin/auth/session`, {
+    method: "DELETE",
+    headers: { Authorization: `Bearer ${token}` },
+  }).catch(() => {});
+};
+
+export interface AdminAllowedEmail {
+  email: string;
+  created_at: string;
+}
+
+export const getAdminAllowedEmails = async (): Promise<AdminAllowedEmail[]> => {
+  if (!hasAdminSession()) return [];
+  const res = await fetch(`${API_URL}/api/admin/allowed-emails`, {
+    headers: adminHeaders(),
+  });
+  if (!res.ok) return [];
+  const data = await res.json() as { items: AdminAllowedEmail[] };
+  return data.items;
+};
+
+export const addAdminAllowedEmail = async (email: string): Promise<AdminAllowedEmail> => {
+  const res = await fetch(`${API_URL}/api/admin/allowed-emails`, {
+    method: "POST",
+    headers: adminHeaders(true),
+    body: JSON.stringify({ email }),
+  });
+  const data = await res.json().catch(() => ({})) as AdminAllowedEmail & { error?: string };
+  if (!res.ok) throw new Error(data.error ?? "Erro ao adicionar e-mail");
+  return data;
+};
+
+export const deleteAdminAllowedEmail = async (email: string): Promise<void> => {
+  const res = await fetch(`${API_URL}/api/admin/allowed-emails/${encodeURIComponent(email)}`, {
+    method: "DELETE",
+    headers: adminHeaders(),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({})) as { error?: string };
+    throw new Error(data.error ?? "Erro ao remover e-mail");
+  }
+};
 
 export interface Lead {
   id?: string;
@@ -54,7 +164,7 @@ export const saveLead = async (lead: Lead): Promise<void> => {
     localStorage.setItem(CONFIG.LEAD_STORAGE, JSON.stringify(leads));
   } catch { /* ignore */ }
 
-  if (API_URL) {
+  if (API_CONFIGURED) {
     fetch(`${API_URL}/api/leads`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -64,11 +174,11 @@ export const saveLead = async (lead: Lead): Promise<void> => {
 };
 
 export const getLeads = async (tag?: string): Promise<Lead[]> => {
-  if (API_URL && ADMIN_TOKEN) {
+  if (hasAdminSession()) {
     try {
       const url = `${API_URL}/api/admin/leads?limit=500${tag ? `&tag=${encodeURIComponent(tag)}` : ""}`;
       const res = await fetch(url, {
-        headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+        headers: adminHeaders(),
       });
       if (res.ok) {
         const { items } = await res.json() as { items: { id: string; name: string; email: string; whatsapp: string; tags: string[]; created_at: string }[] };
@@ -88,10 +198,10 @@ export const getLeads = async (tag?: string): Promise<Lead[]> => {
 // Orders
 
 export const getOrders = async (): Promise<Order[]> => {
-  if (!API_URL || !ADMIN_TOKEN) return [];
+  if (!hasAdminSession()) return [];
   try {
     const res = await fetch(`${API_URL}/api/admin/orders?limit=500`, {
-      headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+      headers: adminHeaders(),
     });
     if (!res.ok) return [];
     const { items } = await res.json() as { items: Order[] };
@@ -104,10 +214,10 @@ export const getOrders = async (): Promise<Order[]> => {
 // Stats
 
 export const getDashboardStats = async (): Promise<DashboardStats | null> => {
-  if (!API_URL || !ADMIN_TOKEN) return null;
+  if (!hasAdminSession()) return null;
   try {
     const res = await fetch(`${API_URL}/api/admin/stats`, {
-      headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+      headers: adminHeaders(),
     });
     if (!res.ok) return null;
     return res.json() as Promise<DashboardStats>;
@@ -129,7 +239,7 @@ export interface Product {
 }
 
 export const getProducts = async (): Promise<Product[]> => {
-  if (!API_URL) throw new Error("VITE_API_URL não definida");
+  if (!API_CONFIGURED) throw new Error("VITE_API_URL não definida");
   const res = await fetch(`${API_URL}/api/products`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json() as Promise<Product[]>;
@@ -140,7 +250,7 @@ export const createProduct = async (
 ): Promise<Product> => {
   const res = await fetch(`${API_URL}/api/products`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${ADMIN_TOKEN}` },
+    headers: adminHeaders(true),
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -156,7 +266,7 @@ export const updateProduct = async (
 ): Promise<Product> => {
   const res = await fetch(`${API_URL}/api/products/${encodeURIComponent(id)}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${ADMIN_TOKEN}` },
+    headers: adminHeaders(true),
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -169,7 +279,7 @@ export const updateProduct = async (
 export const deleteProduct = async (id: string): Promise<void> => {
   const res = await fetch(`${API_URL}/api/products/${encodeURIComponent(id)}`, {
     method: "DELETE",
-    headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+    headers: adminHeaders(),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({})) as { error?: string };
@@ -197,10 +307,10 @@ export interface Inscricao {
 }
 
 export const getInscricoes = async (): Promise<Inscricao[]> => {
-  if (!API_URL || !ADMIN_TOKEN) return [];
+  if (!hasAdminSession()) return [];
   try {
     const res = await fetch(`${API_URL}/api/admin/inscricoes?limit=500`, {
-      headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+      headers: adminHeaders(),
     });
     if (!res.ok) return [];
     const { items } = await res.json() as { items: (Inscricao & { order_id?: string })[] };
@@ -209,10 +319,10 @@ export const getInscricoes = async (): Promise<Inscricao[]> => {
 };
 
 export const markAttended = async (orderId: string, attended: boolean): Promise<void> => {
-  if (!API_URL || !ADMIN_TOKEN) return;
+  if (!hasAdminSession()) return;
   await fetch(`${API_URL}/api/admin/inscricoes/${encodeURIComponent(orderId)}/attended`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${ADMIN_TOKEN}` },
+    headers: adminHeaders(true),
     body: JSON.stringify({ attended }),
   });
 };
@@ -225,7 +335,7 @@ export const createCortesiaInscricao = async (data: {
 }): Promise<{ lead_id: string; order_id: string }> => {
   const res = await fetch(`${API_URL}/api/admin/inscricoes`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${ADMIN_TOKEN}` },
+    headers: adminHeaders(true),
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -242,7 +352,7 @@ export const uploadEbookFile = async (file: File): Promise<string> => {
   form.append("file", file);
   const res = await fetch(`${API_URL}/api/admin/ebook-upload`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+    headers: adminHeaders(),
     body: form,
   });
   if (!res.ok) {
@@ -254,10 +364,10 @@ export const uploadEbookFile = async (file: File): Promise<string> => {
 };
 
 export const getEbookUrl = async (): Promise<string> => {
-  if (!API_URL || !ADMIN_TOKEN) return "";
+  if (!hasAdminSession()) return "";
   try {
     const res = await fetch(`${API_URL}/api/admin/ebook-url`, {
-      headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+      headers: adminHeaders(),
     });
     if (!res.ok) return "";
     const { url } = await res.json() as { url: string };
@@ -271,7 +381,7 @@ export const getEbookUrl = async (): Promise<string> => {
 type EventName = "page_view" | "form_start" | "purchase";
 
 export const trackEvent = (name: EventName, payload?: Record<string, unknown>): void => {
-  if (!API_URL) return;
+  if (!API_CONFIGURED) return;
   fetch(`${API_URL}/api/events`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -295,10 +405,10 @@ export interface EmailTemplate {
 }
 
 export const getEmailTemplates = async (): Promise<EmailTemplate[]> => {
-  if (!API_URL || !ADMIN_TOKEN) return [];
+  if (!hasAdminSession()) return [];
   try {
     const res = await fetch(`${API_URL}/api/admin/email-templates`, {
-      headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+      headers: adminHeaders(),
     });
     if (!res.ok) return [];
     return res.json() as Promise<EmailTemplate[]>;
@@ -311,7 +421,7 @@ export const updateEmailTemplate = async (
 ): Promise<EmailTemplate> => {
   const res = await fetch(`${API_URL}/api/admin/email-templates/${encodeURIComponent(id)}`, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${ADMIN_TOKEN}` },
+    headers: adminHeaders(true),
     body: JSON.stringify(data),
   });
   if (!res.ok) {
@@ -335,10 +445,10 @@ export interface EmailQueueItem {
 }
 
 export const getEmailQueue = async (limit = 20): Promise<EmailQueueItem[]> => {
-  if (!API_URL || !ADMIN_TOKEN) return [];
+  if (!hasAdminSession()) return [];
   try {
     const res = await fetch(`${API_URL}/api/admin/email-queue?limit=${limit}`, {
-      headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+      headers: adminHeaders(),
     });
     if (!res.ok) return [];
     const data = await res.json() as { items: EmailQueueItem[] };
@@ -349,14 +459,14 @@ export const getEmailQueue = async (limit = 20): Promise<EmailQueueItem[]> => {
 export const processEmailQueue = async (): Promise<void> => {
   await fetch(`${API_URL}/api/admin/email-queue/process`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+    headers: adminHeaders(),
   });
 };
 
 export const testSendCartEmails = async (email: string, name: string): Promise<{ sent: number; failed: number }> => {
   const res = await fetch(`${API_URL}/api/admin/email-queue/test-send`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${ADMIN_TOKEN}` },
+    headers: adminHeaders(true),
     body: JSON.stringify({ email, name }),
   });
   const data = await res.json().catch(() => ({})) as { ok?: boolean; error?: string; sent?: number; failed?: number };
@@ -372,10 +482,10 @@ export interface CTAConfig {
 }
 
 export const getCTAConfig = async (): Promise<CTAConfig> => {
-  if (!API_URL || !ADMIN_TOKEN) return { ctaAcessoProductId: "ebook", ctaVagaProductId: "event" };
+  if (!hasAdminSession()) return { ctaAcessoProductId: "ebook", ctaVagaProductId: "event" };
   try {
     const res = await fetch(`${API_URL}/api/admin/cta-config`, {
-      headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+      headers: adminHeaders(),
     });
     if (!res.ok) return { ctaAcessoProductId: "ebook", ctaVagaProductId: "event" };
     const data = await res.json() as { cta_acesso_product_id: string; cta_vaga_product_id: string };
@@ -389,7 +499,7 @@ export const getCTAConfig = async (): Promise<CTAConfig> => {
 export const saveCTAConfig = async (config: Partial<CTAConfig>): Promise<void> => {
   const res = await fetch(`${API_URL}/api/admin/cta-config`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${ADMIN_TOKEN}` },
+    headers: adminHeaders(true),
     body: JSON.stringify({
       cta_acesso_product_id: config.ctaAcessoProductId,
       cta_vaga_product_id: config.ctaVagaProductId,
@@ -410,10 +520,10 @@ export interface GtmEvent {
 }
 
 export const getGtmEvents = async (): Promise<GtmEvent[]> => {
-  if (!API_URL || !ADMIN_TOKEN) return [];
+  if (!hasAdminSession()) return [];
   try {
     const res = await fetch(`${API_URL}/api/admin/gtm-events`, {
-      headers: { Authorization: `Bearer ${ADMIN_TOKEN}` },
+      headers: adminHeaders(),
     });
     if (!res.ok) return [];
     const { events } = await res.json() as { events: GtmEvent[] };
@@ -422,10 +532,10 @@ export const getGtmEvents = async (): Promise<GtmEvent[]> => {
 };
 
 export const saveGtmEvents = async (events: GtmEvent[]): Promise<void> => {
-  if (!API_URL || !ADMIN_TOKEN) return;
+  if (!hasAdminSession()) return;
   const res = await fetch(`${API_URL}/api/admin/gtm-events`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${ADMIN_TOKEN}` },
+    headers: adminHeaders(true),
     body: JSON.stringify({ events }),
   });
   if (!res.ok) {
@@ -433,4 +543,3 @@ export const saveGtmEvents = async (events: GtmEvent[]): Promise<void> => {
     throw new Error(err.error ?? "Erro ao salvar eventos GTM");
   }
 };
-

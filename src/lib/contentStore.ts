@@ -1,6 +1,12 @@
 const CONTENT_KEY = "fl_content";
 const API_URL = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
-const ADMIN_TOKEN = import.meta.env.VITE_ADMIN_TOKEN ?? "";
+const API_CONFIGURED = import.meta.env.VITE_API_URL !== undefined;
+const ADMIN_SESSION_TOKEN_KEY = "fl_admin_session_token";
+
+const getAdminSessionToken = () => {
+  try { return sessionStorage.getItem(ADMIN_SESSION_TOKEN_KEY) ?? ""; }
+  catch { return ""; }
+};
 
 export interface ContentData {
   heroHeadline: string;
@@ -127,13 +133,14 @@ export const saveContent = (updates: Partial<ContentData>): void => {
   } catch { /* ignore */ }
 
   // 2. Sync to DB (fire-and-forget)
-  if (API_URL && ADMIN_TOKEN) {
+  const adminToken = getAdminSessionToken();
+  if (API_CONFIGURED && adminToken) {
     const dbFields = contentToDbFields(updates);
     fetch(`${API_URL}/api/content`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${ADMIN_TOKEN}`,
+        Authorization: `Bearer ${adminToken}`,
       },
       body: JSON.stringify(dbFields),
     }).catch((err) => console.warn("[contentStore] API sync error:", err));

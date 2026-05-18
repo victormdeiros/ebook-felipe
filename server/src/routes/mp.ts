@@ -18,6 +18,24 @@ const preferenceSchema = z.object({
   }).optional(),
 });
 
+const absoluteUrl = (url: string): string => {
+  if (!url) return "";
+  if (/^https?:\/\//i.test(url)) return url;
+  return `${config.SITE_URL.replace(/\/$/, "")}/${url.replace(/^\//, "")}`;
+};
+
+const getEbookDownloadUrl = async (): Promise<string> => {
+  const { rows: cfgRows } = await pool.query<{ value: string }>(
+    `SELECT value FROM manual_config WHERE key = 'ebook_download_url'`,
+  );
+  if (cfgRows[0]?.value) return absoluteUrl(cfgRows[0].value);
+
+  const { rows: contentRows } = await pool.query<{ ebook_download_url: string }>(
+    `SELECT ebook_download_url FROM manual_content WHERE id = 'default'`,
+  );
+  return absoluteUrl(contentRows[0]?.ebook_download_url ?? "");
+};
+
 // ── POST /api/mp/preference ──────────────────────────────────
 // Cria preferência de pagamento para ebook ou evento.
 router.post("/preference", async (req, res, next) => {
@@ -192,15 +210,23 @@ router.post("/process-payment", async (req, res, next) => {
     const isEventType = checkoutType === "event" || checkoutType === "event_ebook";
 
     // Upsert order (idempotente)
-    const upsertResult = await pool.query<{ was_new: boolean }>(
-      `INSERT INTO manual_orders
-         (mp_payment_id, mp_preference_id, product, status, amount, payer_email, payer_name, payment_method, raw_webhook)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       ON CONFLICT (mp_payment_id) DO UPDATE
-         SET status = EXCLUDED.status,
-             raw_webhook = EXCLUDED.raw_webhook,
-             updated_at = now()
-       RETURNING (xmax = 0) AS was_new`,
+    const upsertResult = await pool.query<{ previous_status: string | null; current_status: string }>(
+      `WITH existing AS (
+         SELECT status FROM manual_orders WHERE mp_payment_id = $1
+       ),
+       upsert AS (
+         INSERT INTO manual_orders
+           (mp_payment_id, mp_preference_id, product, status, amount, payer_email, payer_name, payment_method, raw_webhook)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         ON CONFLICT (mp_payment_id) DO UPDATE
+           SET status = EXCLUDED.status,
+               raw_webhook = EXCLUDED.raw_webhook,
+               updated_at = now()
+         RETURNING status
+       )
+       SELECT
+         (SELECT status FROM existing) AS previous_status,
+         (SELECT status FROM upsert) AS current_status`,
       [
         String(payment.id),
         payment.preference_id ?? null,
@@ -217,7 +243,8 @@ router.post("/process-payment", async (req, res, next) => {
     let ebookUrl: string | undefined;
 
     if (payment.status === "approved" && payerEmail) {
-      const wasNew = upsertResult.rows[0]?.was_new ?? true;
+      const previousStatus = upsertResult.rows[0]?.previous_status ?? null;
+      const shouldSendConfirmation = previousStatus !== "approved";
 
       // Remove abandoned cart tag; ensure inscricao_evento tag for event types
       pool.query(
@@ -233,11 +260,8 @@ router.post("/process-payment", async (req, res, next) => {
         ).catch(() => {});
       }
 
-      if (wasNew && config.RESEND_API_KEY) {
-        const { rows: cfgRows } = await pool.query<{ value: string }>(
-          `SELECT value FROM manual_config WHERE key = 'ebook_download_url'`
-        );
-        ebookUrl = cfgRows[0]?.value ?? "";
+      if (shouldSendConfirmation && config.RESEND_API_KEY) {
+        ebookUrl = await getEbookDownloadUrl();
 
         if (checkoutType === "ebook") {
           sendEbookPurchaseEmail(payerEmail, payerName ?? "Cliente", ebookUrl)
@@ -324,15 +348,23 @@ router.post("/webhook", async (req, res) => {
     const isEventType = checkoutType === "event" || checkoutType === "event_ebook";
 
     // Upsert — idempotente (pagamentos podem chegar mais de uma vez)
-    const upsertResult = await pool.query<{ was_new: boolean }>(
-      `INSERT INTO manual_orders
-         (mp_payment_id, mp_preference_id, product, status, amount, payer_email, payer_name, payment_method, raw_webhook)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-       ON CONFLICT (mp_payment_id) DO UPDATE
-         SET status = EXCLUDED.status,
-             raw_webhook = EXCLUDED.raw_webhook,
-             updated_at = now()
-       RETURNING (xmax = 0) AS was_new`,
+    const upsertResult = await pool.query<{ previous_status: string | null; current_status: string }>(
+      `WITH existing AS (
+         SELECT status FROM manual_orders WHERE mp_payment_id = $1
+       ),
+       upsert AS (
+         INSERT INTO manual_orders
+           (mp_payment_id, mp_preference_id, product, status, amount, payer_email, payer_name, payment_method, raw_webhook)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+         ON CONFLICT (mp_payment_id) DO UPDATE
+           SET status = EXCLUDED.status,
+               raw_webhook = EXCLUDED.raw_webhook,
+               updated_at = now()
+         RETURNING status
+       )
+       SELECT
+         (SELECT status FROM existing) AS previous_status,
+         (SELECT status FROM upsert) AS current_status`,
       [
         String(payment.id),
         payment.preference_id ?? null,
@@ -348,9 +380,10 @@ router.post("/webhook", async (req, res) => {
 
     console.log(`[mp/webhook] payment ${payment.id} → ${payment.status} (${product}, type=${checkoutType})`);
 
-    // Disparar e-mail apenas em aprovação e somente na primeira vez (was_new)
+    // Disparar e-mail quando o pagamento vira aprovado.
     const isApproved = payment.status === "approved";
-    const wasNew = upsertResult.rows[0]?.was_new ?? true;
+    const previousStatus = upsertResult.rows[0]?.previous_status ?? null;
+    const shouldSendConfirmation = previousStatus !== "approved";
     const payerEmail = payment.payer?.email;
 
     if (isApproved && payerEmail && config.RESEND_API_KEY) {
@@ -370,12 +403,8 @@ router.post("/webhook", async (req, res) => {
         ).catch(() => {});
       }
 
-      if (wasNew) {
-        // Busca URL do ebook no banco
-        const { rows: cfgRows } = await pool.query<{ value: string }>(
-          `SELECT value FROM manual_config WHERE key = 'ebook_download_url'`
-        );
-        const ebookUrl = cfgRows[0]?.value ?? "";
+      if (shouldSendConfirmation) {
+        const ebookUrl = await getEbookDownloadUrl();
 
         if (checkoutType === "ebook") {
           sendEbookPurchaseEmail(payerEmail, displayName, ebookUrl).catch((e) =>
@@ -385,9 +414,15 @@ router.post("/webhook", async (req, res) => {
           sendEventConfirmationEmail(payerEmail, displayName, false, undefined).catch((e) =>
             console.error("[email] event send error:", e)
           );
+          scheduleEventReminders(payerEmail, displayName).catch((e) =>
+            console.error("[email] scheduleEventReminders error:", e)
+          );
         } else if (checkoutType === "event_ebook") {
           sendEventConfirmationEmail(payerEmail, displayName, true, ebookUrl).catch((e) =>
             console.error("[email] event+ebook send error:", e)
+          );
+          scheduleEventReminders(payerEmail, displayName).catch((e) =>
+            console.error("[email] scheduleEventReminders error:", e)
           );
         }
       }

@@ -16,7 +16,7 @@ export interface MPPreferenceResult {
   /** ID da preferência no MP */
   preference_id: string;
   /** Produto associado */
-  product: "ebook" | "event";
+  product: string;
 }
 
 export class MPNotConfiguredError extends Error {
@@ -35,7 +35,7 @@ export class MPNotConfiguredError extends Error {
  * @throws {Error} para erros da API
  */
 export const createMPPreference = async (
-  product: "ebook" | "event" = "ebook",
+  product: string = "ebook",
   payer?: { name: string; email: string; phone: string }
 ): Promise<MPPreferenceResult> => {
   if (import.meta.env.VITE_API_URL === undefined) {

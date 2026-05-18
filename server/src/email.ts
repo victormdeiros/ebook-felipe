@@ -167,6 +167,48 @@ function eventEmailHtml(name: string, hasEbook: boolean, downloadUrl?: string) {
 
 // ── Funções públicas ──────────────────────────────────────────
 
+function adminLoginCodeHtml(code: string) {
+  return `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0d0a0b;font-family:'Segoe UI',Arial,sans-serif;color:#f3ece8;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0d0a0b;padding:40px 16px;">
+    <tr><td align="center">
+      <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#1a1114;border-radius:12px;overflow:hidden;border:1px solid rgba(201,168,76,0.15);">
+        <tr><td style="background:linear-gradient(135deg,#1e0e10 0%,#2a0f13 100%);padding:28px 36px;text-align:center;border-bottom:1px solid rgba(201,168,76,0.2);">
+          <p style="margin:0 0 8px;font-size:11px;letter-spacing:0.15em;color:#c9a84c;text-transform:uppercase;font-weight:600;">Manual do Empregador</p>
+          <h1 style="margin:0;font-size:24px;font-weight:700;color:#fff;line-height:1.2;">Codigo de acesso</h1>
+        </td></tr>
+        <tr><td style="padding:34px 36px;text-align:center;">
+          <p style="margin:0 0 20px;font-size:15px;color:#c8bfbf;line-height:1.7;">
+            Use o codigo abaixo para entrar no painel administrativo. Ele expira em 10 minutos.
+          </p>
+          <p style="display:inline-block;margin:0 0 24px;padding:14px 24px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.28);border-radius:10px;font-size:30px;line-height:1;letter-spacing:0.22em;color:#fff;font-weight:700;">${code}</p>
+          <p style="margin:0;font-size:12px;color:#a79797;line-height:1.6;">
+            Se voce nao pediu este acesso, ignore este e-mail.
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+}
+
+export async function sendAdminLoginCodeEmail(
+  to: string,
+  code: string,
+): Promise<void> {
+  const r = getResend();
+  await r.emails.send({
+    from: config.EMAIL_FROM,
+    to,
+    subject: "Codigo de acesso ao painel admin",
+    html: adminLoginCodeHtml(code),
+  });
+}
+
 export async function sendEbookPurchaseEmail(
   to: string,
   name: string,

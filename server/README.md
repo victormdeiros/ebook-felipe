@@ -13,11 +13,14 @@ Production: **https://api-manual.converseia.com** (Dokku app `manual-empregador-
 | GET    | `/api/health`         | —             | Readiness check with DB ping         |
 | POST   | `/api/leads`          | —             | Insert a lead from the CTA form      |
 | POST   | `/api/events`         | —             | Insert an analytics event            |
-| GET    | `/api/admin/leads`    | Bearer token  | Paginated leads (admin panel)        |
-| GET    | `/api/admin/events`   | Bearer token  | Paginated events (admin panel)       |
+| POST   | `/api/admin/auth/request-code` | —     | Send login code to an allowed admin e-mail |
+| POST   | `/api/admin/auth/verify-code`  | —     | Exchange login code for an admin session   |
+| GET    | `/api/admin/leads`    | Admin session | Paginated leads (admin panel)        |
+| GET    | `/api/admin/events`   | Admin session | Paginated events (admin panel)       |
 | POST   | `/api/mp/preference`  | —             | Create a Mercado Pago preference     |
 
-Admin auth: send `Authorization: Bearer <ADMIN_TOKEN>`.
+Admin auth uses a 6-digit code sent by Resend. Protected routes expect
+`Authorization: Bearer <session-token>` returned by `/api/admin/auth/verify-code`.
 
 ## Postgres tables
 
@@ -29,7 +32,7 @@ for reference and for fresh installs — production runs use the pre-existing ta
 
 ```bash
 cd server
-cp .env.example .env     # fill in ADMIN_TOKEN, point DATABASE_URL at a local pg
+cp .env.example .env     # fill in RESEND_API_KEY, point DATABASE_URL at a local pg
 npm install
 npm run dev              # tsx watch
 ```
@@ -69,7 +72,7 @@ dokku config:set ebookfelipelopesadv \
   PORT=5000 \
   DATABASE_URL=postgresql://postgres:<password>@evolution-postgres:5432/postgres \
   CORS_ORIGIN=https://manualdoempregador.com.br \
-  ADMIN_TOKEN=<strong-admin-token> \
+  ADMIN_AUTH_SECRET=<strong-random-secret> \
   MP_ACCESS_TOKEN=<mercado-pago-access-token> \
   MP_PUBLIC_KEY=<mercado-pago-public-key> \
   SITE_URL=https://manualdoempregador.com.br \
@@ -87,6 +90,6 @@ See [.env.example](.env.example) for the full list.
 
 - Postgres password never reaches the browser.
 - MP Access Token lives only in this server's Dokku env.
-- Admin token is checked on every `/api/admin/*` request.
+- Admin sessions are checked on every protected `/api/admin/*` request.
 - Body limit is 64KB.
 - All input validated with zod.
