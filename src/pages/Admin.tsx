@@ -338,6 +338,7 @@ const MetricsTab = () => {
   const emailPending = stats?.email_stats?.pending ?? 0;
   const emailSent = stats?.email_stats?.sent ?? 0;
   const emailFailed = stats?.email_stats?.failed ?? 0;
+  const siteAccess = stats?.site_access;
 
   const customTooltip = ({ active, payload, label }: { active?: boolean; payload?: { value: number; name: string }[]; label?: string }) => {
     if (active && payload?.length) {
@@ -364,8 +365,8 @@ const MetricsTab = () => {
   };
   const exportOrdersCSV = () => {
     if (!orders.length) return;
-    const headers = ["ID", "E-mail Pagador", "Nome Pagador", "Produto", "Status", "Valor (R$)", "Método", "MP Payment ID", "Data"];
-    const rows = orders.map((o) => [o.id, o.payer_email, o.payer_name, o.product, o.status, String(o.amount), o.payment_method, o.mp_payment_id, o.created_at].map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";"));
+    const headers = ["ID", "E-mail Pagador", "Nome Pagador", "Produto", "Status", "E-mail Material", "Valor (R$)", "Método", "MP Payment ID", "Data"];
+    const rows = orders.map((o) => [o.id, o.payer_email, o.payer_name, o.product, o.status, o.confirmation_email_status ?? "sem_envio", String(o.amount), o.payment_method, o.mp_payment_id, o.created_at].map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";"));
     downloadCSV([headers.join(";"), ...rows].join("\n"), `pedidos_${isoDate()}.csv`);
   };
   const exportFullReport = () => {
@@ -457,6 +458,50 @@ const MetricsTab = () => {
           <KpiCard label="Receita Total" value={stats ? formatCurrency(Number(stats.total_revenue)) : "—"} icon={Wallet} accent="gold" loading={loading} />
           <KpiCard label="Receita (30d)" value={stats ? formatCurrency(Number(stats.revenue_last_30d ?? 0)) : "—"} icon={Wallet} loading={loading} />
         </div>
+      </div>
+
+      {/* ── KPI Row 3: Site Access ── */}
+      <div>
+        <p className="text-[0.65rem] uppercase tracking-[0.15em] text-text-muted font-ui mb-3">Acessos ao Site</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <KpiCard label="Visualizações (30d)" value={siteAccess?.page_views_last_30d ?? "—"} icon={Eye} accent="wine" loading={loading} />
+          <KpiCard label="Total de Acessos" value={siteAccess?.page_views ?? "—"} icon={Activity} loading={loading} />
+          <KpiCard label="Sessões" value={siteAccess?.unique_sessions ?? "—"} icon={Users} loading={loading} sub="identificadas" />
+          <KpiCard label="Inícios de Formulário" value={siteAccess?.form_starts ?? "—"} icon={MousePointer2} accent="gold" loading={loading} />
+        </div>
+      </div>
+
+      <div className="surface-card rounded-xl p-4 sm:p-6">
+        <div className="flex items-center gap-2 mb-5">
+          <Activity className="w-4 h-4 text-wine" strokeWidth={1.5} />
+          <h3 className="font-display text-base font-semibold text-foreground">Acessos — últimos 30 dias</h3>
+        </div>
+        {!stats?.access_by_day?.length ? (
+          <div className="h-44 flex flex-col items-center justify-center text-text-muted font-body text-xs gap-2">
+            <BarChart2 className="w-7 h-7 opacity-30" strokeWidth={1} /><p>Nenhum acesso registrado ainda.</p>
+          </div>
+        ) : (
+          <div className="h-44">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={stats.access_by_day} margin={{ top: 4, right: 4, bottom: 0, left: -24 }}>
+                <defs>
+                  <linearGradient id="accessGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#C8797C" stopOpacity={0.22} />
+                    <stop offset="95%" stopColor="#C8797C" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                <XAxis dataKey="date" stroke="#6b5f62" tick={{ fontSize: 10, fill: "#a79797" }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+                <YAxis stroke="#6b5f62" tick={{ fontSize: 10, fill: "#a79797" }} tickLine={false} axisLine={false} allowDecimals={false} />
+                <Tooltip
+                  contentStyle={{ background: "#1e1212", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, fontSize: 11 }}
+                  formatter={(value: number) => [value, "acessos"]}
+                />
+                <Area type="monotone" dataKey="count" stroke="#C8797C" strokeWidth={2} fill="url(#accessGrad)" dot={false} activeDot={{ r: 4, fill: "#C8797C", stroke: "#000", strokeWidth: 2 }} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
       </div>
 
       {/* ── Time-series Charts ── */}
@@ -562,13 +607,14 @@ const MetricsTab = () => {
               {stats.product_breakdown.map(({ product, count, revenue }) => {
                 const total = stats.total_orders || 1;
                 const pct = (count / total) * 100;
-                const isEvent = product === "event";
+                const isEvent = product === "event" || product === "event_ebook";
+                const productLabel = product === "event_ebook" ? "Evento + e-book" : isEvent ? "Evento" : "E-book";
                 return (
                   <div key={product}>
                     <div className="flex justify-between mb-1">
                       <span className="flex items-center gap-1.5">
                         {isEvent ? <CalendarDays className="w-3 h-3 text-blue-400" strokeWidth={1.5} /> : <BookOpen className="w-3 h-3 text-gold" strokeWidth={1.5} />}
-                        <span className="text-text-muted">{isEvent ? "Evento" : "E-book"}</span>
+                        <span className="text-text-muted">{productLabel}</span>
                       </span>
                       <span className="text-foreground font-semibold">{count} · {formatCurrency(revenue)}</span>
                     </div>
@@ -1551,12 +1597,38 @@ const MATERIAL_KIND_LABELS: Record<ManualMaterialKind, string> = {
   event_ebook: "Evento + e-book",
 };
 
+type ConfirmationEmailStatus = Exclude<Order["confirmation_email_status"], null>;
+
+const CONFIRMATION_EMAIL_LABELS: Record<ConfirmationEmailStatus, { label: string; color: string }> = {
+  sent: { label: "Enviado", color: "text-green-400 bg-green-500/10 border-green-500/25" },
+  pending: { label: "Pendente", color: "text-yellow-400 bg-yellow-500/10 border-yellow-500/25" },
+  failed: { label: "Falhou", color: "text-red-400 bg-red-500/10 border-red-500/25" },
+};
+
+const confirmationEmailInfo = (order: Order) => {
+  if (!order.confirmation_email_status) {
+    return {
+      label: "Sem envio",
+      color: "text-white/35 bg-white/5 border-white/10",
+      detail: "não registrado",
+    };
+  }
+
+  return {
+    ...CONFIRMATION_EMAIL_LABELS[order.confirmation_email_status],
+    detail: order.confirmation_email_status === "sent" && order.confirmation_email_sent_at
+      ? formatDate(order.confirmation_email_sent_at)
+      : order.confirmation_email_error ?? "",
+  };
+};
+
 const PedidosTab = () => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | Order["status"]>("all");
   const [loading, setLoading] = useState(true);
   const [materialForm, setMaterialForm] = useState({
+    orderId: null as string | null,
     name: "",
     email: "",
     kind: "ebook" as ManualMaterialKind,
@@ -1585,17 +1657,22 @@ const PedidosTab = () => {
 
   const totalApproved = orders.filter((o) => o.status === "approved").reduce((s, o) => s + Number(o.amount), 0);
 
-  const updateMaterialForm = (field: keyof typeof materialForm, value: string) => {
-    setMaterialForm((prev) => ({ ...prev, [field]: value }));
+  const updateMaterialForm = (field: keyof typeof materialForm, value: string | null) => {
+    setMaterialForm((prev) => ({
+      ...prev,
+      [field]: value,
+      ...(field === "email" ? { orderId: null } : {}),
+    }));
     setMaterialError("");
     setMaterialMessage("");
   };
 
   const fillMaterialFromOrder = (order: Order) => {
     setMaterialForm({
+      orderId: order.id,
       name: order.payer_name || "",
       email: order.payer_email || "",
-      kind: order.product === "event" ? "event" : "ebook",
+      kind: order.product === "event_ebook" ? "event_ebook" : order.product === "event" ? "event" : "ebook",
       note: order.status === "approved" ? "reenviar_confirmacao" : `pedido_${order.status}`,
     });
     setMaterialError(order.payer_email ? "" : "Pedido sem e-mail. Preencha o destinatario manualmente.");
@@ -1620,6 +1697,7 @@ const PedidosTab = () => {
     setMaterialMessage("");
     try {
       await sendManualMaterialEmail({
+        order_id: materialForm.orderId,
         name,
         email,
         kind: materialForm.kind,
@@ -1627,6 +1705,7 @@ const PedidosTab = () => {
       });
       setMaterialMessage(`Confirmacao enviada para ${email}.`);
       setMaterialForm((prev) => ({ ...prev, note: "" }));
+      refresh();
     } catch (err) {
       setMaterialError(err instanceof Error ? err.message : "Erro ao enviar e-mail.");
     } finally {
@@ -1679,20 +1758,22 @@ const PedidosTab = () => {
                 <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold hidden md:table-cell">Comprador</th>
                 <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold">Valor</th>
                 <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold">Status</th>
+                <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold hidden lg:table-cell">E-mail</th>
                 <th className="text-left px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold hidden sm:table-cell">Data</th>
                 <th className="text-right px-5 py-3.5 text-xs uppercase tracking-[0.12em] text-text-muted font-semibold">Envio</th>
               </tr></thead>
               <tbody>
                 {filtered.map((order) => {
                   const statusInfo = STATUS_LABELS[order.status] ?? { label: order.status, color: "text-white/50" };
+                  const emailInfo = confirmationEmailInfo(order);
                   return (
                     <tr key={order.id} className="border-b border-white/4 hover:bg-white/2 transition-colors last:border-0">
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2.5">
-                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${order.product === "event" ? "bg-gold/10 border border-gold/15" : "bg-wine/10 border border-wine/15"}`}>
-                            {order.product === "event" ? <CalendarDays className="w-3.5 h-3.5 text-gold" /> : <BookOpen className="w-3.5 h-3.5 text-wine" />}
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${order.product === "event" || order.product === "event_ebook" ? "bg-gold/10 border border-gold/15" : "bg-wine/10 border border-wine/15"}`}>
+                            {order.product === "event" || order.product === "event_ebook" ? <CalendarDays className="w-3.5 h-3.5 text-gold" /> : <BookOpen className="w-3.5 h-3.5 text-wine" />}
                           </div>
-                          <span className="text-white text-xs">{order.product === "event" ? "Evento" : "E-book"}</span>
+                          <span className="text-white text-xs">{order.product === "event_ebook" ? "Evento + e-book" : order.product === "event" ? "Evento" : "E-book"}</span>
                         </div>
                       </td>
                       <td className="px-5 py-3.5 hidden md:table-cell">
@@ -1701,6 +1782,10 @@ const PedidosTab = () => {
                       </td>
                       <td className="px-5 py-3.5 font-semibold text-gold whitespace-nowrap">{formatCurrency(Number(order.amount))}</td>
                       <td className="px-5 py-3.5"><span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[0.65rem] font-semibold ${statusInfo.color}`}>{statusInfo.label}</span></td>
+                      <td className="px-5 py-3.5 hidden lg:table-cell">
+                        <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[0.65rem] font-semibold ${emailInfo.color}`}>{emailInfo.label}</span>
+                        {emailInfo.detail && <p className="mt-1 text-[0.65rem] text-white/35 max-w-[130px] truncate" title={emailInfo.detail}>{emailInfo.detail}</p>}
+                      </td>
                       <td className="px-5 py-3.5 text-white/60 hidden sm:table-cell whitespace-nowrap">{formatDate(order.created_at)}</td>
                       <td className="px-5 py-3.5 text-right">
                         <button onClick={() => fillMaterialFromOrder(order)} className="inline-flex items-center gap-1.5 rounded-md border border-white/8 px-2.5 py-1.5 text-[0.68rem] font-body text-text-muted hover:border-gold/30 hover:text-gold hover:bg-gold/5 transition-colors">

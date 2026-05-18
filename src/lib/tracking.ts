@@ -17,6 +17,7 @@ export const gtmPush = (data: Record<string, unknown>) => {
 };
 
 const TRACKING_KEY = "fl_tracking";
+const SESSION_KEY = "fl_tracking_session_id";
 
 export interface TrackingData {
   pageviews: { count: number; timestamps: string[] };
@@ -58,14 +59,42 @@ const save = (data: TrackingData) => {
   }
 };
 
+const createSessionId = () => {
+  try {
+    return crypto.randomUUID();
+  } catch {
+    return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+};
+
+const getTrackingSessionId = () => {
+  try {
+    const current = sessionStorage.getItem(SESSION_KEY);
+    if (current) return current;
+    const next = createSessionId();
+    sessionStorage.setItem(SESSION_KEY, next);
+    return next;
+  } catch {
+    return createSessionId();
+  }
+};
+
+const baseEventPayload = () => ({
+  session_id: getTrackingSessionId(),
+  path: window.location.pathname,
+  title: document.title,
+  referrer: document.referrer || null,
+});
+
 /** Call on landing page mount. Returns cleanup function. */
 export const trackPageView = (): (() => void) => {
   const data = getTrackingData();
   data.pageviews.count += 1;
   data.pageviews.timestamps.push(new Date().toISOString());
   save(data);
-  trackEvent("page_view");
-  gtmPush({ event: "page_view" });
+  const payload = baseEventPayload();
+  trackEvent("page_view", payload);
+  gtmPush({ event: "page_view", ...payload });
 
   const startTime = Date.now();
   const handleUnload = () => {
@@ -86,8 +115,9 @@ export const trackFormStart = () => {
   const data = getTrackingData();
   data.formStarts += 1;
   save(data);
-  trackEvent("form_start");
-  gtmPush({ event: "form_start" });
+  const payload = baseEventPayload();
+  trackEvent("form_start", payload);
+  gtmPush({ event: "form_start", ...payload });
 };
 
 /** Call on /obrigado mount (post-purchase confirmation). */
@@ -97,8 +127,9 @@ export const trackPurchase = (email?: string) => {
   if (email) data.purchases.emails.push(email);
   data.purchases.timestamps.push(new Date().toISOString());
   save(data);
-  trackEvent("purchase", email ? { email } : undefined);
-  gtmPush({ event: "purchase", ...(email ? { email } : {}) });
+  const payload = { ...baseEventPayload(), ...(email ? { email } : {}) };
+  trackEvent("purchase", payload);
+  gtmPush({ event: "purchase", ...payload });
 };
 
 export const resetTracking = () => {

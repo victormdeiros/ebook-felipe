@@ -4,7 +4,8 @@ import { z } from "zod";
 import multer from "multer";
 import { pool } from "../db";
 import { config } from "../config";
-import { sendAdminLoginCodeEmail, sendEbookPurchaseEmail, sendEventConfirmationEmail } from "../email";
+import { sendAdminLoginCodeEmail } from "../email";
+import { sendAndRecordConfirmationEmail } from "../confirmationEmail";
 import { type AdminRequest, hashAdminToken, requireAdmin } from "../middleware/auth";
 import { uploadEbook } from "../storage";
 import { processQueue, scheduleCartEmails } from "../emailScheduler";
@@ -227,6 +228,7 @@ const paginationSchema = z.object({
 });
 
 const manualMaterialEmailSchema = z.object({
+  order_id: z.string().uuid().nullable().optional(),
   email: z.string().trim().toLowerCase().email(),
   name: z.string().trim().min(1).max(200).default("Cliente"),
   kind: z.enum(["ebook", "event", "event_ebook"]).default("ebook"),
@@ -567,22 +569,35 @@ router.get("/orders", async (req, res, next) => {
     const { limit, offset } = paginationSchema.parse(req.query);
     const statusFilter = z.string().optional().parse(req.query.status);
 
-    const whereClause = statusFilter ? "WHERE status = $3" : "";
+    const whereClause = statusFilter ? "WHERE o.status = $3" : "";
     const params: (number | string)[] = [limit, offset];
     if (statusFilter) params.push(statusFilter);
 
     const { rows } = await pool.query(
-      `SELECT id, mp_payment_id, mp_preference_id, product, status,
-              amount, payer_email, payer_name, payment_method, created_at
-       FROM manual_orders
+      `SELECT o.id, o.mp_payment_id, o.mp_preference_id, o.product, o.status,
+              o.amount, o.payer_email, o.payer_name, o.payment_method, o.created_at,
+              ce.status AS confirmation_email_status,
+              ce.sent_at AS confirmation_email_sent_at,
+              ce.error AS confirmation_email_error
+       FROM manual_orders o
+       LEFT JOIN LATERAL (
+         SELECT status, sent_at, error
+         FROM manual_confirmation_emails ce
+         WHERE ce.order_id = o.id
+            OR (ce.order_id IS NULL AND ce.email = o.payer_email)
+         ORDER BY
+           CASE WHEN ce.order_id = o.id THEN 0 ELSE 1 END,
+           ce.created_at DESC
+         LIMIT 1
+       ) ce ON true
        ${whereClause}
-       ORDER BY created_at DESC
+       ORDER BY o.created_at DESC
        LIMIT $1 OFFSET $2`,
       params,
     );
 
     const { rows: countRows } = await pool.query<{ count: string }>(
-      `SELECT COUNT(*)::text AS count FROM manual_orders ${whereClause}`,
+      `SELECT COUNT(*)::text AS count FROM manual_orders ${statusFilter ? "WHERE status = $1" : ""}`,
       statusFilter ? [statusFilter] : [],
     );
 
@@ -656,6 +671,52 @@ router.get("/stats", async (_req, res, next) => {
        GROUP BY status`,
     );
 
+    const { rows: accessRows } = await pool.query<{
+      page_views: string;
+      page_views_last_30d: string;
+      unique_sessions: string;
+      form_starts: string;
+      purchases: string;
+    }>(
+      `SELECT
+         COUNT(*) FILTER (WHERE name = 'page_view')::text AS page_views,
+         COUNT(*) FILTER (
+           WHERE name = 'page_view' AND occurred_at >= now() - INTERVAL '30 days'
+         )::text AS page_views_last_30d,
+         COUNT(DISTINCT payload->>'session_id') FILTER (
+           WHERE name = 'page_view' AND payload ? 'session_id'
+         )::text AS unique_sessions,
+         COUNT(*) FILTER (WHERE name = 'form_start')::text AS form_starts,
+         COUNT(*) FILTER (WHERE name = 'purchase')::text AS purchases
+       FROM manual_events`,
+    );
+
+    const { rows: accessByDay } = await pool.query<{ date: string; count: string }>(
+      `SELECT occurred_at::date::text AS date, COUNT(*)::text AS count
+       FROM manual_events
+       WHERE name = 'page_view'
+         AND occurred_at >= now() - INTERVAL '30 days'
+       GROUP BY date
+       ORDER BY date ASC`,
+    );
+
+    const { rows: eventBreakdown } = await pool.query<{ name: string; count: string }>(
+      `SELECT name, COUNT(*)::text AS count
+       FROM manual_events
+       WHERE occurred_at >= now() - INTERVAL '30 days'
+       GROUP BY name
+       ORDER BY COUNT(*) DESC
+       LIMIT 8`,
+    );
+
+    const access = accessRows[0] ?? {
+      page_views: "0",
+      page_views_last_30d: "0",
+      unique_sessions: "0",
+      form_starts: "0",
+      purchases: "0",
+    };
+
     res.json({
       ...rows[0],
       leads_by_day: leadsByDay.map((r) => ({ date: r.date.slice(5), count: Number(r.count) })),
@@ -678,6 +739,15 @@ router.get("/stats", async (_req, res, next) => {
       email_stats: Object.fromEntries(
         emailStats.map((r) => [r.status, Number(r.count)])
       ) as Record<string, number>,
+      site_access: {
+        page_views: Number(access.page_views),
+        page_views_last_30d: Number(access.page_views_last_30d),
+        unique_sessions: Number(access.unique_sessions),
+        form_starts: Number(access.form_starts),
+        purchases: Number(access.purchases),
+      },
+      access_by_day: accessByDay.map((r) => ({ date: r.date.slice(5), count: Number(r.count) })),
+      event_breakdown: eventBreakdown.map((r) => ({ name: r.name, count: Number(r.count) })),
     });
   } catch (err) {
     next(err);
@@ -798,28 +868,30 @@ router.get("/email-queue", async (req, res, next) => {
 // Envia manualmente o e-mail de confirmacao/material para um destinatario.
 router.post("/send-material-email", async (req, res, next) => {
   try {
-    if (!config.RESEND_API_KEY) {
-      return res.status(503).json({ ok: false, error: "RESEND_API_KEY nao configurado no servidor." });
-    }
-
-    const { email, name, kind, note } = manualMaterialEmailSchema.parse(req.body);
+    const { order_id, email, name, kind, note } = manualMaterialEmailSchema.parse(req.body);
     const ebookUrl = kind === "event" ? undefined : await getEbookDownloadUrl();
 
-    if (kind === "ebook") {
-      await sendEbookPurchaseEmail(email, name, ebookUrl ?? "");
-    } else if (kind === "event") {
-      await sendEventConfirmationEmail(email, name, false, undefined);
-    } else {
-      await sendEventConfirmationEmail(email, name, true, ebookUrl);
-    }
-
     const adminReq = req as AdminRequest;
+    await sendAndRecordConfirmationEmail({
+      orderId: order_id ?? null,
+      email,
+      name,
+      kind,
+      source: "manual",
+      ebookUrl,
+      metadata: {
+        note: note ?? null,
+        admin_email: adminReq.adminEmail ?? null,
+      },
+    });
+
     pool.query(
       `INSERT INTO manual_events (name, payload)
        VALUES ($1, $2)`,
       [
         "manual_material_email_sent",
         JSON.stringify({
+          order_id: order_id ?? null,
           email,
           lead_name: name,
           kind,

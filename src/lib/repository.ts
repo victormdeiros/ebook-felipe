@@ -120,6 +120,7 @@ export const deleteAdminAllowedEmail = async (email: string): Promise<void> => {
 export type ManualMaterialKind = "ebook" | "event" | "event_ebook";
 
 export const sendManualMaterialEmail = async (data: {
+  order_id?: string | null;
   email: string;
   name: string;
   kind: ManualMaterialKind;
@@ -154,13 +155,16 @@ export interface Lead {
 export interface Order {
   id: string;
   mp_payment_id: string | null;
-  product: "ebook" | "event";
+  product: "ebook" | "event" | "event_ebook";
   status: "pending" | "approved" | "rejected" | "refunded" | "in_process";
   amount: number;
   payer_email: string | null;
   payer_name: string | null;
   payment_method: string | null;
   created_at: string;
+  confirmation_email_status: "pending" | "sent" | "failed" | null;
+  confirmation_email_sent_at: string | null;
+  confirmation_email_error: string | null;
 }
 
 export interface DashboardStats {
@@ -178,6 +182,15 @@ export interface DashboardStats {
   product_breakdown: { product: string; count: number; revenue: number }[];
   leads_by_tag: { tag: string; count: number }[];
   email_stats: Record<string, number>;
+  site_access: {
+    page_views: number;
+    page_views_last_30d: number;
+    unique_sessions: number;
+    form_starts: number;
+    purchases: number;
+  };
+  access_by_day: { date: string; count: number }[];
+  event_breakdown: { name: string; count: number }[];
 }
 
 // Leads

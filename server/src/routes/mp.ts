@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { config } from "../config";
 import { pool } from "../db";
-import { sendEbookPurchaseEmail, sendEventConfirmationEmail } from "../email";
+import { sendAndRecordConfirmationEmail, type ConfirmationEmailKind } from "../confirmationEmail";
 import { scheduleEventReminders } from "../emailScheduler";
 
 const router = Router();
@@ -35,6 +35,15 @@ const getEbookDownloadUrl = async (): Promise<string> => {
   );
   return absoluteUrl(contentRows[0]?.ebook_download_url ?? "");
 };
+
+const confirmationKindFromCheckoutType = (checkoutType: string): ConfirmationEmailKind => {
+  if (checkoutType === "event") return "event";
+  if (checkoutType === "event_ebook") return "event_ebook";
+  return "ebook";
+};
+
+const checkoutTypeNeedsEbook = (checkoutType: string) =>
+  checkoutType === "ebook" || checkoutType === "event_ebook";
 
 // ── POST /api/mp/preference ──────────────────────────────────
 // Cria preferência de pagamento para ebook ou evento.
@@ -210,7 +219,11 @@ router.post("/process-payment", async (req, res, next) => {
     const isEventType = checkoutType === "event" || checkoutType === "event_ebook";
 
     // Upsert order (idempotente)
-    const upsertResult = await pool.query<{ previous_status: string | null; current_status: string }>(
+    const upsertResult = await pool.query<{
+      previous_status: string | null;
+      current_status: string;
+      order_id: string;
+    }>(
       `WITH existing AS (
          SELECT status FROM manual_orders WHERE mp_payment_id = $1
        ),
@@ -222,11 +235,12 @@ router.post("/process-payment", async (req, res, next) => {
            SET status = EXCLUDED.status,
                raw_webhook = EXCLUDED.raw_webhook,
                updated_at = now()
-         RETURNING status
+         RETURNING id, status
        )
        SELECT
          (SELECT status FROM existing) AS previous_status,
-         (SELECT status FROM upsert) AS current_status`,
+         (SELECT status FROM upsert) AS current_status,
+         (SELECT id FROM upsert) AS order_id`,
       [
         String(payment.id),
         payment.preference_id ?? null,
@@ -260,21 +274,26 @@ router.post("/process-payment", async (req, res, next) => {
         ).catch(() => {});
       }
 
-      if (shouldSendConfirmation && config.RESEND_API_KEY) {
-        ebookUrl = await getEbookDownloadUrl();
+      if (shouldSendConfirmation) {
+        const confirmationKind = confirmationKindFromCheckoutType(checkoutType);
+        ebookUrl = checkoutTypeNeedsEbook(checkoutType) ? await getEbookDownloadUrl() : undefined;
 
-        if (checkoutType === "ebook") {
-          sendEbookPurchaseEmail(payerEmail, payerName ?? "Cliente", ebookUrl)
-            .catch((e) => console.error("[email] ebook send error:", e));
-        } else if (checkoutType === "event") {
-          sendEventConfirmationEmail(payerEmail, payerName ?? "Cliente", false, undefined)
-            .catch((e) => console.error("[email] event send error:", e));
-          scheduleEventReminders(payerEmail, payerName ?? "Cliente")
-            .catch((e) => console.error("[email] scheduleEventReminders error:", e));
-        } else if (checkoutType === "event_ebook") {
-          // Bundle: send event confirmation WITH ebook link
-          sendEventConfirmationEmail(payerEmail, payerName ?? "Cliente", true, ebookUrl)
-            .catch((e) => console.error("[email] event+ebook send error:", e));
+        sendAndRecordConfirmationEmail({
+          orderId: upsertResult.rows[0]?.order_id ?? null,
+          email: payerEmail,
+          name: payerName ?? "Cliente",
+          kind: confirmationKind,
+          source: "auto",
+          ebookUrl,
+          metadata: {
+            mp_payment_id: String(payment.id),
+            product,
+            checkout_type: checkoutType,
+            origin: "process-payment",
+          },
+        }).catch((e) => console.error("[email] confirmation send error:", e));
+
+        if (confirmationKind === "event" || confirmationKind === "event_ebook") {
           scheduleEventReminders(payerEmail, payerName ?? "Cliente")
             .catch((e) => console.error("[email] scheduleEventReminders error:", e));
         }
@@ -348,7 +367,11 @@ router.post("/webhook", async (req, res) => {
     const isEventType = checkoutType === "event" || checkoutType === "event_ebook";
 
     // Upsert — idempotente (pagamentos podem chegar mais de uma vez)
-    const upsertResult = await pool.query<{ previous_status: string | null; current_status: string }>(
+    const upsertResult = await pool.query<{
+      previous_status: string | null;
+      current_status: string;
+      order_id: string;
+    }>(
       `WITH existing AS (
          SELECT status FROM manual_orders WHERE mp_payment_id = $1
        ),
@@ -360,11 +383,12 @@ router.post("/webhook", async (req, res) => {
            SET status = EXCLUDED.status,
                raw_webhook = EXCLUDED.raw_webhook,
                updated_at = now()
-         RETURNING status
+         RETURNING id, status
        )
        SELECT
          (SELECT status FROM existing) AS previous_status,
-         (SELECT status FROM upsert) AS current_status`,
+         (SELECT status FROM upsert) AS current_status,
+         (SELECT id FROM upsert) AS order_id`,
       [
         String(payment.id),
         payment.preference_id ?? null,
@@ -386,7 +410,7 @@ router.post("/webhook", async (req, res) => {
     const shouldSendConfirmation = previousStatus !== "approved";
     const payerEmail = payment.payer?.email;
 
-    if (isApproved && payerEmail && config.RESEND_API_KEY) {
+    if (isApproved && payerEmail) {
       const displayName = payerName ?? "Cliente";
 
       // Remove tag carrinho_abandonado; adiciona inscricao_evento para tipos de evento
@@ -404,23 +428,25 @@ router.post("/webhook", async (req, res) => {
       }
 
       if (shouldSendConfirmation) {
-        const ebookUrl = await getEbookDownloadUrl();
+        const confirmationKind = confirmationKindFromCheckoutType(checkoutType);
+        const ebookUrl = checkoutTypeNeedsEbook(checkoutType) ? await getEbookDownloadUrl() : undefined;
 
-        if (checkoutType === "ebook") {
-          sendEbookPurchaseEmail(payerEmail, displayName, ebookUrl).catch((e) =>
-            console.error("[email] ebook send error:", e)
-          );
-        } else if (checkoutType === "event") {
-          sendEventConfirmationEmail(payerEmail, displayName, false, undefined).catch((e) =>
-            console.error("[email] event send error:", e)
-          );
-          scheduleEventReminders(payerEmail, displayName).catch((e) =>
-            console.error("[email] scheduleEventReminders error:", e)
-          );
-        } else if (checkoutType === "event_ebook") {
-          sendEventConfirmationEmail(payerEmail, displayName, true, ebookUrl).catch((e) =>
-            console.error("[email] event+ebook send error:", e)
-          );
+        sendAndRecordConfirmationEmail({
+          orderId: upsertResult.rows[0]?.order_id ?? null,
+          email: payerEmail,
+          name: displayName,
+          kind: confirmationKind,
+          source: "auto",
+          ebookUrl,
+          metadata: {
+            mp_payment_id: String(payment.id),
+            product,
+            checkout_type: checkoutType,
+            origin: "webhook",
+          },
+        }).catch((e) => console.error("[email] confirmation send error:", e));
+
+        if (confirmationKind === "event" || confirmationKind === "event_ebook") {
           scheduleEventReminders(payerEmail, displayName).catch((e) =>
             console.error("[email] scheduleEventReminders error:", e)
           );
