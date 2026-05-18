@@ -67,17 +67,17 @@ env vars configured. To deploy:
 dokku config:set ebookfelipelopesadv \
   NODE_ENV=production \
   PORT=5000 \
-  DATABASE_URL=postgresql://postgres:difyai123456@evolution-postgres:5432/postgres \
+  DATABASE_URL=postgresql://postgres:<password>@evolution-postgres:5432/postgres \
   CORS_ORIGIN=https://manualdoempregador.com.br \
-  ADMIN_TOKEN=ManualEmpregador@2024 \
-  MP_ACCESS_TOKEN=APP_USR-2783696014404921-040913-0ed54f2433d7cfaeeed31575daf942d8-3201432 \
-  MP_PUBLIC_KEY=APP_USR-2b067151-d72c-4146-92d2-395d4980e015 \
+  ADMIN_TOKEN=<strong-admin-token> \
+  MP_ACCESS_TOKEN=<mercado-pago-access-token> \
+  MP_PUBLIC_KEY=<mercado-pago-public-key> \
   SITE_URL=https://manualdoempregador.com.br \
-  RESEND_API_KEY=re_Reg7L5VZ_gmNzi5KJJ9hqGRPfw5ZFpWyM \
+  RESEND_API_KEY=<resend-api-key> \
   "EMAIL_FROM=Manual do Empregador <noreply@manualempregador.com.br>" \
   MINIO_ENDPOINT=http://157.173.118.98:9003 \
-  MINIO_ACCESS_KEY=minio \
-  MINIO_SECRET_KEY=minio1234 \
+  MINIO_ACCESS_KEY=<minio-access-key> \
+  MINIO_SECRET_KEY=<minio-secret-key> \
   MINIO_REGION=us-east-1
 ```
 

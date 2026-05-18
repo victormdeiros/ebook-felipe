@@ -4,7 +4,20 @@
 # Usage: bash server/dokku-setup.sh
 # ──────────────────────────────────────────────────────────────────────────────
 
-APP=ebookfelipelopesadv
+APP=${APP:-ebookfelipelopesadv}
+SITE_URL=${SITE_URL:-https://manualdoempregador.com.br}
+CORS_ORIGIN=${CORS_ORIGIN:-$SITE_URL}
+DEFAULT_EMAIL_FROM="Manual do Empregador <contato@manualdoempregador.com.br>"
+EMAIL_FROM=${EMAIL_FROM:-$DEFAULT_EMAIL_FROM}
+MINIO_ENDPOINT=${MINIO_ENDPOINT:-http://157.173.118.98:9003}
+MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minio}
+MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-}
+MINIO_REGION=${MINIO_REGION:-us-east-1}
+
+: "${DATABASE_URL:?Set DATABASE_URL before running this setup script.}"
+: "${ADMIN_TOKEN:?Set ADMIN_TOKEN before running this setup script.}"
+: "${MP_ACCESS_TOKEN:?Set MP_ACCESS_TOKEN before running this setup script.}"
+: "${MP_PUBLIC_KEY:?Set MP_PUBLIC_KEY before running this setup script.}"
 
 # ── 1. Create app (safe to re-run) ───────────────────────────────────────────
 dokku apps:create $APP 2>/dev/null || echo "App already exists, continuing..."
@@ -14,27 +27,27 @@ dokku apps:create $APP 2>/dev/null || echo "App already exists, continuing..."
 dokku buildpacks:set $APP https://github.com/heroku/heroku-buildpack-nodejs
 
 # ── 3. Configure environment variables ───────────────────────────────────────
-# Replace values below with your real credentials before running!
+# Export the required values in your shell before running this script.
 # Attach to docker_default network so the app can reach the evolution-postgres container
 dokku network:set $APP attach-post-deploy docker_default
 
 dokku config:set $APP \
   NODE_ENV=production \
-  DATABASE_URL="postgresql://postgres:difyai123456@evolution-postgres:5432/postgres" \
-  ADMIN_TOKEN="ManualEmpregador@2024" \
-  MP_ACCESS_TOKEN="APP_USR-2783696014404921-040913-0ed54f2433d7cfaeeed31575daf942d8-3201432" \
-  MP_PUBLIC_KEY="APP_USR-2b067151-d72c-4146-92d2-395d4980e015" \
-  SITE_URL="https://ebookfelipelopesadv.157.173.118.98.nip.io" \
-  CORS_ORIGIN="https://ebookfelipelopesadv.157.173.118.98.nip.io" \
-  RESEND_API_KEY="re_Reg7L5VZ_gmNzi5KJJ9hqGRPfw5ZFpWyM" \
-  EMAIL_FROM="Manual do Empregador <contato@manualdoempregador.com.br>" \
-  MINIO_ENDPOINT="http://157.173.118.98:9003" \
-  MINIO_ACCESS_KEY="minio" \
-  MINIO_SECRET_KEY="minio1234" \
-  MINIO_REGION="us-east-1" \
+  DATABASE_URL="$DATABASE_URL" \
+  ADMIN_TOKEN="$ADMIN_TOKEN" \
+  MP_ACCESS_TOKEN="$MP_ACCESS_TOKEN" \
+  MP_PUBLIC_KEY="$MP_PUBLIC_KEY" \
+  SITE_URL="$SITE_URL" \
+  CORS_ORIGIN="$CORS_ORIGIN" \
+  RESEND_API_KEY="${RESEND_API_KEY:-}" \
+  EMAIL_FROM="$EMAIL_FROM" \
+  MINIO_ENDPOINT="$MINIO_ENDPOINT" \
+  MINIO_ACCESS_KEY="$MINIO_ACCESS_KEY" \
+  MINIO_SECRET_KEY="$MINIO_SECRET_KEY" \
+  MINIO_REGION="$MINIO_REGION" \
   VITE_API_URL="" \
-  VITE_ADMIN_TOKEN="ManualEmpregador@2024" \
-  VITE_MP_PUBLIC_KEY="APP_USR-2b067151-d72c-4146-92d2-395d4980e015" \
+  VITE_ADMIN_TOKEN="$ADMIN_TOKEN" \
+  VITE_MP_PUBLIC_KEY="$MP_PUBLIC_KEY" \
   VITE_MP_SANDBOX="false"
 
 # ── 4. Port mapping ───────────────────────────────────────────────────────────

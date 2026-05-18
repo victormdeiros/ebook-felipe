@@ -30,6 +30,9 @@ jobs:
           script: |
             set -eu
 
+            APP_NAME="ebookfelipelopesadv"
+            DEFAULT_SITE_URL="https://manualdoempregador.com.br"
+
             : "${VPS_OS_PASSWORD:?VPS_OS_PASSWORD is required for sudo.}"
             APP_DATABASE_URL="${APP_DATABASE_URL:-}"
             APP_ADMIN_TOKEN="${APP_ADMIN_TOKEN:-}"
@@ -46,7 +49,7 @@ jobs:
             if [ -z "$COMMIT_NAME" ]; then COMMIT_NAME="${{ github.sha }}"; fi
             if [ -z "$COMMIT_DATE" ]; then COMMIT_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ); fi
 
-            dokku_cmd config:set --no-restart ebookfelipelopesadv \
+            dokku_cmd config:set --no-restart "$APP_NAME" \
               DEPLOYED_BRANCH=main \
               DEPLOYED_REPO_URL=https://github.com/${{ github.repository }}.git \
               DEPLOYED_COMMIT_SHA=${{ github.sha }} \
@@ -56,7 +59,7 @@ jobs:
 
             # Keep runtime defaults current, but never overwrite Dokku secrets with
             # empty GitHub secrets. Missing secrets should preserve existing app config.
-            dokku_cmd config:set --no-restart ebookfelipelopesadv \
+            dokku_cmd config:set --no-restart "$APP_NAME" \
               NODE_ENV=production \
               VITE_API_URL="" \
               VITE_MP_SANDBOX="false"
@@ -65,7 +68,8 @@ jobs:
               key="$1"
               value="$2"
               if [ -n "$value" ]; then
-                dokku_cmd config:set --no-restart ebookfelipelopesadv "$key=$value"
+                dokku_cmd config:set --no-restart "$APP_NAME" "$key=$value" >/dev/null
+                echo "Configured $key from GitHub secret."
               else
                 echo "Skipping $key: GitHub secret is empty or unavailable."
               fi
@@ -80,11 +84,69 @@ jobs:
             set_secret_config SITE_URL "$APP_SITE_URL"
             set_secret_config CORS_ORIGIN "$APP_SITE_URL"
 
+            set_default_config_if_missing() {
+              key="$1"
+              value="$2"
+              current="$(dokku_cmd config:get "$APP_NAME" "$key" 2>/dev/null || true)"
+              if [ -z "$current" ] && [ -n "$value" ]; then
+                dokku_cmd config:set --no-restart "$APP_NAME" "$key=$value" >/dev/null
+                echo "Configured $key from deploy default."
+              fi
+            }
+
+            recover_config_from_container() {
+              key="$1"
+              current="$(dokku_cmd config:get "$APP_NAME" "$key" 2>/dev/null || true)"
+              if [ -n "$current" ]; then
+                return 0
+              fi
+
+              if ! command -v docker >/dev/null 2>&1; then
+                return 0
+              fi
+
+              containers="$(docker ps -a --format '{{.Names}}' | grep -E "^${APP_NAME}\.web\." || true)"
+              for container in $containers; do
+                value="$(docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$container" 2>/dev/null | sed -n "s/^${key}=//p" | head -n 1)"
+                if [ -z "$value" ]; then
+                  continue
+                fi
+
+                if [ "$key" = "DATABASE_URL" ] && printf '%s' "$value" | grep -Eq '@(localhost|127\.0\.0\.1):'; then
+                  echo "Ignoring $key from $container because it points to localhost inside Docker."
+                  continue
+                fi
+
+                dokku_cmd config:set --no-restart "$APP_NAME" "$key=$value" >/dev/null
+                echo "Recovered $key from existing app container."
+                return 0
+              done
+            }
+
+            normalize_database_url() {
+              value="$(dokku_cmd config:get "$APP_NAME" DATABASE_URL 2>/dev/null || true)"
+              if printf '%s' "$value" | grep -Eq '@(localhost|127\.0\.0\.1):'; then
+                normalized="$(printf '%s' "$value" | sed -E 's/@(localhost|127\.0\.0\.1):/@evolution-postgres:/')"
+                dokku_cmd config:set --no-restart "$APP_NAME" "DATABASE_URL=$normalized" >/dev/null
+                echo "Normalized DATABASE_URL host for the Dokku Docker network."
+              fi
+            }
+
+            set_default_config_if_missing SITE_URL "$DEFAULT_SITE_URL"
+            set_default_config_if_missing CORS_ORIGIN "$DEFAULT_SITE_URL"
+            recover_config_from_container DATABASE_URL
+            recover_config_from_container ADMIN_TOKEN
+            recover_config_from_container MP_ACCESS_TOKEN
+            recover_config_from_container MP_PUBLIC_KEY
+            recover_config_from_container VITE_ADMIN_TOKEN
+            recover_config_from_container VITE_MP_PUBLIC_KEY
+            normalize_database_url
+
             require_dokku_config() {
               key="$1"
-              value="$(dokku_cmd config:get ebookfelipelopesadv "$key" 2>/dev/null || true)"
+              value="$(dokku_cmd config:get "$APP_NAME" "$key" 2>/dev/null || true)"
               if [ -z "$value" ]; then
-                echo "::error::Missing required Dokku config: $key. Set the matching GitHub secret or run dokku config:set ebookfelipelopesadv $key=..."
+                echo "::error::Missing required Dokku config: $key. Set the matching GitHub secret or run dokku config:set $APP_NAME $key=..."
                 exit 1
               fi
               echo "Verified $key is configured in Dokku."
@@ -102,7 +164,7 @@ jobs:
             }
 
             run_deploy() {
-              dokku_cmd git:sync --build ebookfelipelopesadv "$AUTH_REPO" main 2>&1
+              dokku_cmd git:sync --build "$APP_NAME" "$AUTH_REPO" main 2>&1
             }
 
             DEPLOY_OUTPUT=$(run_deploy) && DEPLOY_STATUS=0 || DEPLOY_STATUS=$?
@@ -110,7 +172,7 @@ jobs:
 
             if [ "$DEPLOY_STATUS" -ne 0 ] && detect_lock "$DEPLOY_OUTPUT"; then
               echo "Deploy lock detectado. Executando dokku apps:unlock e tentando novamente..."
-              dokku_cmd apps:unlock ebookfelipelopesadv 2>&1 || true
+              dokku_cmd apps:unlock "$APP_NAME" 2>&1 || true
               DEPLOY_OUTPUT=$(run_deploy) && DEPLOY_STATUS=0 || DEPLOY_STATUS=$?
               echo "$DEPLOY_OUTPUT"
             fi
