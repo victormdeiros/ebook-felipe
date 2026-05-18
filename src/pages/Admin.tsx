@@ -133,6 +133,32 @@ const downloadCSV = (csv: string, filename: string) => {
   const a = document.createElement("a"); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
 };
 
+const safeStringify = (value: unknown, space?: number): string => {
+  const seen = new WeakSet<object>();
+  const describeElement = (el: Element) => {
+    const id = el.id ? `#${el.id}` : "";
+    const classes = typeof el.className === "string"
+      ? el.className.trim().split(/\s+/).filter(Boolean).slice(0, 3).map((c) => `.${c}`).join("")
+      : "";
+    return `<${el.tagName.toLowerCase()}${id}${classes}>`;
+  };
+
+  try {
+    return JSON.stringify(value, (_key, entry) => {
+      if (typeof Element !== "undefined" && entry instanceof Element) return describeElement(entry);
+      if (typeof Event !== "undefined" && entry instanceof Event) return `[Event:${entry.type}]`;
+      if (typeof entry === "function") return `[Function:${entry.name || "anonymous"}]`;
+      if (entry && typeof entry === "object") {
+        if (seen.has(entry)) return "[Circular]";
+        seen.add(entry);
+      }
+      return entry;
+    }, space);
+  } catch {
+    return String(value);
+  }
+};
+
 const exportCSV = (leads: Lead[]) => {
   if (!leads.length) return;
   const headers = ["Nome", "E-mail", "WhatsApp", "Data"];
@@ -342,7 +368,7 @@ const MetricsTab = () => {
   };
   const exportFullReport = () => {
     const report = { generated_at: new Date().toISOString(), summary: stats, orders, leads, gtm_events: dlEvents };
-    const blob = new Blob([JSON.stringify(report, null, 2)], { type: "application/json" });
+    const blob = new Blob([safeStringify(report, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `relatorio_${isoDate()}.json`; a.click(); URL.revokeObjectURL(url);
   };
   const exportDLEvents = () => {
@@ -350,7 +376,7 @@ const MetricsTab = () => {
     const headers = ["#", "Evento", "Payload"];
     const rows = dlEvents.map((ev, i) => {
       const { event, ...rest } = ev as { event?: string; [k: string]: unknown };
-      return [String(i + 1), `"${String(event ?? "").replace(/"/g, '""')}"`, `"${JSON.stringify(rest).replace(/"/g, '""')}"`].join(";");
+      return [String(i + 1), `"${String(event ?? "").replace(/"/g, '""')}"`, `"${safeStringify(rest).replace(/"/g, '""')}"`].join(";");
     });
     downloadCSV([headers.join(";"), ...rows].join("\n"), `gtm_events_${isoDate()}.csv`);
   };
@@ -781,7 +807,7 @@ const MetricsTab = () => {
                         </td>
                         <td className="px-4 py-2.5 text-white/50 font-mono max-w-sm">
                           {Object.keys(rest).length ? (
-                            <span className="block truncate text-[11px]">{JSON.stringify(rest)}</span>
+                            <span className="block truncate text-[11px]">{safeStringify(rest)}</span>
                           ) : <span className="text-white/20">—</span>}
                         </td>
                       </tr>
@@ -833,7 +859,7 @@ const GtmEventsLibrary = () => {
   const openEdit = (ev: GtmEvent) => {
     setEditingId(ev.id);
     setFormEventName(ev.event); setFormDesc(ev.description);
-    setFormPayload(Object.keys(ev.payload).length ? JSON.stringify(ev.payload, null, 2) : "{}");
+    setFormPayload(Object.keys(ev.payload).length ? safeStringify(ev.payload, 2) : "{}");
     setPayloadError(null); setShowForm(true);
   };
 
@@ -880,7 +906,7 @@ const GtmEventsLibrary = () => {
   };
 
   const copySnippet = (ev: GtmEvent) => {
-    const extras = Object.entries(ev.payload).map(([k, v]) => `${k}: ${JSON.stringify(v)}`).join(", ");
+    const extras = Object.entries(ev.payload).map(([k, v]) => `${k}: ${safeStringify(v)}`).join(", ");
     const snippet = `gtmPush({ event: "${ev.event}"${extras ? ", " + extras : ""} });`;
     navigator.clipboard.writeText(snippet).catch(() => {});
     setCopiedId(ev.id);
@@ -982,7 +1008,7 @@ const GtmEventsLibrary = () => {
                   {ev.description && <span className="text-xs text-white/60 font-body">{ev.description}</span>}
                 </div>
                 {Object.keys(ev.payload).length > 0 && (
-                  <p className="text-[10px] text-text-muted font-mono mt-1 truncate">{JSON.stringify(ev.payload)}</p>
+                  <p className="text-[10px] text-text-muted font-mono mt-1 truncate">{safeStringify(ev.payload)}</p>
                 )}
               </div>
               {/* Actions */}
