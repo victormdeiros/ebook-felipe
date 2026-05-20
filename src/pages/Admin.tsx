@@ -107,6 +107,7 @@ import {
 } from "@/lib/contentStore";
 import { createMPPreference, getMPCheckoutUrl, getMPStatus } from "@/lib/mercadopago";
 import { gtmPush } from "@/lib/tracking";
+import * as XLSX from "xlsx";
 
 // AUTH
 const isAuthed = () => Boolean(getAdminSessionToken());
@@ -177,6 +178,22 @@ const exportCSV = (leads: Lead[]) => {
   a.download = `leads_${new Date().toISOString().split("T")[0]}.csv`;
   a.click();
   URL.revokeObjectURL(url);
+};
+
+const exportLeadsXLSX = (leads: Lead[]) => {
+  if (!leads.length) return;
+  const data = leads.map((l) => ({
+    Nome: l.name ?? "",
+    "E-mail": l.email ?? "",
+    WhatsApp: l.whatsapp ?? "",
+    Tags: (l.tags ?? []).join(", "),
+    Data: l.data ?? "",
+  }));
+  const ws = XLSX.utils.json_to_sheet(data);
+  ws["!cols"] = [{ wch: 28 }, { wch: 32 }, { wch: 18 }, { wch: 28 }, { wch: 22 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Leads");
+  XLSX.writeFile(wb, `leads_${new Date().toISOString().split("T")[0]}.xlsx`);
 };
 
 // LOGIN SCREEN
@@ -363,6 +380,7 @@ const MetricsTab = () => {
     const rows = leads.map((l) => [l.name, l.email, l.whatsapp, (l.tags ?? []).join("|"), l.data].map((v) => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";"));
     downloadCSV([headers.join(";"), ...rows].join("\n"), `leads_${isoDate()}.csv`);
   };
+  const exportLeadsPlanilha = () => exportLeadsXLSX(leads);
   const exportOrdersCSV = () => {
     if (!orders.length) return;
     const headers = ["ID", "E-mail Pagador", "Nome Pagador", "Produto", "Status", "E-mail Material", "Valor (R$)", "Método", "MP Payment ID", "Data"];
@@ -716,6 +734,7 @@ const MetricsTab = () => {
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {[
             { label: "Leads CSV", sub: loading ? "Carregando…" : `${leads.length} lead${leads.length !== 1 ? "s" : ""}`, icon: Users, action: exportLeadsCSV, accent: "wine" as const },
+            { label: "Leads Planilha (XLSX)", sub: loading ? "Carregando…" : `${leads.length} lead${leads.length !== 1 ? "s" : ""}`, icon: Users, action: exportLeadsPlanilha, accent: "wine" as const },
             { label: "Pedidos CSV", sub: loading ? "Carregando…" : `${orders.length} pedido${orders.length !== 1 ? "s" : ""}`, icon: ShoppingCart, action: exportOrdersCSV, accent: "gold" as const },
             { label: "Eventos GTM CSV", sub: `${dlCustomEvents.length} evento${dlCustomEvents.length !== 1 ? "s" : ""} na sessão`, icon: Activity, action: exportDLEvents, accent: null },
             { label: "Relatório Completo", sub: "Stats + leads + pedidos + GTM", icon: Package, action: exportFullReport, accent: null },
@@ -1147,9 +1166,14 @@ const LeadsTab = () => {
             <option value="entrar_em_contato">Entrar em contato</option>
           </select>
         </div>
-        <button onClick={() => exportCSV(filtered)} disabled={filtered.length === 0} className="flex items-center gap-2 border border-white/8 hover:border-wine/30 text-text-muted hover:text-foreground px-4 py-2.5 rounded-md font-body text-sm transition-all duration-200 disabled:opacity-30 disabled:pointer-events-none">
-          <Download className="w-3.5 h-3.5" />Exportar CSV
-        </button>
+        <div className="flex gap-2">
+          <button onClick={() => exportCSV(filtered)} disabled={filtered.length === 0} className="flex items-center gap-2 border border-white/8 hover:border-wine/30 text-text-muted hover:text-foreground px-4 py-2.5 rounded-md font-body text-sm transition-all duration-200 disabled:opacity-30 disabled:pointer-events-none">
+            <Download className="w-3.5 h-3.5" />Exportar CSV
+          </button>
+          <button onClick={() => exportLeadsXLSX(filtered)} disabled={filtered.length === 0} className="flex items-center gap-2 bg-wine/15 border border-wine/30 hover:bg-wine/25 hover:border-wine/50 text-wine px-4 py-2.5 rounded-md font-body text-sm transition-all duration-200 disabled:opacity-30 disabled:pointer-events-none">
+            <Download className="w-3.5 h-3.5" />Baixar Planilha (XLSX)
+          </button>
+        </div>
       </div>
       <div className="surface-card rounded-xl overflow-hidden">
         {loading ? (
