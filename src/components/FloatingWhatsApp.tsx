@@ -1,4 +1,5 @@
 import { getWhatsAppUrl } from "@/lib/config";
+import { trackWhatsAppClick } from "@/lib/tracking";
 
 const FloatingWhatsApp = () => {
   return (
@@ -6,6 +7,7 @@ const FloatingWhatsApp = () => {
       href={getWhatsAppUrl()}
       target="_blank"
       rel="noopener noreferrer"
+      onClick={() => trackWhatsAppClick({ source: "floating_whatsapp" })}
       className="group fixed bottom-6 right-6 z-50 flex items-center overflow-hidden rounded-full hover:rounded-xl transition-all duration-300 shadow-[0_4px_16px_rgba(0,0,0,0.35)] hover:shadow-[0_8px_28px_-4px_rgba(201,168,76,0.55)] cursor-pointer"
       style={{ background: "#2d7a4f" }}
       onMouseEnter={e => (e.currentTarget as HTMLAnchorElement).style.background='#c9a84c'}

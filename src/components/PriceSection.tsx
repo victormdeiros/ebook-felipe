@@ -5,6 +5,7 @@ import { useCart } from "@/contexts/CartContext";
 import { getContent, fetchContent } from "@/lib/contentStore";
 import { getProducts } from "@/lib/repository";
 import { CONFIG } from "@/config";
+import { trackCtaClick } from "@/lib/tracking";
 
 const ebookBenefits = [
   "Acesso imediato após o pagamento",
@@ -20,7 +21,7 @@ const eventBenefits = [
 
 const PriceSection = () => {
   const shouldReduceMotion = useReducedMotion();
-  const { addToCart, addEventToCart, openCart } = useCart();
+  const { addToCart, startEventCheckout, openCart } = useCart();
   const [content, setContent] = useState(getContent());
   const [productPrices, setProductPrices] = useState<Record<string, number>>({});
 
@@ -48,8 +49,8 @@ const PriceSection = () => {
   };
 
   const handleAddEvent = () => {
-    addEventToCart();
-    openCart();
+    trackCtaClick("event_primary_ticket", { source: "ebook_price_section" });
+    startEventCheckout();
   };
 
   return (

@@ -416,7 +416,13 @@ export const getEbookUrl = async (): Promise<string> => {
 
 // Events tracking
 
-type EventName = "page_view" | "form_start" | "purchase";
+type EventName =
+  | "page_view"
+  | "form_start"
+  | "purchase"
+  | "cta_click"
+  | "begin_checkout"
+  | "whatsapp_click";
 
 export const trackEvent = (name: EventName, payload?: Record<string, unknown>): void => {
   if (!API_CONFIGURED) return;

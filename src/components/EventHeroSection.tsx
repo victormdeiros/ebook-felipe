@@ -1,8 +1,8 @@
-﻿import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, CalendarDays, Clock, MapPin } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
-import felipeLopes from "@/felipe.png";
-import laisFoto from "@/assets/lais-foto.png";
+import { getWhatsAppUrl } from "@/lib/config";
+import { trackCtaClick, trackWhatsAppClick } from "@/lib/tracking";
 
 const eventFacts = [
   { icon: CalendarDays, label: "10 JUN 2026" },
@@ -11,19 +11,23 @@ const eventFacts = [
 ];
 
 const speakers = [
-  { name: "Lais Leite",    photo: laisFoto,                      pos: "object-top" },
-  { name: "Felipe Lopes",  photo: felipeLopes,                   pos: "object-top" },
-  { name: "Wagner Silva",        photo: "/wagner_palestrante.jpeg",    pos: "object-top" },
-  { name: "Victor Medeiros",        photo: "/palestrante_victor.jpg",     pos: "object-top" },
+  { name: "Lais Leite", photo: "/event-speakers/lais-leite.webp", pos: "object-top" },
+  { name: "Felipe Lopes", photo: "/event-speakers/felipe-lopes.webp", pos: "object-top" },
+  { name: "Wagner Silva", photo: "/event-speakers/wagner-silva.webp", pos: "object-top" },
+  { name: "Victor Medeiros", photo: "/event-speakers/victor-medeiros.webp", pos: "object-top" },
 ];
 
 const EventHeroSection = () => {
   const shouldReduceMotion = useReducedMotion();
-  const { addEventToCart, openCart } = useCart();
+  const { startEventCheckout } = useCart();
 
   const handleRegister = () => {
-    addEventToCart();
-    openCart();
+    trackCtaClick("event_primary_ticket", { source: "hero" });
+    startEventCheckout();
+  };
+
+  const handleWhatsAppClick = () => {
+    trackWhatsAppClick({ source: "event_hero_secondary" });
   };
 
   const fade = (delay: number) =>
@@ -68,6 +72,8 @@ const EventHeroSection = () => {
               <img
                 src={s.photo}
                 alt={s.name}
+                loading="eager"
+                fetchPriority="high"
                 className={`absolute inset-0 h-full w-full object-cover ${s.pos}`}
               />
               {/* Side fade so photos blend into each other */}
@@ -122,10 +128,13 @@ const EventHeroSection = () => {
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </button>
             <a
-              href="#palestrantes"
+              href={getWhatsAppUrl("Olá! Tenho interesse no evento Segurança Jurídica 360 e queria tirar uma dúvida.")}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={handleWhatsAppClick}
               className="flex min-h-[52px] items-center justify-center gap-2 rounded-md border border-white/10 px-8 font-ui text-sm font-bold text-white/50 transition-all duration-200 hover:border-white/25 hover:text-white"
             >
-              VER PALESTRANTES
+              TIRAR DÚVIDAS
             </a>
           </div>
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ShoppingCart, Trash2, ArrowRight, BookOpen, X, ShieldCheck, Zap, Loader2, CalendarDays, ChevronLeft, CheckCircle2, Download } from "lucide-react";
 import { useCart } from "@/contexts/CartContext";
@@ -7,6 +7,7 @@ import { getProducts } from "@/lib/repository";
 import { CONFIG } from "@/config";
 import ebookMockup from "@/assets/ebook-mockup.png";
 import { createMPPreference, getMPCheckoutUrl, MPNotConfiguredError } from "@/lib/mercadopago";
+import { trackBeginCheckout, trackFormStart } from "@/lib/tracking";
 
 // ── MercadoPago SDK types ────────────────────────────────────
 declare global {
@@ -49,7 +50,15 @@ function loadMPScript(): Promise<void> {
 }
 
 const CartDrawer = () => {
-  const { isCartOpen, closeCart, cartCount, cartItems, removeItem } = useCart();
+  const {
+    isCartOpen,
+    closeCart,
+    cartCount,
+    cartItems,
+    removeItem,
+    checkoutIntent,
+    clearCheckoutIntent,
+  } = useCart();
   const content = getContent();
   const [productPrices, setProductPrices] = useState<Record<string, number>>({});
   const [isLoadingEbook, setIsLoadingEbook] = useState(false);
@@ -136,8 +145,8 @@ const CartDrawer = () => {
           },
           callbacks: {
             onReady: () => setBrickLoading(false),
-            onSubmit: ({ formData }) =>
-              new Promise<void>(async (resolve, reject) => {
+            onSubmit: async ({ formData }) => {
+              let handledError = false;
                 try {
                   const res = await fetch(`${apiUrl}/api/mp/process-payment`, {
                     method: "POST",
@@ -145,20 +154,27 @@ const CartDrawer = () => {
                     body: JSON.stringify({ ...formData, metadata: { product: capturedTarget } }),
                   });
                   const data = await res.json() as { status: string; product?: string; ebookUrl?: string; error?: string };
-                  if (!res.ok) { setCheckoutError(data.error ?? "Erro ao processar pagamento."); reject(new Error(data.error)); return; }
+                  if (!res.ok) {
+                    handledError = true;
+                    setCheckoutError(data.error ?? "Erro ao processar pagamento.");
+                    throw new Error(data.error ?? "payment_error");
+                  }
                   if (data.status === "approved" || data.status === "pending") {
                     setPaymentResult(data);
                     setStep("success");
-                    resolve();
+                    return;
                   } else {
                     setCheckoutError("Pagamento não aprovado. Tente outro método.");
-                    reject(new Error("not_approved"));
+                    handledError = true;
+                    throw new Error("not_approved");
                   }
                 } catch (e) {
-                  setCheckoutError("Erro de conexão. Verifique sua internet e tente novamente.");
-                  reject(e);
+                  if (!handledError) {
+                    setCheckoutError("Erro de conexão. Verifique sua internet e tente novamente.");
+                  }
+                  throw e;
                 }
-              }),
+              },
             onError: (e) => console.error("[mp brick]", e),
           },
         });
@@ -196,12 +212,28 @@ const CartDrawer = () => {
     (hasEvent ? Number(eventPrice) : 0)
   ).toFixed(2).replace(".", ",");
 
-  const goToForm = (product: string) => {
+  const goToForm = useCallback((product: string) => {
+    const isEventCheckout = product === ctaVagaId;
+    const value = Number(isEventCheckout ? eventPrice : ebookPrice);
+
     setCheckoutTarget(product);
     setCheckoutError(null);
     setFormErrors({});
     setStep("form");
-  };
+    trackFormStart();
+    trackBeginCheckout({
+      itemId: product,
+      itemName: isEventCheckout ? "Seguranca Juridica 360" : "Manual do Empregador",
+      itemCategory: isEventCheckout ? "Evento" : "E-book",
+      value,
+    });
+  }, [ctaVagaId, ebookPrice, eventPrice]);
+
+  useEffect(() => {
+    if (!isCartOpen || !checkoutIntent) return;
+    goToForm(checkoutIntent.productId);
+    clearCheckoutIntent();
+  }, [checkoutIntent, clearCheckoutIntent, goToForm, isCartOpen]);
 
   const handleFormSubmit = async () => {
     const errors: { name?: string; email?: string; phone?: string } = {};

@@ -120,6 +120,60 @@ export const trackFormStart = () => {
   gtmPush({ event: "form_start", ...payload });
 };
 
+export const trackCtaClick = (
+  ctaId: string,
+  payload: Record<string, unknown> = {},
+) => {
+  const eventPayload = { ...baseEventPayload(), ...payload, cta_id: ctaId };
+  trackEvent("cta_click", eventPayload);
+  gtmPush({ event: "cta_click", ...eventPayload });
+};
+
+export const trackWhatsAppClick = (payload: Record<string, unknown> = {}) => {
+  const eventPayload = { ...baseEventPayload(), ...payload };
+  trackEvent("whatsapp_click", eventPayload);
+  gtmPush({ event: "whatsapp_click", ...eventPayload });
+};
+
+export const trackBeginCheckout = ({
+  itemId,
+  itemName,
+  itemCategory,
+  value,
+}: {
+  itemId: string;
+  itemName: string;
+  itemCategory: string;
+  value: number;
+}) => {
+  const payload = {
+    ...baseEventPayload(),
+    item_id: itemId,
+    item_name: itemName,
+    item_category: itemCategory,
+    value,
+  };
+
+  trackEvent("begin_checkout", payload);
+  gtmPush({
+    event: "begin_checkout",
+    ...payload,
+    ecommerce: {
+      currency: "BRL",
+      value,
+      items: [
+        {
+          item_id: itemId,
+          item_name: itemName,
+          item_category: itemCategory,
+          price: value,
+          quantity: 1,
+        },
+      ],
+    },
+  });
+};
+
 /** Call on /obrigado mount (post-purchase confirmation). */
 export const trackPurchase = (email?: string) => {
   const data = getTrackingData();

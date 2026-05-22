@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { createContext, useCallback, useContext, useState, ReactNode } from "react";
 import { getContent } from "@/lib/contentStore";
 
 export type CartItemId = string;
@@ -9,13 +9,21 @@ export interface CartItem {
   price: string;
 }
 
+export interface CheckoutIntent {
+  productId: CartItemId;
+  requestedAt: number;
+}
+
 interface CartContextType {
   cartItems: CartItem[];
   cartCount: number;
   isCartOpen: boolean;
   isModalOpen: boolean;
+  checkoutIntent: CheckoutIntent | null;
   addToCart: () => void;
   addEventToCart: () => void;
+  startEventCheckout: () => void;
+  clearCheckoutIntent: () => void;
   openCart: () => void;
   closeCart: () => void;
   removeFromCart: () => void;
@@ -30,35 +38,41 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [checkoutIntent, setCheckoutIntent] = useState<CheckoutIntent | null>(null);
+
+  const addItem = useCallback((item: CartItem) => {
+    setCartItems((prev) =>
+      prev.find((current) => current.id === item.id) ? prev : [...prev, item],
+    );
+  }, []);
 
   const addToCart = useCallback(() => {
     const id = getContent().ctaAcessoProductId || "ebook";
-    setCartItems((prev) =>
-      prev.find((i) => i.id === id)
-        ? prev
-        : [...prev, { id, name: "Manual do Empregador", price: "" }]
-    );
-  }, []);
+    addItem({ id, name: "Manual do Empregador", price: "" });
+  }, [addItem]);
 
   const addEventToCart = useCallback(() => {
     const id = getContent().ctaVagaProductId || "event";
-    setCartItems((prev) =>
-      prev.find((i) => i.id === id)
-        ? prev
-        : [...prev, { id, name: "Segurança Jurídica 360", price: "" }]
-    );
-  }, []);
+    addItem({ id, name: "Segurança Jurídica 360", price: "" });
+  }, [addItem]);
 
+  const startEventCheckout = useCallback(() => {
+    const id = getContent().ctaVagaProductId || "event";
+    addItem({ id, name: "Segurança Jurídica 360", price: "" });
+    setCheckoutIntent({ productId: id, requestedAt: Date.now() });
+    setIsCartOpen(true);
+  }, [addItem]);
+
+  const clearCheckoutIntent = useCallback(() => setCheckoutIntent(null), []);
   const openCart = useCallback(() => setIsCartOpen(true), []);
   const closeCart = useCallback(() => setIsCartOpen(false), []);
 
-  // backward compat: removes ebook
   const removeFromCart = useCallback(() => {
-    setCartItems((prev) => prev.filter((i) => i.id !== "ebook"));
+    setCartItems((prev) => prev.filter((item) => item.id !== "ebook"));
   }, []);
 
   const removeItem = useCallback((id: CartItemId) => {
-    setCartItems((prev) => prev.filter((i) => i.id !== id));
+    setCartItems((prev) => prev.filter((item) => item.id !== id));
   }, []);
 
   const openModal = useCallback(() => setIsModalOpen(true), []);
@@ -71,8 +85,11 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         cartCount: cartItems.length,
         isCartOpen,
         isModalOpen,
+        checkoutIntent,
         addToCart,
         addEventToCart,
+        startEventCheckout,
+        clearCheckoutIntent,
         openCart,
         closeCart,
         removeFromCart,

@@ -78,7 +78,7 @@ const FooterSection = () => {
 
         <div className="border-t border-white/5 pt-8 mt-4 text-center">
           <p className="text-white/55 font-body text-sm">
-            &copy; {new Date().getFullYear()} MANUAL DO EMPREGADOR. Todos os direitos reservados.
+            &copy; 2026 MANUAL DO EMPREGADOR. Todos os direitos reservados.
           </p>
         </div>
       </div>

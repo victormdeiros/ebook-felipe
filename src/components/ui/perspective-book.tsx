@@ -33,9 +33,11 @@ export function PerspectiveBook({
   const rotateY = useSpring(shouldReduceMotion ? 0 : -14, { stiffness: 160, damping: 18, mass: 0.45 });
   const glareX = useSpring(50, { stiffness: 160, damping: 22, mass: 0.35 });
   const glareY = useSpring(24, { stiffness: 160, damping: 22, mass: 0.35 });
+  const fallbackProgress = useSpring(0, { stiffness: 160, damping: 24, mass: 0.4 });
 
-  const travelY = progress ? useTransform(progress, [0, 1], [0, -56]) : undefined;
-  const shadowScale = progress ? useTransform(progress, [0, 1], [1, 0.86]) : undefined;
+  const progressValue = progress ?? fallbackProgress;
+  const travelY = useTransform(progressValue, [0, 1], [0, -56]);
+  const shadowScale = useTransform(progressValue, [0, 1], [1, 0.86]);
 
   const shine = useMotionTemplate`radial-gradient(circle at ${glareX}% ${glareY}%, rgba(255,255,255,0.32), rgba(255,255,255,0.04) 22%, transparent 52%)`;
 
@@ -64,7 +66,7 @@ export function PerspectiveBook({
     <div className={cn("relative [perspective:2200px]", className)}>
       <motion.div
         className="absolute inset-x-[12%] bottom-3 h-10 rounded-full bg-black/45 blur-2xl"
-        style={shadowScale ? { scaleX: shadowScale } : undefined}
+        style={{ scaleX: shadowScale }}
         aria-hidden="true"
       />
 

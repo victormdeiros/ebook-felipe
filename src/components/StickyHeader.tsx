@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { Menu, ShoppingCart, X } from "lucide-react";
 import iconManual from "@/assets/icon- manual do empregador.png";
 const iconEventoSrc = "/logo_segurança_juridica-removebg-preview.png";
 import { useCart } from "@/contexts/CartContext";
-import CartDrawer from "@/components/CartDrawer";
+
+const CartDrawer = lazy(() => import("@/components/CartDrawer"));
 
 type HeaderVariant = "ebook" | "event";
 
@@ -17,6 +18,7 @@ const NAV_ITEMS = {
   event: [
     { label: "Evento", href: "#evento" },
     { label: "Palestrantes", href: "#palestrantes" },
+    { label: "Nosso Grupo", href: "/grupo" },
     { label: "Local", href: "#local" },
     { label: "Inscricao", href: "#inscricao" },
   ],
@@ -27,7 +29,8 @@ const StickyHeader = ({ variant = "ebook", topOffset = 0 }: { variant?: HeaderVa
   const [progress, setProgress] = useState(0);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [cartBounce, setCartBounce] = useState(false);
-  const { cartCount, addToCart, addEventToCart, openCart } = useCart();
+  const { cartCount, addToCart, addEventToCart, openCart, isCartOpen } = useCart();
+  const [cartOpened, setCartOpened] = useState(false);
   const isEvent = variant === "event";
   const navItems = NAV_ITEMS[variant];
 
@@ -57,6 +60,19 @@ const StickyHeader = ({ variant = "ebook", topOffset = 0 }: { variant?: HeaderVa
       return () => clearTimeout(timer);
     }
   }, [cartCount]);
+
+  useEffect(() => {
+    if (isCartOpen) {
+      setCartOpened(true);
+    }
+  }, [isCartOpen]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setCartOpened(true);
+    }, 2000);
+    return () => clearTimeout(timer);
+  }, []);
 
   const handleGuaranteeAccess = () => {
     if (isEvent) addEventToCart();
@@ -121,9 +137,9 @@ const StickyHeader = ({ variant = "ebook", topOffset = 0 }: { variant?: HeaderVa
             <button
               onClick={handleGuaranteeAccess}
               className="hidden h-9 items-center rounded px-4 font-ui text-[0.65rem] font-semibold tracking-[0.12em] text-white transition-all duration-200 hover:bg-gold md:flex"
-              style={{ background: "#2d7a4f" }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "#c9a84c")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "#2d7a4f")}
+              style={{ background: isEvent ? "#dc2626" : "#2d7a4f" }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = isEvent ? "#b91c1c" : "#c9a84c")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = isEvent ? "#dc2626" : "#2d7a4f")}
             >
               {isEvent ? "GARANTIR MINHA VAGA" : "GARANTIR MEU ACESSO"}
             </button>
@@ -164,7 +180,11 @@ const StickyHeader = ({ variant = "ebook", topOffset = 0 }: { variant?: HeaderVa
         )}
       </header>
 
-      <CartDrawer />
+      {cartOpened && (
+        <Suspense fallback={null}>
+          <CartDrawer />
+        </Suspense>
+      )}
     </>
   );
 };
