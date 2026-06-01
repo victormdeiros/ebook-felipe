@@ -96,7 +96,7 @@ const HeroSection = () => {
                 onClick={handleAddToCart}
                 className="flex min-h-[52px] items-center justify-center gap-2 rounded-md px-7 text-center font-ui text-sm font-bold text-white transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_34px_-8px_rgba(201,168,76,0.45)] whitespace-nowrap cursor-pointer" style={{ background: '#2d7a4f' }} onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.background='#c9a84c'} onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.background='#2d7a4f'}
               >
-                GARANTIR MEU ACESSO
+                COMPRAR O EBOOK
               </button>
               <a
                 href={whatsappUrl}

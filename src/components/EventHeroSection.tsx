@@ -124,7 +124,7 @@ const EventHeroSection = () => {
               onClick={handleRegister}
               className="group flex min-h-[52px] items-center justify-center gap-2 rounded-md bg-[#dc2626] px-10 font-ui text-sm font-black uppercase tracking-[0.08em] text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#b91c1c] hover:shadow-[0_18px_44px_-10px_rgba(220,38,38,0.55)]"
             >
-              GARANTIR MINHA VAGA
+              PARTICIPAR DO GRUPO VIP
               <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </button>
             <a

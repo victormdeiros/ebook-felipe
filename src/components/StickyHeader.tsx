@@ -141,7 +141,7 @@ const StickyHeader = ({ variant = "ebook", topOffset = 0 }: { variant?: HeaderVa
               onMouseEnter={(e) => (e.currentTarget.style.background = isEvent ? "#b91c1c" : "#c9a84c")}
               onMouseLeave={(e) => (e.currentTarget.style.background = isEvent ? "#dc2626" : "#2d7a4f")}
             >
-              {isEvent ? "GARANTIR MINHA VAGA" : "GARANTIR MEU ACESSO"}
+              {isEvent ? "PARTICIPAR DO GRUPO VIP" : "COMPRAR O EBOOK"}
             </button>
 
             <button

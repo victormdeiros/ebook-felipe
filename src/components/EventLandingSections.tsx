@@ -161,7 +161,7 @@ const EventLandingSections = () => {
                 onClick={() => handleRegister("value_section")}
                 className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-md bg-[#dc2626] px-8 font-ui text-sm font-black uppercase tracking-[0.08em] text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#b91c1c]"
               >
-                Garantir minha vaga
+                Participar do grupo VIP
                 <ArrowRight className="h-4 w-4" />
               </button>
               <a
@@ -267,7 +267,7 @@ const EventLandingSections = () => {
               onClick={() => handleRegister("pricing_card")}
               className="mt-6 inline-flex min-h-[54px] w-full items-center justify-center gap-2 rounded-md bg-[#dc2626] px-6 font-ui text-sm font-black uppercase tracking-[0.08em] text-white transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#b91c1c]"
             >
-              Garantir minha vaga
+              Participar do grupo VIP
               <ArrowRight className="h-4 w-4" />
             </button>
             <a

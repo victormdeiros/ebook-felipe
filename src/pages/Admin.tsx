@@ -2957,7 +2957,7 @@ const CtasTab = () => {
   const ctas = [
     {
       key: "acesso" as const,
-      label: "Garantir meu acesso",
+      label: "Comprar o ebook",
       description: "Botão de compra do e-book. Aparece no Hero, na seção de conteúdo e na página de preços.",
       productId: config.ctaAcessoProductId,
       icon: BookOpen,
@@ -2966,7 +2966,7 @@ const CtasTab = () => {
     },
     {
       key: "vaga" as const,
-      label: "Garantir minha vaga",
+      label: "Participar do grupo VIP",
       description: "Botão de inscrição no evento. Aparece na seção do evento, na página de preços e no header fixo.",
       productId: config.ctaVagaProductId,
       icon: CalendarDays,

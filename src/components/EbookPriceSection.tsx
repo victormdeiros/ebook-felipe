@@ -86,7 +86,7 @@ const EbookPriceSection = () => {
               onMouseEnter={(e) => (e.currentTarget.style.background = "#c9a84c")}
               onMouseLeave={(e) => (e.currentTarget.style.background = "#2d7a4f")}
             >
-              GARANTIR MEU ACESSO
+              COMPRAR O EBOOK
             </button>
           </div>
 
