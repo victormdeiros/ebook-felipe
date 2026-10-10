@@ -61,7 +61,9 @@ END $$;
 
 -- ── 2. manual_dashboard_stats (VIEW) ─────────────────────────────────────────
 -- Aggregates KPIs consumed by GET /api/admin/stats.
-CREATE OR REPLACE VIEW ebookfelipelopes.manual_dashboard_stats AS
+-- The previous view used a different column order. Recreate it on fresh installs.
+DROP VIEW IF EXISTS ebookfelipelopes.manual_dashboard_stats;
+CREATE VIEW ebookfelipelopes.manual_dashboard_stats AS
 SELECT
   -- Leads
   (SELECT COUNT(*) FROM ebookfelipelopes.manual_leads)                          AS total_leads,

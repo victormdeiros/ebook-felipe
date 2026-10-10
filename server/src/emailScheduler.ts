@@ -6,6 +6,7 @@
 import { Resend } from "resend";
 import { pool } from "./db";
 import { config } from "./config";
+import { hydrateRuntimeConfiguration } from "./runtimeConfiguration";
 
 // Event date: 10/06/2026 16:00 BRT (UTC-3)
 const EVENT_DATE = new Date("2026-06-10T19:00:00.000Z"); // 16h BRT = 19h UTC
@@ -256,6 +257,7 @@ export async function scheduleEventReminders(email: string, name: string): Promi
 
 // ── Process the queue (called on interval) ────────────────────────────
 export async function processQueue(): Promise<{ sent: number; failed: number; skipped: number }> {
+  await hydrateRuntimeConfiguration();
   const resend = getResend();
   if (!resend) throw new Error("RESEND_API_KEY não configurado no servidor.");
 
@@ -317,7 +319,8 @@ SELECT q.id, q.email, q.lead_name, q.template_id
       const html = bodyFn(firstName);
       const from = config.EMAIL_FROM;
 
-      await resend.emails.send({ from, to: row.email, subject, html });
+      const { error } = await resend.emails.send({ from, to: row.email, subject, html });
+      if (error) throw new Error("Resend rejeitou o envio. Verifique a configuração no painel.");
 
       await pool.query(
         `UPDATE manual_email_queue SET status = 'sent', sent_at = now() WHERE id = $1`,

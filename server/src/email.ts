@@ -5,14 +5,9 @@
 import { Resend } from "resend";
 import { config } from "./config";
 
-let resend: Resend | null = null;
-
 function getResend(): Resend {
-  if (!resend) {
-    if (!config.RESEND_API_KEY) throw new Error("RESEND_API_KEY não configurado.");
-    resend = new Resend(config.RESEND_API_KEY);
-  }
-  return resend;
+  if (!config.RESEND_API_KEY) throw new Error("Configure a chave Resend no painel administrativo.");
+  return new Resend(config.RESEND_API_KEY);
 }
 
 // ── Template: confirmação de compra do e-book ─────────────────
@@ -196,17 +191,29 @@ function adminLoginCodeHtml(code: string) {
 </html>`;
 }
 
+export class AdminLoginEmailError extends Error {
+  constructor() {
+    super("Admin login email delivery failed.");
+    this.name = "AdminLoginEmailError";
+  }
+}
+
 export async function sendAdminLoginCodeEmail(
   to: string,
   code: string,
 ): Promise<void> {
   const r = getResend();
-  await r.emails.send({
-    from: config.EMAIL_FROM,
-    to,
-    subject: "Codigo de acesso ao painel admin",
-    html: adminLoginCodeHtml(code),
-  });
+  try {
+    const { error } = await r.emails.send({
+      from: config.EMAIL_FROM,
+      to,
+      subject: "Codigo de acesso ao painel admin",
+      html: adminLoginCodeHtml(code),
+    });
+    if (error) throw new AdminLoginEmailError();
+  } catch {
+    throw new AdminLoginEmailError();
+  }
 }
 
 export async function sendEbookPurchaseEmail(

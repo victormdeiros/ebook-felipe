@@ -1,5 +1,15 @@
-import "dotenv/config";
+import { readFileSync } from "node:fs";
+import { config as loadEnv } from "dotenv";
+import { resolve } from "node:path";
 import { z } from "zod";
+
+const project = JSON.parse(
+  readFileSync(resolve(__dirname, "../../supabase/project.json"), "utf8"),
+) as { publishableKey: string };
+
+// The user's root .env works both with tsx and with the compiled API.
+loadEnv({ path: resolve(__dirname, "../../.env") });
+loadEnv();
 
 const emptyToUndefined = (value: unknown) => value === "" ? undefined : value;
 const optionalString = z.preprocess(emptyToUndefined, z.string().optional());
@@ -12,6 +22,9 @@ const envSchema = z.object({
   CORS_ORIGIN: z.string().default(""),
   ADMIN_TOKEN: z.preprocess(emptyToUndefined, z.string().min(8).optional()),
   ADMIN_AUTH_SECRET: optionalString,
+  ADMIN_USERNAME: optionalString,
+  ADMIN_PASSWORD: optionalString,
+  ADMIN_PASSWORD_HASH: optionalString,
   MP_ACCESS_TOKEN: optionalString,
   MP_PUBLIC_KEY: optionalString,
   SITE_URL: optionalUrl,
@@ -23,12 +36,17 @@ const envSchema = z.object({
   SUPABASE_PROJECT_REF: z.literal("heusjcoijobbsgzyfupm").default("heusjcoijobbsgzyfupm"),
   SUPABASE_SECRET_KEY: optionalString,
   SUPABASE_SERVICE_ROLE_KEY: optionalString,
+  SUPABASE_PUBLISHABLE_KEY: z.string().min(1).default(project.publishableKey),
   SUPABASE_STORAGE_BUCKET: z.string().min(1).default("ebook-manual"),
   DATABASE_SSL_CA: optionalString,
   CRON_SECRET: optionalString,
 });
 
-const parsed = envSchema.safeParse(process.env);
+const parsed = envSchema.safeParse({
+  ...process.env,
+  ADMIN_USERNAME: process.env.ADMIN_USERNAME ?? process.env.login_admin,
+  ADMIN_PASSWORD: process.env.ADMIN_PASSWORD ?? process.env.Password,
+});
 
 if (!parsed.success) {
   console.error("[config] Invalid environment variables:");
@@ -61,10 +79,6 @@ const siteUrl = parsed.data.SITE_URL
 
 if (!parsed.data.DATABASE_URL) {
   console.warn("[config] DATABASE_URL is not set; DB-backed API routes will be unavailable.");
-}
-
-if (!parsed.data.ADMIN_AUTH_SECRET && !parsed.data.ADMIN_TOKEN && !parsed.data.RESEND_API_KEY) {
-  console.warn("[config] ADMIN_AUTH_SECRET is not set; using a weak fallback for admin code hashing.");
 }
 
 export const config = {

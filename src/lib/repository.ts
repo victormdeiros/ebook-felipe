@@ -36,38 +36,34 @@ const adminHeaders = (json = false): HeadersInit => ({
   Authorization: `Bearer ${getAdminSessionToken()}`,
 });
 
-export const requestAdminLoginCode = async (email: string): Promise<void> => {
-  const res = await fetch(`${API_URL}/api/admin/auth/request-code`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email }),
+export const loginAdmin = async (username: string, password: string): Promise<void> => {
+  const response = await fetch(`${API_URL}/api/admin/auth/login`, {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username, password }),
   });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({})) as { error?: string };
-    throw new Error(err.error ?? "Erro ao enviar codigo de acesso");
-  }
+  const data = await response.json() as { token?: string; email?: string; error?: string };
+  if (!response.ok || !data.token || !data.email) throw new Error(data.error ?? "Não foi possível entrar.");
+  setAdminSession(data.token, data.email);
 };
 
-export const verifyAdminLoginCode = async (
-  email: string,
-  code: string,
-): Promise<{ token: string; email: string; expiresAt: string }> => {
-  const res = await fetch(`${API_URL}/api/admin/auth/verify-code`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, code }),
+export interface RuntimeCredentialStatus {
+  configured: Record<string, boolean>;
+  EMAIL_FROM: string;
+  SITE_URL: string;
+}
+export const getRuntimeCredentials = async (): Promise<RuntimeCredentialStatus> => {
+  const response = await fetch(`${API_URL}/api/admin/runtime-config`, { headers: adminHeaders() });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error ?? "Erro ao carregar credenciais.");
+  return data;
+};
+export const saveRuntimeCredentials = async (values: Record<string, string>): Promise<RuntimeCredentialStatus> => {
+  const response = await fetch(`${API_URL}/api/admin/runtime-config`, {
+    method: "PUT", headers: adminHeaders(true), body: JSON.stringify(values),
   });
-  const data = await res.json().catch(() => ({})) as {
-    token?: string;
-    email?: string;
-    expiresAt?: string;
-    error?: string;
-  };
-  if (!res.ok || !data.token || !data.email || !data.expiresAt) {
-    throw new Error(data.error ?? "Codigo invalido");
-  }
-  setAdminSession(data.token, data.email);
-  return { token: data.token, email: data.email, expiresAt: data.expiresAt };
+  const data = await response.json();
+  if (!response.ok) throw new Error(data.error ?? "Erro ao salvar credenciais.");
+  return data;
 };
 
 export const logoutAdminSession = async (): Promise<void> => {

@@ -22,7 +22,7 @@ describe("event landing checkout flow", () => {
   it("opens the event lead form directly from the primary ticket CTA", async () => {
     renderEventCheckout();
 
-    fireEvent.click(screen.getAllByRole("button", { name: /garantir minha vaga/i })[0]);
+    fireEvent.click(screen.getAllByRole("button", { name: /participar do grupo vip/i })[0]);
 
     expect(await screen.findByText(/nome completo/i)).toBeInTheDocument();
     await waitFor(() => {

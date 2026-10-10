@@ -1,10 +1,11 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "npm run build:vercel",
   "installCommand": "npm ci && npm ci --prefix server",
   "outputDirectory": "dist",
   "framework": "vite",
   "functions": {
     "api/index.ts": {
+      "includeFiles": "server/{dist/**,package.json}",
       "maxDuration": 60
     }
   },

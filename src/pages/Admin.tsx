@@ -1,4 +1,6 @@
-﻿import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import AdminLoginScreen from "@/components/AdminLoginScreen";
+import RuntimeCredentialsPanel from "@/components/RuntimeCredentialsPanel";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BarChart2,
@@ -77,14 +79,9 @@ import {
   saveCTAConfig,
   getGtmEvents,
   saveGtmEvents,
-  requestAdminLoginCode,
-  verifyAdminLoginCode,
   logoutAdminSession,
   getAdminSessionToken,
   getAdminSessionEmail,
-  getAdminAllowedEmails,
-  addAdminAllowedEmail,
-  deleteAdminAllowedEmail,
   sendManualMaterialEmail,
   type GtmEvent,
   type Lead,
@@ -95,7 +92,6 @@ import {
   type EmailTemplate,
   type EmailQueueItem,
   type CTAConfig,
-  type AdminAllowedEmail,
   type ManualMaterialKind,
 } from "@/lib/repository";
 import {
@@ -197,104 +193,7 @@ const exportLeadsXLSX = (leads: Lead[]) => {
 };
 
 // LOGIN SCREEN
-const LoginScreen = ({ onLogin }: { onLogin: () => void }) => {
-  const [email, setEmail] = useState("victor@converseia.com.br");
-  const [sentEmail, setSentEmail] = useState("");
-  const [code, setCode] = useState("");
-  const [step, setStep] = useState<"email" | "code">("email");
-  const [loading, setLoading] = useState(false);
-  const [notice, setNotice] = useState("");
-  const [error, setError] = useState("");
-
-  const handleRequestCode = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const normalized = email.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
-      setError("Informe um e-mail valido.");
-      return;
-    }
-    setLoading(true);
-    setError("");
-    setNotice("");
-    try {
-      await requestAdminLoginCode(normalized);
-      setSentEmail(normalized);
-      setStep("code");
-      setNotice("Codigo enviado. Verifique sua caixa de entrada.");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao enviar codigo.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleVerifyCode = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const cleanCode = code.replace(/\D/g, "");
-    if (cleanCode.length !== 6) {
-      setError("Informe o codigo de 6 digitos.");
-      return;
-    }
-    setLoading(true);
-    setError("");
-    try {
-      await verifyAdminLoginCode(sentEmail, cleanCode);
-      gtmPush({ event: "admin_login", method: "email_code" });
-      onLogin();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Codigo invalido.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <main className="min-h-screen bg-background flex items-center justify-center px-6">
-      <div className="absolute inset-0 pointer-events-none" style={{ backgroundImage: "radial-gradient(ellipse 60% 40% at 50% 0%, rgba(62,21,23,0.5) 0%, transparent 70%)" }} />
-      <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, ease: [0.25, 0, 0, 1] }} className="w-full max-w-sm relative z-10">
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-md bg-primary/20 border border-wine/20 mb-5">
-            <Lock className="w-5 h-5 text-wine" />
-          </div>
-          <h1 className="font-display text-3xl font-semibold text-foreground tracking-tight">Área Restrita</h1>
-          <p className="text-white/60 font-body text-sm mt-2">MANUAL DO EMPREGADOR — Admin</p>
-        </div>
-        <form onSubmit={step === "email" ? handleRequestCode : handleVerifyCode} className="space-y-4">
-          {step === "email" ? (
-            <div>
-              <label className="block font-ui text-[0.62rem] tracking-[0.14em] text-white/50 mb-1.5 uppercase">E-mail autorizado</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="victor@converseia.com.br" autoFocus autoComplete="email" className={`w-full bg-support border rounded-md px-4 py-3.5 text-foreground font-body text-base focus:outline-none transition-all duration-200 ${error ? "border-red-400/60" : "border-white/8 focus:border-wine/50"}`} aria-label="E-mail de administrador" />
-            </div>
-          ) : (
-            <div>
-              <label className="block font-ui text-[0.62rem] tracking-[0.14em] text-white/50 mb-1.5 uppercase">Código recebido por e-mail</label>
-              <input type="text" inputMode="numeric" pattern="[0-9]*" maxLength={6} value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="000000" autoFocus className={`w-full bg-support border rounded-md px-4 py-3.5 text-foreground font-body text-2xl tracking-[0.32em] text-center tabular-nums focus:outline-none transition-all duration-200 ${error ? "border-red-400/60" : "border-white/8 focus:border-wine/50"}`} aria-label="Código de acesso" />
-              <button type="button" onClick={() => { setStep("email"); setCode(""); setError(""); setNotice(""); }} className="mt-2 text-xs text-text-muted hover:text-foreground transition-colors">
-                Trocar e-mail
-              </button>
-            </div>
-          )}
-          <AnimatePresence>
-            {notice && (
-              <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="text-green-400 text-xs font-body flex items-center gap-1.5">
-                <Check className="w-3.5 h-3.5" />{notice}
-              </motion.p>
-            )}
-            {error && (
-              <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="text-red-400 text-xs font-body flex items-center gap-1.5" role="alert">
-                <AlertCircle className="w-3.5 h-3.5" />{error}
-              </motion.p>
-            )}
-          </AnimatePresence>
-          <button type="submit" disabled={loading} className="w-full bg-wine hover:bg-wine-light text-background font-ui font-bold text-sm min-h-[48px] rounded-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_-4px_rgba(200,121,124,0.3)] disabled:opacity-60 disabled:pointer-events-none flex items-center justify-center gap-2">
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : step === "email" ? <Mail className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-            {loading ? "AGUARDE" : step === "email" ? "ENVIAR CÓDIGO" : "ENTRAR"}
-          </button>
-        </form>
-      </motion.div>
-    </main>
-  );
-};
+const LoginScreen = AdminLoginScreen;
 
 // KPI CARD
 interface KpiCardProps {
@@ -2316,11 +2215,6 @@ const ConfiguracoesTab = () => {
   const [simulating, setSimulating] = useState<"ebook" | "event" | null>(null);
   const [simResult, setSimResult] = useState<{ url: string; product: string } | null>(null);
   const [simError, setSimError] = useState("");
-  const [allowedEmails, setAllowedEmails] = useState<AdminAllowedEmail[]>([]);
-  const [allowedEmailInput, setAllowedEmailInput] = useState("");
-  const [allowedEmailSaving, setAllowedEmailSaving] = useState(false);
-  const [allowedEmailError, setAllowedEmailError] = useState("");
-  const [allowedEmailSaved, setAllowedEmailSaved] = useState("");
   const apiConfigured = import.meta.env.VITE_API_URL !== undefined;
   const apiUrl = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
 
@@ -2336,43 +2230,6 @@ const ConfiguracoesTab = () => {
   };
 
   useEffect(() => { if (apiConfigured) checkBackend(); }, [apiConfigured, apiUrl]);
-
-  const refreshAllowedEmails = useCallback(async () => {
-    setAllowedEmails(await getAdminAllowedEmails());
-  }, []);
-
-  useEffect(() => { refreshAllowedEmails(); }, [refreshAllowedEmails]);
-
-  const addAllowedEmail = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const email = allowedEmailInput.trim().toLowerCase();
-    if (!email) return;
-    setAllowedEmailSaving(true);
-    setAllowedEmailError("");
-    setAllowedEmailSaved("");
-    try {
-      await addAdminAllowedEmail(email);
-      setAllowedEmailInput("");
-      setAllowedEmailSaved("E-mail permitido adicionado.");
-      await refreshAllowedEmails();
-      setTimeout(() => setAllowedEmailSaved(""), 2500);
-    } catch (err) {
-      setAllowedEmailError(err instanceof Error ? err.message : "Erro ao adicionar e-mail.");
-    } finally {
-      setAllowedEmailSaving(false);
-    }
-  };
-
-  const removeAllowedEmail = async (email: string) => {
-    setAllowedEmailError("");
-    setAllowedEmailSaved("");
-    try {
-      await deleteAdminAllowedEmail(email);
-      await refreshAllowedEmails();
-    } catch (err) {
-      setAllowedEmailError(err instanceof Error ? err.message : "Erro ao remover e-mail.");
-    }
-  };
 
   const simulatePurchase = async (product: "ebook" | "event") => {
     setSimulating(product); setSimResult(null); setSimError("");
@@ -2391,6 +2248,8 @@ const ConfiguracoesTab = () => {
         <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground tracking-tight">Configurações</h2>
         <p className="text-text-muted font-body text-sm mt-1">Integrações, status do backend e simulação de compra.</p>
       </div>
+
+      <RuntimeCredentialsPanel />
 
       {/* Backend */}
       <div className="surface-card rounded-xl p-5 sm:p-6 space-y-5">
@@ -2420,7 +2279,7 @@ const ConfiguracoesTab = () => {
         {backendStatus === "error" && (
           <div className="rounded-lg border border-red-500/15 bg-red-500/5 px-4 py-3 font-body text-xs">
             <p className="text-red-300 font-semibold mb-1.5">Servidor não acessível</p>
-            <p className="text-white/50 mb-2">O Express precisa estar rodando na porta 5000. Execute no terminal:</p>
+            <p className="text-white/50 mb-2">Configure a conexão do Supabase no formulário acima. Em desenvolvimento, inicie a API:</p>
             <p className="font-mono bg-black/30 rounded px-3 py-2 text-green-300 select-all">cd server &amp;&amp; npm run dev</p>
             <p className="text-white/40 mt-2">Depois clique em &quot;Verificar conexão&quot; abaixo.</p>
           </div>
@@ -2428,60 +2287,6 @@ const ConfiguracoesTab = () => {
         <button onClick={checkBackend} disabled={backendStatus === "checking"} className="flex items-center gap-2 border border-white/8 hover:border-blue-400/30 text-text-muted hover:text-blue-400 px-4 py-2 rounded-md font-body text-sm transition-all duration-200 disabled:opacity-50">
           <RefreshCw className={`w-3.5 h-3.5 ${backendStatus === "checking" ? "animate-spin" : ""}`} />Verificar conexão
         </button>
-      </div>
-
-      {/* Admin access */}
-      <div className="surface-card rounded-xl p-5 sm:p-6 space-y-5">
-        <div className="flex items-center gap-3 pb-4 border-b border-white/5">
-          <div className="w-8 h-8 rounded-md bg-wine/10 border border-wine/20 flex items-center justify-center"><Mail className="w-4 h-4 text-wine" strokeWidth={1.5} /></div>
-          <div className="flex-1">
-            <h3 className="font-display text-lg font-semibold text-foreground">Acesso Admin</h3>
-            <p className="text-text-muted font-body text-xs">E-mails autorizados a receber codigo de login.</p>
-          </div>
-        </div>
-
-        <form onSubmit={addAllowedEmail} className="flex flex-col sm:flex-row gap-2">
-          <input
-            type="email"
-            value={allowedEmailInput}
-            onChange={(e) => setAllowedEmailInput(e.target.value)}
-            placeholder="novo@email.com"
-            className="flex-1 bg-background border border-white/10 focus:border-wine/40 rounded-md px-3 py-2.5 font-body text-sm text-foreground focus:outline-none transition-colors"
-          />
-          <button type="submit" disabled={allowedEmailSaving} className="flex items-center justify-center gap-2 bg-wine hover:bg-wine-light text-background px-4 py-2.5 rounded-md font-ui text-xs font-bold transition-all disabled:opacity-50">
-            {allowedEmailSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}Adicionar
-          </button>
-        </form>
-
-        {(allowedEmailError || allowedEmailSaved) && (
-          <p className={`text-xs font-body flex items-center gap-1.5 ${allowedEmailError ? "text-red-400" : "text-green-400"}`}>
-            {allowedEmailError ? <AlertCircle className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />}
-            {allowedEmailError || allowedEmailSaved}
-          </p>
-        )}
-
-        <div className="rounded-xl border border-white/5 overflow-hidden">
-          {allowedEmails.length === 0 ? (
-            <div className="px-4 py-6 text-center text-text-muted font-body text-sm">Nenhum e-mail carregado.</div>
-          ) : (
-            <div className="divide-y divide-white/[0.04]">
-              {allowedEmails.map((item) => (
-                <div key={item.email} className="flex items-center gap-3 px-4 py-3 bg-background/40">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-md border border-white/8 bg-white/[0.03]">
-                    <Mail className="w-3.5 h-3.5 text-text-muted" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="font-body text-sm text-foreground truncate">{item.email}</p>
-                    <p className="font-body text-[0.65rem] text-text-muted">Adicionado em {formatDate(item.created_at)}</p>
-                  </div>
-                  <button onClick={() => removeAllowedEmail(item.email)} className="flex h-8 w-8 items-center justify-center rounded-md border border-white/8 text-white/35 hover:text-red-400 hover:border-red-400/30 hover:bg-red-400/10 transition-colors" aria-label={`Remover ${item.email}`}>
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
       </div>
 
       {/* Mercado Pago */}

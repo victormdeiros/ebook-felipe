@@ -3,7 +3,8 @@ import cors from "cors";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { config } from "./config";
-import { pool, closePool } from "./db";
+import { pool, closePool, refreshPool } from "./db";
+import { hydrateRuntimeConfiguration } from "./runtimeConfiguration";
 import leadsRouter from "./routes/leads";
 import eventsRouter from "./routes/events";
 import adminRouter from "./routes/admin";
@@ -30,6 +31,9 @@ app.use(
 );
 
 app.get("/api/health", async (_req, res) => {
+  try { await hydrateRuntimeConfiguration(); await refreshPool(); } catch {
+    return res.status(503).json({ ok: false, db: "configuration_unavailable" });
+  }
   if (!config.DATABASE_URL) {
     return res.status(503).json({ ok: false, db: "not_configured" });
   }
@@ -44,6 +48,13 @@ app.get("/api/health", async (_req, res) => {
 
 app.get("/api/live", (_req, res) => {
   res.json({ ok: true });
+});
+
+app.use("/api", async (req, res, next) => {
+  // Login and first-time configuration do not need a PostgreSQL connection.
+  if (req.path.startsWith("/admin/auth/") || req.path === "/admin/runtime-config") return next();
+  try { await hydrateRuntimeConfiguration(); await refreshPool(); next(); }
+  catch { res.status(503).json({ error: "Configuração do Supabase indisponível. Verifique as credenciais no painel." }); }
 });
 
 // An external scheduler must call this endpoint on Vercel; timers do not

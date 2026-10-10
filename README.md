@@ -49,9 +49,20 @@ A execução manual oferece `check_supabase`, que verifica o banco e os metadado
 
 ```bash
 npm test
+npm run test:api
 npm run build
 # Com as variáveis privadas do novo projeto configuradas:
 npm run check:supabase
 ```
 
-Nenhuma migração, seed, criação de bucket ou cópia de dados é executada pelo workflow. Os arquivos históricos em `server/migrations` e `supabase/schema.sql` permanecem sem execução automática.
+O workflow valida o projeto e não publica nem executa migrações. O build de produção da Vercel (`npm run build:vercel`) aplica as migrations pendentes no Supabase quando `DATABASE_URL` já está configurada. Sem essa conexão, o build só continua se a estrutura `ebookfelipelopes` já existir no projeto `heusjcoijobbsgzyfupm`.
+
+## Login e credenciais
+
+A função carrega `server/dist/index.js` como CommonJS pela entrada ESM de `api/index.ts`. O build inclui a API compilada e `server/package.json`.
+
+O acesso ao painel usa usuário e senha configurados no backend (`ADMIN_USERNAME`, `ADMIN_PASSWORD_HASH` e `ADMIN_AUTH_SECRET`). Em **Configurações**, o administrador salva a conexão PostgreSQL, a chave do Storage, o Mercado Pago e o Resend. Esses valores ficam criptografados no Supabase e passam a valer nas próximas requisições, sem novo deploy.
+
+Para gerar a chave do Resend, siga a documentação oficial: [API keys](https://resend.com/docs/dashboard/api-keys/introduction) e [verificação de domínio](https://resend.com/docs/dashboard/domains/introduction).
+
+`npm run test:api` verifica a entrada ESM real do Node, o login por senha e o salvamento das credenciais com o Supabase simulado. Não envia e-mails nem altera o projeto remoto.

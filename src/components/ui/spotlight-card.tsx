@@ -1,8 +1,8 @@
 import { useState } from "react";
-import { motion } from "framer-motion";
+import { motion, type HTMLMotionProps } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-type SpotlightCardProps = React.HTMLAttributes<HTMLDivElement> & {
+type SpotlightCardProps = HTMLMotionProps<"div"> & {
   glow?: string;
 };
 

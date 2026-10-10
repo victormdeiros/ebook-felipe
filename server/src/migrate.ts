@@ -1,63 +1,54 @@
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { pool, closePool } from "./db";
+import { config } from "./config";
+import { pool, closePool, refreshPool } from "./db";
+import { configRpc, hydrateRuntimeConfiguration } from "./runtimeConfiguration";
 
-const MIGRATIONS_DIR = join(__dirname, "..", "migrations");
-
-const run = async () => {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS _migrations (
-      name TEXT PRIMARY KEY,
-      applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
-    );
-  `);
-
-  const files = readdirSync(MIGRATIONS_DIR)
-    .filter((f) => f.endsWith(".sql"))
-    .sort();
-
-  const { rows: applied } = await pool.query<{ name: string }>(
-    "SELECT name FROM _migrations",
-  );
-  const appliedSet = new Set(applied.map((r) => r.name));
-
-  for (const file of files) {
-    if (appliedSet.has(file)) {
-      console.log(`[migrate] skip  ${file}`);
-      continue;
-    }
-
-    const sql = readFileSync(join(MIGRATIONS_DIR, file), "utf8");
-    console.log(`[migrate] apply ${file}`);
-
-    const client = await pool.connect();
-    try {
-      await client.query("BEGIN");
-      await client.query(sql);
-      await client.query("INSERT INTO _migrations (name) VALUES ($1)", [file]);
-      await client.query("COMMIT");
-    } catch (err) {
-      await client.query("ROLLBACK");
-      throw err;
-    } finally {
-      client.release();
-    }
+const directory = join(__dirname, "..", "migrations");
+export async function runMigrations(deploy = false): Promise<void> {
+  // Production Git builds migrate; previews and local frontend builds do not.
+  if (deploy && process.env.VERCEL_ENV !== "production") {
+    console.log("[migrate] Skipping non-production deployment.");
+    return;
   }
-
-  console.log("[migrate] done");
-};
-
-run()
-  .catch((err: unknown) => {
-    const code = (err as { code?: string })?.code;
-    // DB unreachable (network not ready yet) — warn but don't fail the deploy.
-    // Migrations can be run manually with: node server/dist/migrate.js
-    if (code === "ECONNREFUSED" || code === "ENOTFOUND" || code === "ETIMEDOUT") {
-      console.warn("[migrate] WARNING: DB not reachable — skipping migrations.");
-      console.warn("[migrate] Run manually once DB is available: node server/dist/migrate.js");
-    } else {
-      console.error("[migrate] FAILED:", err);
-      process.exitCode = 1;
+  await hydrateRuntimeConfiguration();
+  await refreshPool();
+  const files = readdirSync(directory).filter(file => file.endsWith(".sql")).sort();
+  if (!config.DATABASE_URL) {
+    // Initial structure can be provisioned through MCP before the first deploy,
+    // allowing the admin to sign in and supply PostgreSQL credentials.
+    const ready = await configRpc("manual_runtime_migrations_ready", { p_names: files });
+    if (!ready) throw new Error("Pending migrations: configure DATABASE_URL in the admin panel before deploying.");
+    console.log("[migrate] Structure already provisioned. Configure PostgreSQL in the admin panel for future migrations.");
+    return;
+  }
+  const client = await pool.connect();
+  try {
+    await client.query("SELECT pg_advisory_lock(711428014)");
+    await client.query("CREATE SCHEMA IF NOT EXISTS ebookfelipelopes");
+    await client.query("CREATE TABLE IF NOT EXISTS ebookfelipelopes._migrations (name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())");
+    const { rows } = await client.query<{ name: string }>("SELECT name FROM ebookfelipelopes._migrations");
+    const applied = new Set(rows.map(row => row.name));
+    for (const file of files) {
+      if (applied.has(file)) continue;
+      console.log("[migrate] Applying " + file);
+      await client.query("BEGIN");
+      try {
+        await client.query("SET LOCAL search_path TO ebookfelipelopes, public");
+        await client.query(readFileSync(join(directory, file), "utf8"));
+        await client.query("INSERT INTO ebookfelipelopes._migrations(name) VALUES($1)", [file]);
+        await client.query("COMMIT");
+      } catch (err) { await client.query("ROLLBACK"); throw err; }
     }
-  })
-  .finally(() => closePool());
+  } finally {
+    await client.query("SELECT pg_advisory_unlock(711428014)").catch(() => {});
+    client.release();
+  }
+  console.log("[migrate] All migrations applied.");
+}
+if (require.main === module) {
+  runMigrations(process.argv.includes("--deploy")).catch(() => {
+    console.error("[migrate] Failed. Check the Supabase configuration; production deploy aborted.");
+    process.exitCode = 1;
+  }).finally(() => closePool());
+}

@@ -1,142 +1,41 @@
 import { Router } from "express";
-import { createHmac, randomBytes, randomInt } from "node:crypto";
+import { createHash } from "node:crypto";
 import { z } from "zod";
 import multer from "multer";
 import { pool } from "../db";
 import { config } from "../config";
-import { sendAdminLoginCodeEmail } from "../email";
+import { issueAdminSession, verifyAdminPassword } from "../adminSession";
+import { configRpc, credentialKeys, credentialStatus, saveCredentials } from "../runtimeConfiguration";
+import { refreshPool } from "../db";
 import { sendAndRecordConfirmationEmail } from "../confirmationEmail";
-import { type AdminRequest, hashAdminToken, requireAdmin } from "../middleware/auth";
+import { type AdminRequest, requireAdmin } from "../middleware/auth";
 import { uploadEbook } from "../storage";
 import { processQueue, scheduleCartEmails } from "../emailScheduler";
 
 const router = Router();
 
-const ADMIN_CODE_TTL_MINUTES = 10;
-const ADMIN_SESSION_TTL_DAYS = 7;
-const adminAuthSecret = config.ADMIN_AUTH_SECRET
-  ?? config.ADMIN_TOKEN
-  ?? config.RESEND_API_KEY
-  ?? "manual-admin-auth";
-
 const emailOnlySchema = z.object({
   email: z.string().trim().toLowerCase().email(),
 });
 
-const verifyCodeSchema = emailOnlySchema.extend({
-  code: z.string().trim().regex(/^\d{6}$/),
-});
-
-const hashAdminCode = (email: string, code: string) =>
-  createHmac("sha256", adminAuthSecret).update(`${email}:${code}`).digest("hex");
-
-// Public auth: request a one-time login code for an allowed admin e-mail.
-router.post("/auth/request-code", async (req, res, next) => {
+router.post("/auth/login", async (req, res, next) => {
   try {
-    if (!config.RESEND_API_KEY) {
-      return res.status(503).json({ error: "RESEND_API_KEY nao configurado no servidor." });
+    if (!config.ADMIN_USERNAME || (!config.ADMIN_PASSWORD && !config.ADMIN_PASSWORD_HASH) || !config.ADMIN_AUTH_SECRET) {
+      return res.status(503).json({ error: "Usuário e senha do administrador não configurados no backend." });
     }
-
-    const { email } = emailOnlySchema.parse(req.body);
-    const { rows } = await pool.query<{ email: string }>(
-      `SELECT email FROM manual_admin_allowed_emails WHERE email = $1`,
-      [email],
-    );
-
-    // Keep the response neutral so the allowed list is not exposed.
-    if (!rows.length) {
-      console.warn(`[admin-auth] code requested for non-allowed email: ${email}`);
-      return res.json({ ok: true });
-    }
-
-    const code = randomInt(0, 1_000_000).toString().padStart(6, "0");
-    const codeHash = hashAdminCode(email, code);
-
-    await pool.query(
-      `UPDATE manual_admin_login_codes
-       SET consumed_at = now()
-       WHERE email = $1 AND consumed_at IS NULL`,
-      [email],
-    );
-
-    await pool.query(
-      `INSERT INTO manual_admin_login_codes
-       (email, code_hash, expires_at, requested_ip, user_agent)
-       VALUES ($1, $2, now() + ($3::text || ' minutes')::interval, $4, $5)`,
-      [
-        email,
-        codeHash,
-        ADMIN_CODE_TTL_MINUTES,
-        req.ip ?? null,
-        req.header("user-agent") ?? null,
-      ],
-    );
-
-    await sendAdminLoginCodeEmail(email, code);
-    res.json({ ok: true, expiresInMinutes: ADMIN_CODE_TTL_MINUTES });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// Public auth: exchange the one-time code for a short-lived admin session.
-router.post("/auth/verify-code", async (req, res, next) => {
-  try {
-    const { email, code } = verifyCodeSchema.parse(req.body);
-    const { rows } = await pool.query<{
-      id: string;
-      code_hash: string;
-      attempts: number;
-      expires_at: string;
-    }>(
-      `SELECT id, code_hash, attempts, expires_at
-       FROM manual_admin_login_codes
-       WHERE email = $1 AND consumed_at IS NULL
-       ORDER BY created_at DESC
-       LIMIT 1`,
-      [email],
-    );
-
-    const challenge = rows[0];
-    if (!challenge || new Date(challenge.expires_at).getTime() <= Date.now()) {
-      return res.status(400).json({ error: "Codigo expirado. Solicite um novo acesso." });
-    }
-
-    if (challenge.attempts >= 5) {
-      return res.status(429).json({ error: "Muitas tentativas. Solicite um novo codigo." });
-    }
-
-    if (challenge.code_hash !== hashAdminCode(email, code)) {
-      await pool.query(
-        `UPDATE manual_admin_login_codes SET attempts = attempts + 1 WHERE id = $1`,
-        [challenge.id],
-      );
-      return res.status(400).json({ error: "Codigo invalido." });
-    }
-
-    const token = randomBytes(32).toString("base64url");
-    const tokenHash = hashAdminToken(token);
-    const { rows: sessionRows } = await pool.query<{ expires_at: string }>(
-      `WITH consumed AS (
-         UPDATE manual_admin_login_codes
-         SET consumed_at = now()
-         WHERE id = $1
-       )
-       INSERT INTO manual_admin_sessions (email, token_hash, expires_at)
-       VALUES ($2, $3, now() + ($4::text || ' days')::interval)
-       RETURNING expires_at`,
-      [challenge.id, email, tokenHash, ADMIN_SESSION_TTL_DAYS],
-    );
-
-    res.json({
-      ok: true,
-      token,
-      email,
-      expiresAt: sessionRows[0].expires_at,
+    const { username, password } = z.object({
+      username: z.string().trim().min(1).max(200),
+      password: z.string().min(1).max(256),
+    }).parse(req.body);
+    const valid = verifyAdminPassword(username, password);
+    const ip = req.header("x-forwarded-for")?.split(",")[0]?.trim() || req.ip || "unknown";
+    const allowed = await configRpc("manual_admin_login_attempt", {
+      p_key: createHash("sha256").update(ip).digest("hex"), p_success: valid,
     });
-  } catch (err) {
-    next(err);
-  }
+    if (!allowed) return res.status(429).json({ error: "Muitas tentativas. Aguarde 15 minutos e tente novamente." });
+    if (!valid) return res.status(401).json({ error: "Usuário ou senha inválidos." });
+    res.json({ ok: true, ...issueAdminSession() });
+  } catch (err) { next(err); }
 });
 
 router.use(requireAdmin);
@@ -146,19 +45,44 @@ router.get("/auth/session", (req, res) => {
   res.json({ ok: true, email: adminReq.adminEmail });
 });
 
-router.delete("/auth/session", async (req, res, next) => {
+router.delete("/auth/session", (_req, res) => {
+  res.json({ ok: true });
+});
+
+router.get("/runtime-config", async (_req, res, next) => {
+  try { res.json(await credentialStatus()); } catch (err) { next(err); }
+});
+
+router.put("/runtime-config", async (req, res, next) => {
   try {
-    const adminReq = req as AdminRequest;
-    if (adminReq.adminSessionId) {
-      await pool.query(
-        `UPDATE manual_admin_sessions SET revoked_at = now() WHERE id = $1`,
-        [adminReq.adminSessionId],
-      );
+    const schema = z.object(Object.fromEntries(credentialKeys.map(key => [
+      key, z.string().trim().max(key === "DATABASE_SSL_CA" ? 20000 : 2000).optional(),
+    ]))).strict();
+    const changes = schema.parse(req.body);
+    if (changes.DATABASE_URL) {
+      const url = new URL(changes.DATABASE_URL);
+      const ref = config.SUPABASE_PROJECT_REF;
+      const validHost = url.hostname === "db." + ref + ".supabase.co"
+        || (url.hostname.endsWith(".pooler.supabase.com") && decodeURIComponent(url.username) === "postgres." + ref);
+      if (!["postgres:", "postgresql:"].includes(url.protocol) || !validHost) {
+        return res.status(400).json({ error: "Use a connection string do projeto Supabase conectado." });
+      }
     }
-    res.json({ ok: true });
-  } catch (err) {
-    next(err);
-  }
+    if (changes.RESEND_API_KEY && !changes.RESEND_API_KEY.startsWith("re_")) {
+      return res.status(400).json({ error: "A chave Resend deve começar com re_." });
+    }
+    if (changes.EMAIL_FROM && !/^[^<>\r\n]+@[^<>\r\n]+$/.test(changes.EMAIL_FROM)
+      && !/^[^<>\r\n]+<[^<>\r\n]+@[^<>\r\n]+>$/.test(changes.EMAIL_FROM)) {
+      return res.status(400).json({ error: "Informe um remetente válido, por exemplo Nome <email@dominio.com>." });
+    }
+    if (changes.SITE_URL) {
+      const url = new URL(changes.SITE_URL);
+      if (!["http:", "https:"].includes(url.protocol)) return res.status(400).json({ error: "SITE_URL deve ser uma URL HTTP ou HTTPS." });
+    }
+    await saveCredentials(changes);
+    await refreshPool();
+    res.json({ ok: true, ...await credentialStatus() });
+  } catch (err) { next(err); }
 });
 
 router.get("/allowed-emails", async (_req, res, next) => {
@@ -923,8 +847,8 @@ router.post("/email-queue/process", async (_req, res, next) => {
 // cancelando deduplicação (para não bloquear repetição em testes).
 router.post("/email-queue/test-send", async (req, res, next) => {
   try {
-    if (!process.env.RESEND_API_KEY) {
-      return res.status(503).json({ ok: false, error: "RESEND_API_KEY não configurado no servidor. Adicione ao arquivo server/.env" });
+    if (!config.RESEND_API_KEY) {
+      return res.status(503).json({ ok: false, error: "Configure o Resend em Configurações > Credenciais." });
     }
 
     const { email, name } = z.object({
