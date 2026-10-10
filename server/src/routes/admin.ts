@@ -215,7 +215,8 @@ router.delete("/allowed-emails/:email", async (req, res, next) => {
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB max
+  // Leave room for multipart headers under Vercel's 4.5 MB payload limit.
+  limits: { fileSize: 4 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     if (file.mimetype === "application/pdf") cb(null, true);
     else cb(new Error("Apenas arquivos PDF são aceitos."));

@@ -59,7 +59,7 @@ router.post("/", requireAdmin, async (req, res, next) => {
     res.status(201).json(rows[0]);
   } catch (err: unknown) {
     if (isDbConnError(err)) {
-      return res.status(503).json({ error: "Banco de dados não disponível. Inicie o túnel SSH (localhost:5433) e tente novamente." });
+      return res.status(503).json({ error: "Banco de dados não disponível. Verifique a conexão com o Supabase e tente novamente." });
     }
     const pgErr = err as { code?: string };
     if (pgErr?.code === "23505") {
@@ -131,7 +131,7 @@ router.patch("/:id", requireAdmin, async (req, res, next) => {
     res.json(rows[0]);
   } catch (err) {
     if (isDbConnError(err)) {
-      return res.status(503).json({ error: "Banco de dados não disponível. Inicie o túnel SSH (localhost:5433) e tente novamente." });
+      return res.status(503).json({ error: "Banco de dados não disponível. Verifique a conexão com o Supabase e tente novamente." });
     }
     next(err);
   }
@@ -149,7 +149,7 @@ router.delete("/:id", requireAdmin, async (req, res, next) => {
     res.json({ deleted: rows[0].id });
   } catch (err) {
     if (isDbConnError(err)) {
-      return res.status(503).json({ error: "Banco de dados não disponível. Inicie o túnel SSH (localhost:5433) e tente novamente." });
+      return res.status(503).json({ error: "Banco de dados não disponível. Verifique a conexão com o Supabase e tente novamente." });
     }
     next(err);
   }

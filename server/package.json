@@ -9,11 +9,10 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "migrate": "tsx src/migrate.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "check:supabase": "tsx src/checkSupabase.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.1030.0",
-    "@aws-sdk/s3-request-presigner": "^3.1030.0",
     "@types/multer": "^2.1.0",
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",

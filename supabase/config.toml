@@ -1,5 +1,6 @@
 # Supabase local dev config — https://supabase.com/docs/guides/cli/config
-# project_id is filled in after "supabase link"
+# Connected MCP project. No migration or deployment is run automatically.
+project_id = "heusjcoijobbsgzyfupm"
 
 [api]
 enabled = true

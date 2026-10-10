@@ -1,2 +1,4 @@
 #!/bin/bash
-docker network connect docker_default ebookfelipelopesadv.web.1 2>/dev/null || true
+# Deprecated: the project now uses Vercel routes and Supabase.
+echo "Dokku setup disabled. See README.md for Vercel and Supabase configuration." >&2
+exit 1

@@ -1,8 +1,6 @@
 {
   "name": "ebookfelipelopesadv",
-  "scripts": {
-    "postdeploy": "node server/dist/migrate.js"
-  },
+  "scripts": {},
   "formation": {
     "web": {
       "quantity": 1

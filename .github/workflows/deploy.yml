@@ -1,194 +1,64 @@
-name: Dokku Auto Deploy ebookfelipelopesadv
+name: Vercel + Supabase validation
 
 on:
   push:
     branches: ["main"]
+  pull_request:
+    branches: ["main"]
   workflow_dispatch:
+    inputs:
+      check_supabase:
+        description: "Verify Supabase database and Storage (read only)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
 
 concurrency:
-  group: dokku-ebookfelipelopesadv-master
+  group: validate-ebook-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  validate:
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger Dokku deploy
-        uses: appleboy/ssh-action@v1.2.0
-        env:
-          VPS_OS_PASSWORD: ${{ secrets.VPS_OS_PASSWORD }}
-          APP_DATABASE_URL: ${{ secrets.APP_DATABASE_URL || secrets.DATABASE_URL }}
-          APP_ADMIN_TOKEN: ${{ secrets.APP_ADMIN_TOKEN || secrets.ADMIN_TOKEN || secrets.VITE_ADMIN_TOKEN }}
-          APP_MP_ACCESS_TOKEN: ${{ secrets.APP_MP_ACCESS_TOKEN || secrets.MP_ACCESS_TOKEN || secrets.ACCESS_TOKEN }}
-          APP_MP_PUBLIC_KEY: ${{ secrets.APP_MP_PUBLIC_KEY || secrets.MP_PUBLIC_KEY || secrets.PUBLIC_KEY || secrets.VITE_MP_PUBLIC_KEY }}
-          APP_SITE_URL: ${{ secrets.APP_SITE_URL || secrets.SITE_URL }}
+      - uses: actions/checkout@v4
         with:
-          host: 157.173.118.98
-          username: converseia
-          password: ${{ secrets.VPS_OS_PASSWORD }}
-          envs: VPS_OS_PASSWORD,APP_DATABASE_URL,APP_ADMIN_TOKEN,APP_MP_ACCESS_TOKEN,APP_MP_PUBLIC_KEY,APP_SITE_URL
-          script: |
-            set -eu
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            server/package-lock.json
+      - run: npm ci
+      - run: npm ci --prefix server
+      - run: npm test
+      - run: npm run build
 
-            APP_NAME="ebookfelipelopesadv"
-            DEFAULT_SITE_URL="https://manualdoempregador.com.br"
-
-            : "${VPS_OS_PASSWORD:?VPS_OS_PASSWORD is required for sudo.}"
-            APP_DATABASE_URL="${APP_DATABASE_URL:-}"
-            APP_ADMIN_TOKEN="${APP_ADMIN_TOKEN:-}"
-            APP_MP_ACCESS_TOKEN="${APP_MP_ACCESS_TOKEN:-}"
-            APP_MP_PUBLIC_KEY="${APP_MP_PUBLIC_KEY:-}"
-            APP_SITE_URL="${APP_SITE_URL:-}"
-
-            dokku_cmd() {
-              printf '%s\n' "$VPS_OS_PASSWORD" | sudo -S -p '' dokku "$@"
-            }
-
-            COMMIT_NAME=$(printf '%s' "${{ github.event.head_commit.message }}" | head -n 1)
-            COMMIT_DATE="${{ github.event.head_commit.timestamp }}"
-            if [ -z "$COMMIT_NAME" ]; then COMMIT_NAME="${{ github.sha }}"; fi
-            if [ -z "$COMMIT_DATE" ]; then COMMIT_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ); fi
-
-            dokku_cmd config:set --no-restart "$APP_NAME" \
-              DEPLOYED_BRANCH=main \
-              DEPLOYED_REPO_URL=https://github.com/${{ github.repository }}.git \
-              DEPLOYED_COMMIT_SHA=${{ github.sha }} \
-              DEPLOYED_COMMIT_NAME="$COMMIT_NAME" \
-              DEPLOYED_COMMIT_URL=https://github.com/${{ github.repository }}/commit/${{ github.sha }} \
-              DEPLOYED_COMMIT_DATE="$COMMIT_DATE"
-
-            # Keep runtime defaults current, but never overwrite Dokku secrets with
-            # empty GitHub secrets. Missing secrets should preserve existing app config.
-            dokku_cmd config:set --no-restart "$APP_NAME" \
-              NODE_ENV=production \
-              VITE_API_URL="" \
-              VITE_MP_SANDBOX="false"
-
-            set_secret_config() {
-              key="$1"
-              value="$2"
-              if [ -n "$value" ]; then
-                dokku_cmd config:set --no-restart "$APP_NAME" "$key=$value" >/dev/null
-                echo "Configured $key from GitHub secret."
-              else
-                echo "Skipping $key: GitHub secret is empty or unavailable."
-              fi
-            }
-
-            set_secret_config DATABASE_URL "$APP_DATABASE_URL"
-            set_secret_config ADMIN_AUTH_SECRET "$APP_ADMIN_TOKEN"
-            set_secret_config ADMIN_TOKEN "$APP_ADMIN_TOKEN"
-            set_secret_config MP_ACCESS_TOKEN "$APP_MP_ACCESS_TOKEN"
-            set_secret_config MP_PUBLIC_KEY "$APP_MP_PUBLIC_KEY"
-            set_secret_config VITE_MP_PUBLIC_KEY "$APP_MP_PUBLIC_KEY"
-            set_secret_config SITE_URL "$APP_SITE_URL"
-            set_secret_config CORS_ORIGIN "$APP_SITE_URL"
-
-            set_default_config_if_missing() {
-              key="$1"
-              value="$2"
-              current="$(dokku_cmd config:get "$APP_NAME" "$key" 2>/dev/null || true)"
-              if [ -z "$current" ] && [ -n "$value" ]; then
-                dokku_cmd config:set --no-restart "$APP_NAME" "$key=$value" >/dev/null
-                echo "Configured $key from deploy default."
-              fi
-            }
-
-            recover_config_from_container() {
-              key="$1"
-              current="$(dokku_cmd config:get "$APP_NAME" "$key" 2>/dev/null || true)"
-              if [ -n "$current" ]; then
-                return 0
-              fi
-
-              if ! command -v docker >/dev/null 2>&1; then
-                return 0
-              fi
-
-              containers="$(docker ps -a --format '{{.Names}}' | grep -E "^${APP_NAME}\.web\." || true)"
-              for container in $containers; do
-                value="$(docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$container" 2>/dev/null | sed -n "s/^${key}=//p" | head -n 1)"
-                if [ -z "$value" ]; then
-                  continue
-                fi
-
-                if [ "$key" = "DATABASE_URL" ] && printf '%s' "$value" | grep -Eq '@(localhost|127\.0\.0\.1):'; then
-                  echo "Ignoring $key from $container because it points to localhost inside Docker."
-                  continue
-                fi
-
-                dokku_cmd config:set --no-restart "$APP_NAME" "$key=$value" >/dev/null
-                echo "Recovered $key from existing app container."
-                return 0
-              done
-            }
-
-            normalize_database_url() {
-              value="$(dokku_cmd config:get "$APP_NAME" DATABASE_URL 2>/dev/null || true)"
-              if printf '%s' "$value" | grep -Eq '@(localhost|127\.0\.0\.1):'; then
-                normalized="$(printf '%s' "$value" | sed -E 's/@(localhost|127\.0\.0\.1):/@evolution-postgres:/')"
-                dokku_cmd config:set --no-restart "$APP_NAME" "DATABASE_URL=$normalized" >/dev/null
-                echo "Normalized DATABASE_URL host for the Dokku Docker network."
-              fi
-            }
-
-            set_default_config_if_missing SITE_URL "$DEFAULT_SITE_URL"
-            set_default_config_if_missing CORS_ORIGIN "$DEFAULT_SITE_URL"
-            recover_config_from_container DATABASE_URL
-            recover_config_from_container ADMIN_AUTH_SECRET
-            recover_config_from_container ADMIN_TOKEN
-            recover_config_from_container MP_ACCESS_TOKEN
-            recover_config_from_container MP_PUBLIC_KEY
-            recover_config_from_container VITE_MP_PUBLIC_KEY
-            normalize_database_url
-
-            require_dokku_config() {
-              key="$1"
-              value="$(dokku_cmd config:get "$APP_NAME" "$key" 2>/dev/null || true)"
-              if [ -z "$value" ]; then
-                echo "::error::Missing required Dokku config: $key. Set the matching GitHub secret or run dokku config:set $APP_NAME $key=..."
-                exit 1
-              fi
-              echo "Verified $key is configured in Dokku."
-            }
-
-            require_any_dokku_config() {
-              first="$1"
-              second="$2"
-              first_value="$(dokku_cmd config:get "$APP_NAME" "$first" 2>/dev/null || true)"
-              second_value="$(dokku_cmd config:get "$APP_NAME" "$second" 2>/dev/null || true)"
-              if [ -z "$first_value" ] && [ -z "$second_value" ]; then
-                echo "::error::Missing required Dokku config: $first or $second. Set the matching GitHub secret or run dokku config:set $APP_NAME $first=..."
-                exit 1
-              fi
-              echo "Verified $first or $second is configured in Dokku."
-            }
-
-            require_dokku_config DATABASE_URL
-            require_any_dokku_config ADMIN_AUTH_SECRET ADMIN_TOKEN
-            require_dokku_config MP_ACCESS_TOKEN
-            require_dokku_config MP_PUBLIC_KEY
-
-            AUTH_REPO="https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git"
-
-            detect_lock() {
-              printf '%s' "$1" | tr '[:upper:]' '[:lower:]' | grep -Eq "deploy lock in place|app is currently locked|deploy lock"
-            }
-
-            run_deploy() {
-              dokku_cmd git:sync --build "$APP_NAME" "$AUTH_REPO" main 2>&1
-            }
-
-            DEPLOY_OUTPUT=$(run_deploy) && DEPLOY_STATUS=0 || DEPLOY_STATUS=$?
-            echo "$DEPLOY_OUTPUT"
-
-            if [ "$DEPLOY_STATUS" -ne 0 ] && detect_lock "$DEPLOY_OUTPUT"; then
-              echo "Deploy lock detectado. Executando dokku apps:unlock e tentando novamente..."
-              dokku_cmd apps:unlock "$APP_NAME" 2>&1 || true
-              DEPLOY_OUTPUT=$(run_deploy) && DEPLOY_STATUS=0 || DEPLOY_STATUS=$?
-              echo "$DEPLOY_OUTPUT"
-            fi
-
-            if [ "$DEPLOY_STATUS" -ne 0 ]; then
-              exit "$DEPLOY_STATUS"
-            fi
+  supabase:
+    if: github.event_name == 'workflow_dispatch' && inputs.check_supabase
+    needs: validate
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_PROJECT_REF: heusjcoijobbsgzyfupm
+      SUPABASE_URL: https://heusjcoijobbsgzyfupm.supabase.co
+      SUPABASE_STORAGE_BUCKET: ebook-manual
+      DATABASE_URL: ${{ secrets.SUPABASE_DATABASE_URL }}
+      DATABASE_SSL_CA: ${{ secrets.SUPABASE_DATABASE_SSL_CA }}
+      SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci --prefix server
+      # SELECT and bucket metadata only. No migration, seed, copy or deploy.
+      - run: npm run check:supabase --prefix server

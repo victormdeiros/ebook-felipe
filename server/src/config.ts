@@ -18,11 +18,14 @@ const envSchema = z.object({
   // Email (Resend)
   RESEND_API_KEY: optionalString,
   EMAIL_FROM: z.string().default("Manual do Empregador <noreply@manualempregador.com.br>"),
-  // MinIO / S3
-  MINIO_ENDPOINT: optionalUrl,
-  MINIO_ACCESS_KEY: z.string().default("minio"),
-  MINIO_SECRET_KEY: z.string().default("minio1234"),
-  MINIO_REGION: z.string().default("us-east-1"),
+  // Supabase: private credentials belong exclusively to the backend.
+  SUPABASE_URL: z.string().url().default("https://heusjcoijobbsgzyfupm.supabase.co"),
+  SUPABASE_PROJECT_REF: z.literal("heusjcoijobbsgzyfupm").default("heusjcoijobbsgzyfupm"),
+  SUPABASE_SECRET_KEY: optionalString,
+  SUPABASE_SERVICE_ROLE_KEY: optionalString,
+  SUPABASE_STORAGE_BUCKET: z.string().min(1).default("ebook-manual"),
+  DATABASE_SSL_CA: optionalString,
+  CRON_SECRET: optionalString,
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -31,6 +34,21 @@ if (!parsed.success) {
   console.error("[config] Invalid environment variables:");
   console.error(parsed.error.flatten().fieldErrors);
   process.exit(1);
+}
+
+if (new URL(parsed.data.SUPABASE_URL).hostname !== parsed.data.SUPABASE_PROJECT_REF + ".supabase.co") {
+  throw new Error("SUPABASE_URL must point to the connected Supabase project.");
+}
+
+if (parsed.data.DATABASE_URL) {
+  const database = new URL(parsed.data.DATABASE_URL);
+  const ref = parsed.data.SUPABASE_PROJECT_REF;
+  const direct = database.hostname === "db." + ref + ".supabase.co";
+  const pooled = database.hostname.endsWith(".pooler.supabase.com")
+    && decodeURIComponent(database.username) === "postgres." + ref;
+  if (!["postgres:", "postgresql:"].includes(database.protocol) || (!direct && !pooled)) {
+    throw new Error("DATABASE_URL must point to the connected Supabase project (direct or Supavisor pooler).");
+  }
 }
 
 const corsOrigins = parsed.data.CORS_ORIGIN.split(",")
@@ -52,7 +70,6 @@ if (!parsed.data.ADMIN_AUTH_SECRET && !parsed.data.ADMIN_TOKEN && !parsed.data.R
 export const config = {
   ...parsed.data,
   SITE_URL: siteUrl,
-  MINIO_ENDPOINT: parsed.data.MINIO_ENDPOINT ?? "http://157.173.118.98:9003",
   corsOrigins,
 
   // Produtos — preços em BRL

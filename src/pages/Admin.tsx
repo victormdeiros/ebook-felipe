@@ -1555,7 +1555,7 @@ const EbookTab = () => {
     <div className="space-y-6 max-w-2xl">
       <div>
         <h2 className="font-display text-xl sm:text-2xl font-semibold text-foreground tracking-tight">Gerenciar E-book</h2>
-        <p className="text-text-muted font-body text-sm mt-1">Faça upload do PDF para o MinIO. O link é enviado automaticamente por e-mail após cada compra.</p>
+        <p className="text-text-muted font-body text-sm mt-1">Faça upload do PDF para o Supabase Storage. O link é enviado automaticamente por e-mail após cada compra.</p>
       </div>
 
       {/* Current URL */}
@@ -1581,7 +1581,7 @@ const EbookTab = () => {
       >
         <input ref={fileRef} type="file" accept="application/pdf" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = ""; }} />
         {uploading ? (
-          <><Loader2 className="w-8 h-8 text-wine animate-spin" /><p className="font-body text-sm text-text-muted">Enviando para o MinIO…</p></>
+          <><Loader2 className="w-8 h-8 text-wine animate-spin" /><p className="font-body text-sm text-text-muted">Enviando para o Supabase Storage…</p></>
         ) : success ? (
           <><CheckCircle2 className="w-8 h-8 text-green-400" /><p className="font-body text-sm text-green-300">Upload realizado com sucesso!</p></>
         ) : (
@@ -1589,7 +1589,7 @@ const EbookTab = () => {
             <BookOpen className="w-8 h-8 text-text-muted" strokeWidth={1.5} />
             <div className="text-center">
               <p className="font-body text-sm text-foreground">Arraste o PDF aqui ou <span className="text-gold underline">clique para selecionar</span></p>
-              <p className="font-body text-xs text-text-muted mt-1">Máximo: 50 MB · apenas PDF</p>
+              <p className="font-body text-xs text-text-muted mt-1">Máximo: 4 MB · apenas PDF</p>
             </div>
           </>
         )}

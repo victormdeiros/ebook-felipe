@@ -11,7 +11,7 @@ import mpRouter from "./routes/mp";
 import contentRouter from "./routes/content";
 import productsRouter from "./routes/products";
 import { errorHandler, notFound } from "./middleware/error";
-import { startScheduler } from "./emailScheduler";
+import { startScheduler, processQueue } from "./emailScheduler";
 
 const app = express();
 
@@ -46,6 +46,19 @@ app.get("/api/live", (_req, res) => {
   res.json({ ok: true });
 });
 
+// An external scheduler must call this endpoint on Vercel; timers do not
+// continue running after serverless requests finish.
+app.get("/api/cron/email-queue", async (req, res, next) => {
+  if (!config.CRON_SECRET || req.headers.authorization !== `Bearer ${config.CRON_SECRET}`) {
+    return res.status(401).json({ error: "Unauthorized" });
+  }
+  try {
+    res.json(await processQueue());
+  } catch (err) {
+    next(err);
+  }
+});
+
 app.use("/api/leads", leadsRouter);
 app.use("/api/events", eventsRouter);
 app.use("/api/admin", adminRouter);
@@ -58,7 +71,7 @@ app.use("/api/products", productsRouter);
 // Express serves the static assets and falls back to index.html
 // for client-side routes — so the React SPA works on direct URL access.
 const staticDir = join(process.cwd(), "dist");
-if (existsSync(staticDir)) {
+if (!process.env.VERCEL && existsSync(staticDir)) {
   app.use(express.static(staticDir, { index: false }));
   // SPA fallback: non-API GET requests → index.html
   app.get(/^\/(?!api)/, (_req, res, next) => {
@@ -74,18 +87,22 @@ if (existsSync(staticDir)) {
 app.use(notFound);
 app.use(errorHandler);
 
-const server = app.listen(config.PORT, () => {
-  console.log(`[server] listening on :${config.PORT} (${config.NODE_ENV})`);
-  startScheduler();
-});
+export default app;
 
-const shutdown = (signal: string) => {
-  console.log(`[server] ${signal} received, shutting down...`);
-  server.close(async () => {
-    await closePool();
-    process.exit(0);
+if (!process.env.VERCEL) {
+  const server = app.listen(config.PORT, () => {
+    console.log(`[server] listening on :${config.PORT} (${config.NODE_ENV})`);
+    startScheduler();
   });
-};
 
-process.on("SIGTERM", () => shutdown("SIGTERM"));
-process.on("SIGINT", () => shutdown("SIGINT"));
+  const shutdown = (signal: string) => {
+    console.log(`[server] ${signal} received, shutting down...`);
+    server.close(async () => {
+      await closePool();
+      process.exit(0);
+    });
+  };
+
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
+}
